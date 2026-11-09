@@ -1,0 +1,2042 @@
+<!doctype html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>:root{color-scheme:light;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom)}body{margin:0;font:14px system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
+</head>
+<body>
+<title>Списковий квест</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&family=JetBrains+Mono:wght@400;600&family=Nunito:wght@400;600;700;800&family=Unbounded:wght@500;700&display=swap">
+<style>
+/* Шкільний зошит у клітинку: синя ручка, червоні поля й червона ручка вчителя. Одна колонка, список рівнів як клітинки Python-списку. */
+:root {
+  --paper: #f5f7fc;
+  --grid: rgba(54, 86, 170, 0.09);
+  --card: #ffffff;
+  --line: #d7deec;
+  --fg: #1a2133;
+  --muted: #5a6479;
+  --ink: #2346a8;
+  --ink-soft: #e6ecfa;
+  --red: #cf3434;
+  --red-soft: #fbe7e5;
+  --green: #1d7f53;
+  --green-soft: #e1f3ea;
+  --gold: #d99a0b;
+  --code-bg: #eef2fa;
+  --kw: #6c35a8;
+  --str: #1d7a4b;
+  --num: #b4520c;
+  --com: #7c8597;
+  --fn: #2346a8;
+  --f-display: "Unbounded", "Arial Black", system-ui, sans-serif;
+  --f-body: "Nunito", "Segoe UI", system-ui, sans-serif;
+  --f-code: "JetBrains Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+  --f-hand: "Caveat", "Segoe Print", "Comic Sans MS", cursive;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #0f141e; --grid: rgba(140, 170, 255, 0.06); --card: #161d2a; --line: #283245;
+    --fg: #e5e9f2; --muted: #9aa3b7; --ink: #8eaeff; --ink-soft: #1d2840;
+    --red: #ff7b78; --red-soft: #3a1f24; --green: #5fd39b; --green-soft: #15302a; --gold: #f2bd45;
+    --code-bg: #0b1018; --kw: #c49bff; --str: #7fd8a8; --num: #ffb27a; --com: #7d879c; --fn: #8eaeff;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #0f141e; --grid: rgba(140, 170, 255, 0.06); --card: #161d2a; --line: #283245;
+  --fg: #e5e9f2; --muted: #9aa3b7; --ink: #8eaeff; --ink-soft: #1d2840;
+  --red: #ff7b78; --red-soft: #3a1f24; --green: #5fd39b; --green-soft: #15302a; --gold: #f2bd45;
+  --code-bg: #0b1018; --kw: #c49bff; --str: #7fd8a8; --num: #ffb27a; --com: #7d879c; --fn: #8eaeff;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body {
+  background-color: var(--paper);
+  background-image:
+    linear-gradient(var(--grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size: 22px 22px;
+  color: var(--fg);
+  font-family: var(--f-body);
+  font-size: 16px;
+  line-height: 1.55;
+  min-height: 100%;
+}
+.sheet {
+  max-width: 780px;
+  margin: 0 auto;
+  padding-block: 28px 64px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  position: relative;
+}
+@media (min-width: 900px) {
+  .sheet::before { content: ""; position: absolute; top: 0; bottom: 0; left: -28px; border-left: 2px solid var(--red); opacity: .45; }
+}
+h1, h2, h3 { font-family: var(--f-display); text-wrap: balance; margin: 0; letter-spacing: -0.01em; }
+code, pre, .mono { font-family: var(--f-code); }
+p { margin: 0; }
+button { font: inherit; color: inherit; cursor: pointer; }
+button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
+:not(pre) > code { background: var(--code-bg); border: 1px solid var(--line); border-radius: 5px; padding: 0 .3em; font-size: .88em; white-space: nowrap; }
+
+/* ---------- кнопки ---------- */
+.btn { border: 2px solid var(--ink); background: var(--ink); color: var(--card); border-radius: 10px; padding: .6em 1.2em; font-weight: 800; transition: transform .08s; }
+.btn:active { transform: translateY(1px); }
+.btn.ghost { background: transparent; color: var(--ink); }
+.btn.small { padding: .35em .8em; font-size: .9em; }
+.btn[disabled] { opacity: .45; cursor: not-allowed; }
+.link { background: none; border: 0; color: var(--muted); text-decoration: underline; text-underline-offset: 3px; padding: .2em 0; }
+.row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+
+/* ---------- карта ---------- */
+.hero { display: grid; gap: 10px; margin-bottom: 28px; }
+.eyebrow { font-family: var(--f-code); font-size: .82rem; color: var(--muted); letter-spacing: .02em; }
+.hero h1 { font-size: clamp(2rem, 7vw, 3.2rem); line-height: 1.05; font-weight: 700; color: var(--ink); }
+.hero p { max-width: 58ch; color: var(--muted); }
+.score { font-family: var(--f-code); font-size: .95rem; background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: .5em .8em; width: fit-content; }
+.score b { color: var(--gold); }
+.listopen, .listclose { font-family: var(--f-code); font-size: 1.15rem; color: var(--ink); font-weight: 600; }
+.listopen { margin-bottom: 10px; }
+.listclose { margin-top: 10px; }
+.levels { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 160px), 1fr)); gap: 12px; padding-left: 14px; }
+.cell { position: relative; text-align: left; background: var(--card); border: 2px solid var(--line); border-radius: 12px; padding: 30px 12px 12px; display: grid; gap: 6px; min-height: 124px; min-width: 0; align-content: start; }
+.cell:not([disabled]):hover { border-color: var(--ink); }
+.cell .idx { position: absolute; top: 8px; left: 12px; right: 12px; display: flex; justify-content: space-between; font-family: var(--f-code); font-size: .75rem; color: var(--muted); }
+.cell .kind { font-size: .72rem; text-transform: uppercase; letter-spacing: .08em; font-weight: 800; color: var(--muted); }
+.cell.learn .kind { color: var(--ink); }
+.cell.boss .kind { color: var(--red); }
+.cell h3 { overflow-wrap: anywhere; font-size: 1.02rem; line-height: 1.25; font-weight: 500; }
+.cell .stars { font-size: 1.15rem; letter-spacing: 2px; color: var(--line); }
+.cell .stars .on { color: var(--gold); }
+.cell[disabled] { cursor: not-allowed; opacity: .55; }
+.cell .lock { font-size: .85rem; color: var(--muted); }
+.legend { display: flex; gap: 18px; flex-wrap: wrap; margin-top: 22px; color: var(--muted); font-size: .9rem; }
+
+/* ---------- рівень ---------- */
+.topbar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--paper); padding-block: 10px; display: grid; gap: 8px; margin-bottom: 14px; }
+.topbar .row { justify-content: space-between; }
+.hearts { font-size: 1.25rem; letter-spacing: 2px; color: var(--red); }
+.hearts .off { color: var(--line); }
+.progress { height: 8px; background: var(--ink-soft); border-radius: 99px; overflow: hidden; }
+.progress > div { height: 100%; background: var(--ink); border-radius: 99px; transition: width .3s; }
+.lvtitle { font-family: var(--f-display); font-size: .95rem; color: var(--muted); }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 20px; display: grid; gap: 16px; }
+.chips { display: flex; gap: 8px; flex-wrap: wrap; }
+.chip { font-size: .74rem; font-weight: 800; text-transform: uppercase; letter-spacing: .07em; padding: .2em .65em; border-radius: 99px; background: var(--ink-soft); color: var(--ink); }
+.chip.warm { background: var(--green-soft); color: var(--green); }
+.chip.new { background: var(--red-soft); color: var(--red); }
+.q { font-size: 1.1rem; font-weight: 700; }
+.lesson h2 { font-size: 1.3rem; font-weight: 500; color: var(--ink); }
+.lesson p { max-width: 62ch; }
+pre.code { background: var(--code-bg); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; margin: 0; overflow-x: auto; font-size: .92rem; line-height: 1.6; }
+.tok-kw { color: var(--kw); font-weight: 600; }
+.tok-str { color: var(--str); }
+.tok-num { color: var(--num); }
+.tok-com { color: var(--com); font-style: italic; }
+.tok-fn { color: var(--fn); }
+.options { display: grid; gap: 10px; }
+.opt { text-align: left; border: 2px solid var(--line); background: var(--card); border-radius: 10px; padding: .7em 1em; font-weight: 600; }
+.opt:not([disabled]):hover { border-color: var(--ink); }
+.opt.right { border-color: var(--green); background: var(--green-soft); }
+.opt.wrong { border-color: var(--red); background: var(--red-soft); }
+.opt[disabled] { cursor: default; }
+textarea, input[type=text] { width: 100%; font-family: var(--f-code); font-size: .95rem; background: var(--code-bg); color: var(--fg); border: 2px solid var(--line); border-radius: 10px; padding: 10px 12px; }
+textarea { resize: vertical; line-height: 1.6; }
+.answer-label { font-weight: 700; font-size: .92rem; color: var(--muted); }
+.buglines { background: var(--code-bg); border: 1px solid var(--line); border-radius: 10px; padding: 6px; overflow-x: auto; display: grid; }
+.bugline { display: flex; gap: 12px; align-items: baseline; text-align: left; border: 2px solid transparent; background: none; border-radius: 7px; padding: 4px 8px; font-family: var(--f-code); font-size: .92rem; white-space: pre; }
+.bugline:not([disabled]):hover { border-color: var(--ink); }
+.bugline .ln { color: var(--muted); min-width: 1.4em; text-align: right; user-select: none; }
+.bugline.right { border-color: var(--green); background: var(--green-soft); }
+.bugline.wrong { border-color: var(--red); background: var(--red-soft); }
+.bugline[disabled] { cursor: default; }
+.zone { display: grid; gap: 6px; min-height: 52px; background: var(--code-bg); border: 2px dashed var(--line); border-radius: 10px; padding: 8px; overflow-x: auto; }
+.zone.target { border-style: solid; border-color: var(--ink-soft); }
+.zone .empty { color: var(--muted); font-size: .9rem; padding: 6px; }
+.piece { text-align: left; font-family: var(--f-code); font-size: .9rem; white-space: pre; background: var(--card); border: 1px solid var(--line); border-radius: 7px; padding: 6px 10px; }
+.piece:hover { border-color: var(--ink); }
+.fillcode input { width: auto; display: inline-block; padding: 1px 6px; border-radius: 6px; font-size: .92rem; min-width: 3ch; }
+.fillcode input.right { border-color: var(--green); }
+.fillcode input.wrong { border-color: var(--red); }
+.editor { min-height: 190px; tab-size: 4; white-space: pre; overflow-x: auto; }
+.tests { display: grid; gap: 8px; }
+.test { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; font-size: .9rem; display: grid; gap: 4px; background: var(--card); }
+.test.ok { border-color: var(--green); }
+.test.fail { border-color: var(--red); }
+.test .head { font-weight: 800; }
+.test.ok .head { color: var(--green); }
+.test.fail .head { color: var(--red); }
+.test pre { margin: 0; font-family: var(--f-code); white-space: pre-wrap; word-break: break-word; font-size: .85rem; }
+.hint { background: var(--ink-soft); border-radius: 10px; padding: 10px 14px; }
+.feedback { border-radius: 12px; padding: 14px 16px; display: grid; gap: 6px; }
+.feedback.good { background: var(--green-soft); }
+.feedback.bad { background: var(--red-soft); }
+.feedback .verdict { font-family: var(--f-hand); font-size: 1.85rem; line-height: 1; font-weight: 700; }
+.feedback.good .verdict { color: var(--green); }
+.feedback.bad .verdict { color: var(--red); }
+.actions { display: flex; gap: 10px; flex-wrap: wrap; justify-content: flex-end; align-items: center; }
+.actions .spacer { flex: 1; }
+.status { font-size: .88rem; color: var(--muted); }
+
+/* ---------- екрани ---------- */
+.center { display: grid; gap: 18px; justify-items: start; }
+.bigstars { font-size: 3rem; letter-spacing: 6px; color: var(--line); line-height: 1; }
+.bigstars .on { color: var(--gold); }
+.intro h2 { font-size: clamp(1.5rem, 5vw, 2.1rem); color: var(--ink); font-weight: 500; }
+.stamp { font-family: var(--f-hand); font-size: 2.4rem; color: var(--red); transform: rotate(-4deg); line-height: 1; }
+.plan { display: grid; gap: 6px; padding-left: 0; list-style: none; margin: 0; }
+.plan li { display: flex; gap: 10px; align-items: baseline; }
+.plan li span { font-family: var(--f-code); color: var(--muted); font-size: .85rem; min-width: 2.2em; }
+
+#toast { position: fixed; left: 16px; right: 16px; margin: 0 auto; width: fit-content; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); transform: translateY(20px); max-width: 520px; background: var(--red); color: #fff; font-weight: 700; padding: 12px 16px; border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,.25); opacity: 0; pointer-events: none; transition: opacity .25s, transform .25s; z-index: 50; }
+#toast.show { opacity: 1; transform: none; }
+#guard { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; padding: 16px; background: color-mix(in srgb, var(--paper) 88%, transparent); backdrop-filter: blur(6px); }
+.guardcard { background: var(--card); border: 2px solid var(--red); border-radius: 16px; padding: 22px; max-width: 440px; display: grid; gap: 14px; justify-items: start; box-shadow: 0 16px 40px rgba(0,0,0,.25); }
+/* ---------- змійка ---------- */
+.snake { display: block; width: 100%; max-width: 190px; height: auto; overflow: visible; }
+.snake.big { max-width: 280px; }
+.snake .ghost { fill: none; stroke: var(--line); stroke-width: 1.5; stroke-dasharray: 3 3; }
+.snake .segidx { font-family: var(--f-code); font-size: 9px; font-weight: 600; text-anchor: middle; fill: rgba(0,0,0,.45); }
+.snake .fall { animation: fall .9s ease-in forwards; transform-box: fill-box; transform-origin: center; }
+@keyframes fall { 30% { transform: translate(-2px, -6px) rotate(-10deg); } to { transform: translate(-8px, 40px) rotate(-50deg); opacity: 0; } }
+.snake .poptxt { font-family: var(--f-code); font-size: 10px; font-weight: 600; fill: var(--red); animation: rise 1.6s ease-out forwards; }
+@keyframes rise { 0% { opacity: 0; transform: translateY(6px); } 20% { opacity: 1; transform: none; } 70% { opacity: 1; } to { opacity: 0; transform: translateY(-6px); } }
+.snake .prop { animation: spin 1.2s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.snake.hop .head { animation: hop .55s ease; transform-box: fill-box; transform-origin: bottom; }
+@keyframes hop { 35% { transform: translateY(-7px) rotate(-6deg); } 70% { transform: translateY(1px); } }
+.snakebar { min-height: 44px; }
+.pet { display: flex; gap: 18px; align-items: center; flex-wrap: wrap; }
+.pet .snake.big { flex: 0 1 280px; }
+.petinfo { display: grid; gap: 8px; justify-items: start; min-width: 0; }
+.petname { font-family: var(--f-hand); font-size: 2rem; line-height: 1; color: var(--ink); }
+.petinfo input { max-width: 240px; }
+.wardrobe h3 { font-size: 1rem; font-weight: 500; margin-top: 6px; }
+.wgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 150px), 1fr)); gap: 10px; width: 100%; }
+.wtile { display: grid; gap: 4px; justify-items: center; background: var(--card); border: 2px solid var(--line); border-radius: 12px; padding: 10px 8px; }
+.wtile .snake { max-width: 140px; }
+.wtile:not([disabled]):hover { border-color: var(--ink); }
+.wtile.sel { border-color: var(--ink); background: var(--ink-soft); }
+.wtile[disabled] { cursor: not-allowed; }
+.wtile[disabled] .snake { filter: grayscale(1); opacity: .45; }
+.wname { font-weight: 800; font-size: .92rem; }
+.wlock { font-size: .78rem; color: var(--muted); }
+.unlock { background: var(--green-soft); color: var(--green); border-radius: 10px; padding: 8px 12px; font-weight: 700; }
+@media (prefers-reduced-motion: reduce) { .snake .fall { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+@keyframes pop { from { transform: scale(.96); opacity: .4; } to { transform: none; opacity: 1; } }
+.feedback, .card { animation: pop .18s ease-out; }
+
+/* CodeMirror 5.65.16 base */
+/* BASICS */
+
+.CodeMirror {
+  /* Set height, width, borders, and global font properties here */
+  font-family: monospace;
+  height: 300px;
+  color: black;
+  direction: ltr;
+}
+
+/* PADDING */
+
+.CodeMirror-lines {
+  padding: 4px 0; /* Vertical padding around content */
+}
+.CodeMirror pre.CodeMirror-line,
+.CodeMirror pre.CodeMirror-line-like {
+  padding: 0 4px; /* Horizontal padding of content */
+}
+
+.CodeMirror-scrollbar-filler, .CodeMirror-gutter-filler {
+  background-color: white; /* The little square between H and V scrollbars */
+}
+
+/* GUTTER */
+
+.CodeMirror-gutters {
+  border-right: 1px solid #ddd;
+  background-color: #f7f7f7;
+  white-space: nowrap;
+}
+.CodeMirror-linenumbers {}
+.CodeMirror-linenumber {
+  padding: 0 3px 0 5px;
+  min-width: 20px;
+  text-align: right;
+  color: #999;
+  white-space: nowrap;
+}
+
+.CodeMirror-guttermarker { color: black; }
+.CodeMirror-guttermarker-subtle { color: #999; }
+
+/* CURSOR */
+
+.CodeMirror-cursor {
+  border-left: 1px solid black;
+  border-right: none;
+  width: 0;
+}
+/* Shown when moving in bi-directional text */
+.CodeMirror div.CodeMirror-secondarycursor {
+  border-left: 1px solid silver;
+}
+.cm-fat-cursor .CodeMirror-cursor {
+  width: auto;
+  border: 0 !important;
+  background: #7e7;
+}
+.cm-fat-cursor div.CodeMirror-cursors {
+  z-index: 1;
+}
+.cm-fat-cursor .CodeMirror-line::selection,
+.cm-fat-cursor .CodeMirror-line > span::selection, 
+.cm-fat-cursor .CodeMirror-line > span > span::selection { background: transparent; }
+.cm-fat-cursor .CodeMirror-line::-moz-selection,
+.cm-fat-cursor .CodeMirror-line > span::-moz-selection,
+.cm-fat-cursor .CodeMirror-line > span > span::-moz-selection { background: transparent; }
+.cm-fat-cursor { caret-color: transparent; }
+@-moz-keyframes blink {
+  0% {}
+  50% { background-color: transparent; }
+  100% {}
+}
+@-webkit-keyframes blink {
+  0% {}
+  50% { background-color: transparent; }
+  100% {}
+}
+@keyframes blink {
+  0% {}
+  50% { background-color: transparent; }
+  100% {}
+}
+
+/* Can style cursor different in overwrite (non-insert) mode */
+.CodeMirror-overwrite .CodeMirror-cursor {}
+
+.cm-tab { display: inline-block; text-decoration: inherit; }
+
+.CodeMirror-rulers {
+  position: absolute;
+  left: 0; right: 0; top: -50px; bottom: 0;
+  overflow: hidden;
+}
+.CodeMirror-ruler {
+  border-left: 1px solid #ccc;
+  top: 0; bottom: 0;
+  position: absolute;
+}
+
+/* DEFAULT THEME */
+
+.cm-s-default .cm-header {color: blue;}
+.cm-s-default .cm-quote {color: #090;}
+.cm-negative {color: #d44;}
+.cm-positive {color: #292;}
+.cm-header, .cm-strong {font-weight: bold;}
+.cm-em {font-style: italic;}
+.cm-link {text-decoration: underline;}
+.cm-strikethrough {text-decoration: line-through;}
+
+.cm-s-default .cm-keyword {color: #708;}
+.cm-s-default .cm-atom {color: #219;}
+.cm-s-default .cm-number {color: #164;}
+.cm-s-default .cm-def {color: #00f;}
+.cm-s-default .cm-variable,
+.cm-s-default .cm-punctuation,
+.cm-s-default .cm-property,
+.cm-s-default .cm-operator {}
+.cm-s-default .cm-variable-2 {color: #05a;}
+.cm-s-default .cm-variable-3, .cm-s-default .cm-type {color: #085;}
+.cm-s-default .cm-comment {color: #a50;}
+.cm-s-default .cm-string {color: #a11;}
+.cm-s-default .cm-string-2 {color: #f50;}
+.cm-s-default .cm-meta {color: #555;}
+.cm-s-default .cm-qualifier {color: #555;}
+.cm-s-default .cm-builtin {color: #30a;}
+.cm-s-default .cm-bracket {color: #997;}
+.cm-s-default .cm-tag {color: #170;}
+.cm-s-default .cm-attribute {color: #00c;}
+.cm-s-default .cm-hr {color: #999;}
+.cm-s-default .cm-link {color: #00c;}
+
+.cm-s-default .cm-error {color: #f00;}
+.cm-invalidchar {color: #f00;}
+
+.CodeMirror-composing { border-bottom: 2px solid; }
+
+/* Default styles for common addons */
+
+div.CodeMirror span.CodeMirror-matchingbracket {color: #0b0;}
+div.CodeMirror span.CodeMirror-nonmatchingbracket {color: #a22;}
+.CodeMirror-matchingtag { background: rgba(255, 150, 0, .3); }
+.CodeMirror-activeline-background {background: #e8f2ff;}
+
+/* STOP */
+
+/* The rest of this file contains styles related to the mechanics of
+   the editor. You probably shouldn't touch them. */
+
+.CodeMirror {
+  position: relative;
+  overflow: hidden;
+  background: white;
+}
+
+.CodeMirror-scroll {
+  overflow: scroll !important; /* Things will break if this is overridden */
+  /* 50px is the magic margin used to hide the element's real scrollbars */
+  /* See overflow: hidden in .CodeMirror */
+  margin-bottom: -50px; margin-right: -50px;
+  padding-bottom: 50px;
+  height: 100%;
+  outline: none; /* Prevent dragging from highlighting the element */
+  position: relative;
+  z-index: 0;
+}
+.CodeMirror-sizer {
+  position: relative;
+  border-right: 50px solid transparent;
+}
+
+/* The fake, visible scrollbars. Used to force redraw during scrolling
+   before actual scrolling happens, thus preventing shaking and
+   flickering artifacts. */
+.CodeMirror-vscrollbar, .CodeMirror-hscrollbar, .CodeMirror-scrollbar-filler, .CodeMirror-gutter-filler {
+  position: absolute;
+  z-index: 6;
+  display: none;
+  outline: none;
+}
+.CodeMirror-vscrollbar {
+  right: 0; top: 0;
+  overflow-x: hidden;
+  overflow-y: scroll;
+}
+.CodeMirror-hscrollbar {
+  bottom: 0; left: 0;
+  overflow-y: hidden;
+  overflow-x: scroll;
+}
+.CodeMirror-scrollbar-filler {
+  right: 0; bottom: 0;
+}
+.CodeMirror-gutter-filler {
+  left: 0; bottom: 0;
+}
+
+.CodeMirror-gutters {
+  position: absolute; left: 0; top: 0;
+  min-height: 100%;
+  z-index: 3;
+}
+.CodeMirror-gutter {
+  white-space: normal;
+  height: 100%;
+  display: inline-block;
+  vertical-align: top;
+  margin-bottom: -50px;
+}
+.CodeMirror-gutter-wrapper {
+  position: absolute;
+  z-index: 4;
+  background: none !important;
+  border: none !important;
+}
+.CodeMirror-gutter-background {
+  position: absolute;
+  top: 0; bottom: 0;
+  z-index: 4;
+}
+.CodeMirror-gutter-elt {
+  position: absolute;
+  cursor: default;
+  z-index: 4;
+}
+.CodeMirror-gutter-wrapper ::selection { background-color: transparent }
+.CodeMirror-gutter-wrapper ::-moz-selection { background-color: transparent }
+
+.CodeMirror-lines {
+  cursor: text;
+  min-height: 1px; /* prevents collapsing before first draw */
+}
+.CodeMirror pre.CodeMirror-line,
+.CodeMirror pre.CodeMirror-line-like {
+  /* Reset some styles that the rest of the page might have set */
+  -moz-border-radius: 0; -webkit-border-radius: 0; border-radius: 0;
+  border-width: 0;
+  background: transparent;
+  font-family: inherit;
+  font-size: inherit;
+  margin: 0;
+  white-space: pre;
+  word-wrap: normal;
+  line-height: inherit;
+  color: inherit;
+  z-index: 2;
+  position: relative;
+  overflow: visible;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-font-variant-ligatures: contextual;
+  font-variant-ligatures: contextual;
+}
+.CodeMirror-wrap pre.CodeMirror-line,
+.CodeMirror-wrap pre.CodeMirror-line-like {
+  word-wrap: break-word;
+  white-space: pre-wrap;
+  word-break: normal;
+}
+
+.CodeMirror-linebackground {
+  position: absolute;
+  left: 0; right: 0; top: 0; bottom: 0;
+  z-index: 0;
+}
+
+.CodeMirror-linewidget {
+  position: relative;
+  z-index: 2;
+  padding: 0.1px; /* Force widget margins to stay inside of the container */
+}
+
+.CodeMirror-widget {}
+
+.CodeMirror-rtl pre { direction: rtl; }
+
+.CodeMirror-code {
+  outline: none;
+}
+
+/* Force content-box sizing for the elements where we expect it */
+.CodeMirror-scroll,
+.CodeMirror-sizer,
+.CodeMirror-gutter,
+.CodeMirror-gutters,
+.CodeMirror-linenumber {
+  -moz-box-sizing: content-box;
+  box-sizing: content-box;
+}
+
+.CodeMirror-measure {
+  position: absolute;
+  width: 100%;
+  height: 0;
+  overflow: hidden;
+  visibility: hidden;
+}
+
+.CodeMirror-cursor {
+  position: absolute;
+  pointer-events: none;
+}
+.CodeMirror-measure pre { position: static; }
+
+div.CodeMirror-cursors {
+  visibility: hidden;
+  position: relative;
+  z-index: 3;
+}
+div.CodeMirror-dragcursors {
+  visibility: visible;
+}
+
+.CodeMirror-focused div.CodeMirror-cursors {
+  visibility: visible;
+}
+
+.CodeMirror-selected { background: #d9d9d9; }
+.CodeMirror-focused .CodeMirror-selected { background: #d7d4f0; }
+.CodeMirror-crosshair { cursor: crosshair; }
+.CodeMirror-line::selection, .CodeMirror-line > span::selection, .CodeMirror-line > span > span::selection { background: #d7d4f0; }
+.CodeMirror-line::-moz-selection, .CodeMirror-line > span::-moz-selection, .CodeMirror-line > span > span::-moz-selection { background: #d7d4f0; }
+
+.cm-searching {
+  background-color: #ffa;
+  background-color: rgba(255, 255, 0, .4);
+}
+
+/* Used to force a border model for a node */
+.cm-force-border { padding-right: .1px; }
+
+@media print {
+  /* Hide the cursor when printing */
+  .CodeMirror div.CodeMirror-cursors {
+    visibility: hidden;
+  }
+}
+
+/* See issue #2901 */
+.cm-tab-wrap-hack:after { content: ''; }
+
+/* Help users use markselection to safely style text background */
+span.CodeMirror-selectedtext { background: none; }
+
+/* CodeMirror під палітру зошита */
+.CodeMirror { height: auto; min-height: 200px; font-family: var(--f-code); font-size: .95rem; line-height: 1.6; background: var(--code-bg); color: var(--fg); border: 2px solid var(--line); border-radius: 10px; }
+.CodeMirror-focused { border-color: var(--ink); }
+.CodeMirror-scroll { min-height: 196px; }
+.CodeMirror-gutters { background: var(--code-bg); border-right: 1px solid var(--line); border-radius: 8px 0 0 8px; }
+.CodeMirror-linenumber { color: var(--muted); }
+.CodeMirror-cursor { border-left: 2px solid var(--fg); }
+.CodeMirror-selected, .CodeMirror-focused .CodeMirror-selected, .CodeMirror-line::selection, .CodeMirror-line > span::selection, .CodeMirror-line > span > span::selection { background: var(--ink-soft) !important; }
+.cm-s-default .cm-keyword { color: var(--kw); font-weight: 600; }
+.cm-s-default .cm-string { color: var(--str); }
+.cm-s-default .cm-number { color: var(--num); }
+.cm-s-default .cm-comment { color: var(--com); font-style: italic; }
+.cm-s-default .cm-builtin, .cm-s-default .cm-def { color: var(--fn); }
+.cm-s-default .cm-variable, .cm-s-default .cm-property, .cm-s-default .cm-operator, .cm-s-default .cm-punctuation { color: var(--fg); }
+.cm-s-default .cm-error { color: var(--red); }
+.CodeMirror-readonly .CodeMirror-cursor { display: none; }
+</style>
+
+<div class="sheet" id="app"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/lib/codemirror.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/mode/python/python.js"></script>
+
+<script>
+// ---- Контент гри. Типи: lesson, quiz, output, bug, order, fill, code ----
+const L = (title, text, code) => ({ t: "lesson", title, text, code });
+const Q = (q, options, a, why, code) => ({ t: "quiz", q, options, a, why, code });
+const O = (code, a, why, q) => ({ t: "output", code, a, why, q });
+const B = (q, code, a, why) => ({ t: "bug", q, code, a, why });
+const R = (q, code, out, why) => ({ t: "order", q, code, out, why });
+const F = (q, code, a, why) => ({ t: "fill", q, code, a, why });
+const C = (o) => Object.assign({ t: "code" }, o);
+const W = (item) => Object.assign(item, { warm: true });
+
+window.LEVELS = [
+// ===================== 0 =====================
+{
+  id: "index", kind: "practice", title: "Індекси і довжина",
+  about: "Як звертатися до елементів списку за номером і як дізнатися, скільки їх.",
+  items: [
+    W(Q("Який індекс у першого елемента списку?", ["0", "1", "-1", "Залежить від списку"], 0,
+      "У Python рахунок іде з нуля: перший елемент — `lst[0]`, другий — `lst[1]`.")),
+    W(Q("У списку 5 елементів. Який індекс у останнього?", ["4", "5", "6", "-5"], 0,
+      "Індекси йдуть від 0 до 4. Останній елемент ще можна отримати як `lst[-1]`.")),
+    W(Q("Що повертає `len(lst)`?", ["Кількість елементів", "Індекс останнього елемента", "Найбільший елемент", "Суму елементів"], 0,
+      "`len` — від англійського length, довжина.")),
+    W(Q("Як створити список?", ["`nums = [1, 2, 3]`", "`nums = (1, 2, 3)`", "`nums = {1, 2, 3}`", "`nums = <1, 2, 3>`"], 0,
+      "Список записується у квадратних дужках, елементи — через кому.")),
+    O(`planets = ["Меркурій", "Венера", "Земля", "Марс", "Юпітер"]
+print(planets[2])
+print(planets[-2])
+print(planets[len(planets) - 1])
+print(len(planets))`, "Земля\nМарс\nЮпітер\n5",
+      "`planets[2]` — третя планета. `-2` — передостання. `len(planets) - 1` = 4, тобто індекс останнього елемента."),
+    O(`a = [7, 3, 9, 1]
+print(a[1] * a[-1] + a[2])`, "12", "`a[1]` = 3, `a[-1]` = 1, `a[2]` = 9. Отже 3 × 1 + 9 = 12."),
+    B("Хотіли вивести останню оцінку, а програма падає. Клацни на рядок з помилкою.",
+      `marks = [10, 8, 12]
+last = marks[len(marks)]
+print(last)`, 1,
+      "`len(marks)` = 3, але індекси лише 0, 1, 2. Правильно `marks[len(marks) - 1]` або просто `marks[-1]`."),
+    F("Гравець побив рекорд. Заміни останній результат у таблиці на 600.",
+      `score = [120, 340, 90, 510]
+score[___] = 600
+print(score)`, [["3", "-1"]],
+      "Останній елемент має індекс 3, або −1, якщо рахувати з кінця."),
+    Q("Що виведе програма?", ["`<class 'str'>`", "`<class 'int'>`", "`<class 'float'>`", "`<class 'list'>`"], 0,
+      "`\"7\"` у лапках — це рядок, хоч і схожий на число.",
+      `a = ["7", 7, 7.0]
+print(type(a[0]))`),
+    R("Збери програму, яка міняє місцями перший і останній елементи й виводить `[30, 20, 10]`.",
+      `a = [10, 20, 30]
+tmp = a[0]
+a[0] = a[2]
+a[2] = tmp
+print(a)`, "[30, 20, 10]",
+      "Спочатку запам'ятовуємо перший елемент у `tmp`, бо інакше він загубиться, коли ми запишемо туди останній."),
+    C({ q: "Користувач вводить номер дня тижня від 1 до 7. Виведи назву дня зі списку `days`. Якщо такого номера немає, виведи «Такого дня немає». Обережно з нулем!",
+      starter: `days = ["понеділок", "вівторок", "середа", "четвер", "п'ятниця", "субота", "неділя"]
+n = int(input())
+`,
+      tests: [{ input: ["1"], expect: "понеділок" }, { input: ["7"], expect: "неділя" }, { input: ["0"], expect: "Такого дня немає" }, { input: ["8"], expect: "Такого дня немає" }],
+      hint: "Номер дня на 1 більший за індекс: день `n` — це `days[n - 1]`. Перевір, що `1 <= n <= len(days)`.",
+      solution: `days = ["понеділок", "вівторок", "середа", "четвер", "п'ятниця", "субота", "неділя"]
+n = int(input())
+if 1 <= n <= len(days):
+    print(days[n - 1])
+else:
+    print("Такого дня немає")` }),
+  ]
+},
+// ===================== 1 =====================
+{
+  id: "slices", kind: "practice", title: "Зрізи",
+  about: "Як вирізати зі списку шматок, кожен другий елемент або розвернути список.",
+  items: [
+    W(Q("Що поверне `lst[1:3]`?", ["Елементи з індексами 1 і 2", "Елементи з індексами 1, 2 і 3", "Елементи з індексами 1 і 3", "Тільки елемент з індексом 3"], 0,
+      "Зріз бере початок, але не включає кінець: `[1:3]` — це індекси 1 і 2.")),
+    W(Q("Що робить зріз `lst[::-1]`?", ["Повертає список задом наперед", "Видаляє останній елемент", "Повертає останній елемент", "Видає помилку"], 0,
+      "Крок −1 означає «йти з кінця до початку».")),
+    W(Q("Чи змінює зріз початковий список?", ["Ні, зріз створює новий список", "Так, завжди", "Тільки якщо є крок", "Тільки з від'ємними індексами"], 0,
+      "Зріз — це копія частини списку. Сам список лишається без змін.")),
+    O(`s = [1, 2, 3, 4, 5, 6, 7, 8]
+print(s[3:6])
+print(s[5:])
+print(s[1::3])`, "[4, 5, 6]\n[6, 7, 8]\n[2, 5, 8]",
+      "`[3:6]` — індекси 3, 4, 5. `[5:]` — від індексу 5 до кінця. `[1::3]` — з індексу 1 з кроком 3: індекси 1, 4, 7."),
+    O(`s = [1, 2, 3, 4, 5, 6, 7, 8]
+print(s[-4:-1])
+print(s[::-2])`, "[5, 6, 7]\n[8, 6, 4, 2]",
+      "`[-4:-1]` — від четвертого з кінця до останнього, не включно. `[::-2]` — з кінця через один."),
+    F("Виріж уроки з другого по п'ятий включно.",
+      `lessons = ["укр", "мат", "англ", "фіз", "інф", "хім", "фізк"]
+middle = lessons[___:___]
+print(middle)`, [["1"], ["5"]],
+      "Другий урок має індекс 1, п'ятий — 4. Кінець зрізу не включається, тому пишемо 5."),
+    Q("Який зріз дасть два останні елементи?", ["`lst[-2:]`", "`lst[-2]`", "`lst[:-2]`", "`lst[2:]`"], 0,
+      "`lst[-2]` — це один елемент, а не список. `lst[:-2]` — усе, крім двох останніх."),
+    B("Хотіли розвернути список, а останній елемент зник. Де помилка?",
+      `nums = [5, 10, 15, 20]
+rev = nums[:-1]
+print(rev)`, 1,
+      "`[:-1]` — це все, крім останнього. Щоб розвернути, потрібен крок: `nums[::-1]`."),
+    C({ q: "Напиши функцію `ends(lst)`, яка повертає новий список із двох перших і двох останніх елементів. Наприклад, `ends([1, 2, 3, 4, 5, 6])` → `[1, 2, 5, 6]`.",
+      starter: `def ends(lst):
+    `,
+      tests: [{ call: "ends([1, 2, 3, 4, 5, 6])", expect: "[1, 2, 5, 6]" }, { call: "ends(['а', 'б', 'в', 'г', 'ґ'])", expect: "['а', 'б', 'г', 'ґ']" }, { call: "ends([7, 8, 9, 10])", expect: "[7, 8, 9, 10]" }],
+      hint: "Склей два зрізи через `+`: перші два і останні два.",
+      solution: `def ends(lst):
+    return lst[:2] + lst[-2:]` }),
+    C({ q: "Напиши функцію `swap_halves(lst)`, яка міняє місцями першу і другу половини списку. Якщо елементів непарна кількість, середній лишається на місці: `[1, 2, 3, 4]` → `[3, 4, 1, 2]`, а `[1, 2, 3, 4, 5]` → `[4, 5, 3, 1, 2]`.",
+      stars: 3,
+      starter: `def swap_halves(lst):
+    `,
+      tests: [{ call: "swap_halves([1, 2, 3, 4])", expect: "[3, 4, 1, 2]" }, { call: "swap_halves([1, 2, 3, 4, 5])", expect: "[4, 5, 3, 1, 2]" }, { call: "swap_halves(['x'])", expect: "['x']" }],
+      hint: "Нехай `h = len(lst) // 2`. Тоді потрібні три шматки: останні `h` елементів, середина і перші `h` елементів.",
+      solution: `def swap_halves(lst):
+    h = len(lst) // 2
+    n = len(lst)
+    return lst[n - h:] + lst[h:n - h] + lst[:h]` }),
+  ]
+},
+// ===================== 2 =====================
+{
+  id: "methods", kind: "practice", title: "Методи списків",
+  about: "append, insert, pop, remove, index, count, del та перевірка in.",
+  items: [
+    W(Q("Що робить `lst.append(x)`?", ["Додає x у кінець списку", "Додає x на початок", "Замінює останній елемент на x", "Повертає новий список з x"], 0,
+      "append — «дописати в кінець». Сам список змінюється.")),
+    W(Q("Чим `pop()` відрізняється від `remove(x)`?", ["pop видаляє за індексом і повертає елемент, remove — за значенням", "remove видаляє за індексом, pop — за значенням", "Нічим", "pop видаляє всі елементи"], 0,
+      "`pop(1)` видаляє елемент з індексом 1. `remove(1)` видаляє перше число 1, де б воно не було.")),
+    W(Q("Що поверне `[5, 7, 5].index(5)`?", ["0", "2", "[0, 2]", "5"], 0,
+      "`index` шукає перше входження.")),
+    W(Q("Що робить `del lst[1]`?", ["Видаляє елемент з індексом 1", "Видаляє всі одиниці", "Видаляє весь список", "Очищає список"], 0,
+      "`del` працює з індексом, як і `pop`, але нічого не повертає.")),
+    O(`b = [8, 6, 7]
+b.insert(1, 5)
+b.append(b.pop(0))
+print(b)
+print(b.index(7), len(b))`, "[5, 6, 7, 8]\n2 4",
+      "Після insert: `[8, 5, 6, 7]`. `pop(0)` забирає 8, і `append` одразу ставить її в кінець. Сімка стоїть на індексі 2, елементів 4."),
+    Q("Що виведе програма?", ["`[30]`", "`[10]`", "`[20, 30]`", "Помилку"], 0,
+      "`del a[1]` видаляє 20 (індекс 1), а `remove(10)` видаляє значення 10.",
+      `a = [10, 20, 30]
+del a[1]
+a.remove(10)
+print(a)`),
+    B("Програма падає з помилкою. Клацни на рядок, у якому вона виникає.",
+      `colors = ["red", "green"]
+colors.remove("blue")
+print(colors)`, 1,
+      "`remove` видаляє лише те, що є у списку. «blue» немає, тому буде `ValueError`. Можна спершу перевірити: `if \"blue\" in colors:`."),
+    F("Перевір, чи є молоко у списку покупок.",
+      `shop = ["хліб", "молоко", "сир"]
+if "молоко" ___ shop:
+    print("Є!")`, [["in"]],
+      "Оператор `in` перевіряє, чи є елемент у списку."),
+    R("Плейлист. Збери програму, яка виведе `['C', 'B', 'D']`.",
+      `songs = ["A", "B"]
+songs.insert(0, "C")
+songs.append("D")
+songs.remove("A")
+print(songs)`, "['C', 'B', 'D']",
+      "Пісню C ставимо на початок, D — у кінець, A прибираємо."),
+    C({ q: "Напиши функцію `replace_all(lst, old, new)`, яка замінює у списку всі елементи `old` на `new` і повертає список.",
+      starter: `def replace_all(lst, old, new):
+    `,
+      tests: [{ call: "replace_all([1, 0, 1, 2], 1, 9)", expect: "[9, 0, 9, 2]" }, { call: "replace_all(['так', 'ні'], 'ні', 'так')", expect: "['так', 'так']" }, { call: "replace_all([5], 2, 3)", expect: "[5]" }],
+      hint: "Пройди за індексами `for i in range(len(lst))` і, якщо `lst[i] == old`, запиши туди `new`.",
+      solution: `def replace_all(lst, old, new):
+    for i in range(len(lst)):
+        if lst[i] == old:
+            lst[i] = new
+    return lst` }),
+    C({ q: "Користувач вводить оцінки по одній, доки не введе 0. Збережи оцінки у список (без нуля). Виведи в першому рядку кількість оцінок, у другому — скільки серед них дванадцяток.",
+      starter: `marks = []
+`,
+      tests: [{ input: ["12", "9", "12", "0"], expect: "3\n2" }, { input: ["5", "0"], expect: "1\n0" }],
+      hint: "Цикл `while True`, всередині `int(input())`. Якщо 0 — `break`, інакше `append`. Дванадцятки порахує `count`.",
+      solution: `marks = []
+while True:
+    m = int(input())
+    if m == 0:
+        break
+    marks.append(m)
+print(len(marks))
+print(marks.count(12))` }),
+  ]
+},
+// ===================== 3 =====================
+{
+  id: "loops", kind: "practice", title: "Перебір у циклі",
+  about: "for по елементах і for по індексах: коли який потрібен.",
+  items: [
+    W(Q("Скільки разів виконається тіло циклу `for x in [4, 8, 15]`?", ["3", "4", "15", "27"], 0,
+      "Цикл проходить по кожному елементу один раз. Елементів три.")),
+    W(Q("Чим відрізняються `for x in lst` і `for i in range(len(lst))`?", ["Перший дає елементи, другий — індекси", "Нічим", "Перший дає індекси, другий — елементи", "Другий бере лише парні елементи"], 0,
+      "`range(len(lst))` — це числа 0, 1, 2… до останнього індексу.")),
+    W(Q("Треба змінити кожен елемент самого списку. Який цикл підходить?", ["`for i in range(len(lst)):` і `lst[i] = ...`", "`for x in lst:` і `x = ...`", "Обидва", "Жоден"], 0,
+      "Змінна `x` — лише копія значення. Щоб змінити список, записуй через індекс.")),
+    O(`lst = ["а", "б", "в"]
+for i in range(len(lst)):
+    print(lst[i] * (i + 1))`, "а\nбб\nввв", "Рядок, помножений на число, повторюється. `i + 1` дає 1, 2, 3."),
+    O(`nums = [1, 2, 3]
+for x in nums:
+    x = x * 10
+print(nums)`, "[1, 2, 3]",
+      "`x` — окрема змінна. Ми змінюємо її, а не елементи списку. Щоб змінити список, треба `nums[i] = nums[i] * 10`."),
+    F("Підніми всі ціни на 10 гривень.",
+      `prices = [100, 250, 40]
+for i in range(___(prices)):
+    prices[i] = prices[i] + 10
+print(prices)`, [["len"]],
+      "Щоб пройти по індексах, потрібна кількість елементів: `range(len(prices))`."),
+    R("Збери програму, яка відбирає слова, довші за 3 літери: `['собака', 'папуга']`.",
+      `words = ["кіт", "собака", "їж", "папуга"]
+long = []
+for w in words:
+    if len(w) > 3:
+        long.append(w)
+print(long)`, "['собака', 'папуга']",
+      "Порожній список створюємо до циклу, а `print` пишемо після нього, без відступу."),
+    O(`nums = [1, 2, 2, 3]
+for x in nums:
+    if x == 2:
+        nums.remove(x)
+print(nums)`, "[1, 2, 3]",
+      "Пастка! Коли видаляємо першу двійку, усі елементи зсуваються вліво, і цикл «перестрибує» другу двійку. Не видаляй елементи зі списку, по якому йде цикл: краще збирай потрібні в новий список."),
+    C({ q: "Напиши функцію `signs(nums)`, яка повертає список знаків: «+» для додатних чисел, «-» для від'ємних і «0» для нуля.",
+      starter: `def signs(nums):
+    `,
+      tests: [{ call: "signs([5, -2, 0, 7])", expect: "['+', '-', '0', '+']" }, { call: "signs([-1])", expect: "['-']" }, { call: "signs([])", expect: "[]" }],
+      hint: "Створи порожній список, у циклі визнач знак через if/elif/else і додавай його через `append`.",
+      solution: `def signs(nums):
+    result = []
+    for x in nums:
+        if x > 0:
+            result.append("+")
+        elif x < 0:
+            result.append("-")
+        else:
+            result.append("0")
+    return result` }),
+    C({ q: "Напиши функцію `positions(lst, x)`, яка повертає список усіх індексів, де у списку стоїть `x`.",
+      starter: `def positions(lst, x):
+    `,
+      tests: [{ call: "positions([3, 1, 3, 3], 3)", expect: "[0, 2, 3]" }, { call: "positions(['а', 'б'], 'б')", expect: "[1]" }, { call: "positions([1, 2], 5)", expect: "[]" }],
+      hint: "Тут потрібні індекси: `for i in range(len(lst))`. Якщо `lst[i] == x`, додай `i`.",
+      solution: `def positions(lst, x):
+    result = []
+    for i in range(len(lst)):
+        if lst[i] == x:
+            result.append(i)
+    return result` }),
+  ]
+},
+// ===================== 4 =====================
+{
+  id: "search", kind: "practice", title: "Пошук, сума, мінімум",
+  about: "sum, min, max, середнє і пошук потрібного елемента своїми руками.",
+  items: [
+    W(Q("Що поверне `sum([3, 4, 5])`?", ["12", "345", "[3, 4, 5]", "3"], 0, "`sum` складає всі елементи.")),
+    W(Q("Як знайти середнє арифметичне списку `lst`?", ["`sum(lst) / len(lst)`", "`max(lst) / len(lst)`", "`sum(lst) / max(lst)`", "`len(lst) / sum(lst)`"], 0,
+      "Сума всіх елементів, поділена на їхню кількість.")),
+    W(Q("Що поверне `7 in [1, 7, 9]`?", ["True", "1", "7", "False"], 0, "Оператор `in` відповідає на питання «чи є такий елемент?» — так або ні.")),
+    O(`prices = [45, 120, 38, 99]
+print(max(prices) - min(prices))
+print(sum(prices) / len(prices))`, "82\n75.5",
+      "Найдорожче 120, найдешевше 38, різниця 82. Сума 302, поділена на 4, — 75.5."),
+    F("Знайди найдешевший товар без функції `min`.",
+      `prices = [45, 120, 38, 99]
+low = prices[0]
+for p in prices:
+    if p ___ low:
+        low = p
+print(low)`, [["<", "<="]],
+      "Якщо поточна ціна менша за найменшу, яку ми бачили, запам'ятовуємо її."),
+    B("Хотіли порахувати середній бал, а вийшло 4.0. Клацни на рядок з помилкою.",
+      `marks = [10, 8, 12]
+total = 0
+for m in marks:
+    total = m
+print(total / len(marks))`, 3,
+      "Тут `total` щоразу перезаписується останньою оцінкою. Треба накопичувати: `total = total + m`."),
+    R("Збери програму, яка знаходить перший морозний день: `Перший мороз у день 3`.",
+      `temps = [3, 1, -2, 4, -5]
+day = -1
+for i in range(len(temps)):
+    if temps[i] < 0:
+        day = i + 1
+        break
+print("Перший мороз у день", day)`, "Перший мороз у день 3",
+      "Як тільки знайшли від'ємну температуру, запам'ятовуємо номер дня і виходимо з циклу через `break`."),
+    C({ q: "Напиши функцію `count_between(lst, a, b)`, яка повертає, скільки чисел у списку лежать від `a` до `b` включно.",
+      starter: `def count_between(lst, a, b):
+    `,
+      tests: [{ call: "count_between([1, 5, 10, 15], 5, 10)", expect: "2" }, { call: "count_between([7, 7, 7], 1, 6)", expect: "0" }, { call: "count_between([-3, 0, 3], -3, 3)", expect: "3" }],
+      hint: "Лічильник плюс цикл. Умова: `a <= x <= b`.",
+      solution: `def count_between(lst, a, b):
+    count = 0
+    for x in lst:
+        if a <= x <= b:
+            count += 1
+    return count` }),
+    C({ q: "Напиши функцію `closest(lst, target)`, яка повертає число зі списку, найближче до `target`. Якщо таких кілька, поверни те, що стоїть раніше.",
+      starter: `def closest(lst, target):
+    `,
+      tests: [{ call: "closest([1, 8, 15], 10)", expect: "8" }, { call: "closest([3, 7], 5)", expect: "3" }, { call: "closest([-4, 2], -2)", expect: "-4" }],
+      hint: "Відстань між числами — `abs(x - target)`. Шукай елемент з найменшою відстанню, як шукаєш мінімум.",
+      solution: `def closest(lst, target):
+    best = lst[0]
+    for x in lst:
+        if abs(x - target) < abs(best - target):
+            best = x
+    return best` }),
+    C({ q: "Напиши функцію `max_rise(temps)`, яка повертає найбільше потепління між двома сусідніми днями. Для `[3, 5, 4, 10]` відповідь 6 (з 4 до 10). Якщо температура ні разу не росла, поверни 0.",
+      stars: 3,
+      starter: `def max_rise(temps):
+    `,
+      tests: [{ call: "max_rise([3, 5, 4, 10])", expect: "6" }, { call: "max_rise([5, 4, 3])", expect: "0" }, { call: "max_rise([-2, 1, 1, 2])", expect: "3" }],
+      hint: "Порівнюй сусідів: `temps[i + 1] - temps[i]`. Цикл до `len(temps) - 1`, щоб не вийти за межі.",
+      solution: `def max_rise(temps):
+    best = 0
+    for i in range(len(temps) - 1):
+        d = temps[i + 1] - temps[i]
+        if d > best:
+            best = d
+    return best` }),
+  ]
+},
+// ===================== 5 =====================
+{
+  id: "strings", kind: "practice", title: "Списки і рядки",
+  about: "split, join, map і перетворення рядка на список літер.",
+  items: [
+    W(Q("Що поверне `\"я люблю код\".split()`?", ["`['я', 'люблю', 'код']`", "`['я люблю код']`", "`'я', 'люблю', 'код'`", "`['я', ' ', 'люблю', ' ', 'код']`"], 0,
+      "`split()` без аргументів ріже рядок за пробілами і повертає список слів.")),
+    W(Q("Як правильно склеїти список слів через пробіл?", ["`\" \".join(words)`", "`words.join(\" \")`", "`join(words, \" \")`", "`words + \" \"`"], 0,
+      "`join` — метод рядка-роздільника: спочатку пишемо, чим склеювати, потім що.")),
+    W(Q("Навіщо `map(int, ...)` у `list(map(int, input().split()))`?", ["Перетворює кожен шматок рядка на ціле число", "Сортує числа", "Рахує кількість чисел", "Видаляє пробіли"], 0,
+      "`split` дає список рядків `['4', '8']`. `map(int, ...)` застосовує `int` до кожного з них.")),
+    W(Q("Що поверне `list(\"кіт\")`?", ["`['к', 'і', 'т']`", "`['кіт']`", "`'к і т'`", "Помилку"], 0,
+      "`list` від рядка розбиває його на окремі символи.")),
+    O(`s = "12:45:30"
+parts = s.split(":")
+print(parts[0])
+print(int(parts[1]) + int(parts[2]))`, "12\n75",
+      "Після `split` маємо `['12', '45', '30']`. Щоб скласти, перетворюємо рядки на числа: 45 + 30 = 75."),
+    O(`words = "раз два три".split()
+print(len(words), words[-1].upper())`, "3 ТРИ", "Три слова, останнє — «три», великими літерами."),
+    Q("Чому ця програма падає з помилкою?", ["У списку рядки, а не числа, і `sum` не може їх скласти", "`split` не працює з числами", "Треба писати `sum[nums]`", "У рядку немає пробілів"], 0,
+      "`split` повертає `['4', '8', '15']` — це рядки. Треба `list(map(int, line.split()))`.",
+      `line = "4 8 15"
+nums = line.split()
+print(sum(nums))`),
+    F("Склей літери в одне слово без пробілів.",
+      `letters = ["к", "о", "д"]
+word = ___.join(letters)
+print(word)`, [["\"\"", "''"]], "Роздільник — порожній рядок `\"\"`, тобто літери склеюються впритул."),
+    C({ q: "Користувач вводить числа в одному рядку через пробіл. Виведи, скільки з них більші за 10.",
+      starter: ``,
+      tests: [{ input: ["4 15 8 23"], expect: "2" }, { input: ["10 11"], expect: "1" }, { input: ["1"], expect: "0" }],
+      hint: "`nums = list(map(int, input().split()))`, а далі лічильник у циклі.",
+      solution: `nums = list(map(int, input().split()))
+count = 0
+for x in nums:
+    if x > 10:
+        count += 1
+print(count)` }),
+    C({ q: "Користувач вводить речення. Виведи в першому рядку перше й останнє слово через пробіл, у другому — скільки слів мають більше 4 літер.",
+      starter: ``,
+      tests: [{ input: ["Київ найкраще місто України"], expect: "Київ України\n3" }, { input: ["я люблю програмувати"], expect: "я програмувати\n2" }],
+      hint: "`words = input().split()`. Перше слово — `words[0]`, останнє — `words[-1]`.",
+      solution: `words = input().split()
+print(words[0], words[-1])
+count = 0
+for w in words:
+    if len(w) > 4:
+        count += 1
+print(count)` }),
+    C({ q: "Ініціали. Користувач вводить кілька слів. Виведи перші літери кожного слова великими, кожну з крапкою: «тарас григорович шевченко» → «Т.Г.Ш.».",
+      stars: 3,
+      starter: ``,
+      tests: [{ input: ["тарас григорович шевченко"], expect: "Т.Г.Ш." }, { input: ["лісова пісня"], expect: "Л.П." }],
+      hint: "Збери перші літери `w[0].upper()` у список, склей через `\".\".join(...)` і допиши крапку в кінці.",
+      solution: `words = input().split()
+letters = []
+for w in words:
+    letters.append(w[0].upper())
+print(".".join(letters) + ".")` }),
+  ]
+},
+// ===================== 6 =====================
+{
+  id: "tools", kind: "learn", title: "extend, enumerate, zip",
+  about: "Три нові інструменти: додати цілий список, отримати номер разом з елементом, пройти два списки паралельно.",
+  items: [
+    W(Q("Пригадай: що робить `append`?", ["Додає один елемент у кінець", "Додає кілька елементів", "Сортує список", "Видаляє останній елемент"], 0, "Саме так. А тепер подивимось, що буде, якщо додати через нього цілий список.")),
+    L("extend — додати всі елементи іншого списку",
+      "`append` завжди додає **один** елемент. Якщо передати йому список, він стане одним елементом усередині. Метод `extend` додає кожен елемент іншого списку окремо.",
+      `a = [1, 2]
+a.append([3, 4])
+print(a)    # [1, 2, [3, 4]]
+
+b = [1, 2]
+b.extend([3, 4])
+print(b)    # [1, 2, 3, 4]`),
+    O(`x = ["a"]
+y = ["a"]
+x.append(["b", "c"])
+y.extend(["b", "c"])
+print(len(x), len(y))
+print(x[-1], y[-1])`, "2 3\n['b', 'c'] c",
+      "У `x` два елементи, і останній з них — цілий список `['b', 'c']`. У `y` три окремі літери."),
+    Q("У списку `x = [5]`. Яка довжина після `x.extend([7, 8])`?", ["3", "2", "1", "4"], 0, "Додалися два окремі елементи: `[5, 7, 8]`."),
+    L("enumerate — номер і елемент одразу",
+      "Часто потрібен і номер елемента, і сам елемент. Замість `for i in range(len(lst))` можна написати `for i, x in enumerate(lst)`. Щоб рахувати з 1, а не з 0, пиши `enumerate(lst, 1)`.",
+      `pets = ["кіт", "пес", "папуга"]
+for i, pet in enumerate(pets, 1):
+    print(i, pet)
+# 1 кіт
+# 2 пес
+# 3 папуга`),
+    Q("Що дає `enumerate` на кожному кроці циклу?", ["Пару: номер і елемент", "Тільки номер", "Тільки елемент", "Весь список"], 0, "Тому в циклі дві змінні: `for i, x in enumerate(...)`."),
+    O(`words = ["а", "б", "в"]
+for n, w in enumerate(words):
+    print(n, w)`, "0 а\n1 б\n2 в", "Без другого аргументу рахунок починається з 0."),
+    L("zip — два списки паралельно",
+      "Якщо є два списки однакової довжини, `zip` бере з них елементи парами: перший з першим, другий з другим. Якщо списки різної довжини, `zip` зупиняється на коротшому.",
+      `cities = ["Київ", "Львів", "Одеса"]
+temps = [5, 3, 9]
+for city, t in zip(cities, temps):
+    print(city, t)
+# Київ 5
+# Львів 3
+# Одеса 9`),
+    Q("Що виведе програма?", ["`[(1, 'a'), (2, 'b')]`", "`[(1, 'a'), (2, 'b'), (3, None)]`", "`[1, 'a', 2, 'b']`", "Помилку"], 0,
+      "`zip` зупиняється на коротшому списку. Пари в круглих дужках називаються кортежами.",
+      `print(list(zip([1, 2, 3], ["a", "b"])))`),
+    F("Виведи пари «місто температура».",
+      `cities = ["Київ", "Львів"]
+temps = [5, 3]
+for city, t in ___(cities, temps):
+    print(city, t)`, [["zip"]], "Паралельний перебір двох списків — це `zip`."),
+    R("Збери програму, яка виводить нумерований список з 1: `1 хліб` і `2 сир`.",
+      `shop = ["хліб"]
+shop.extend(["сир"])
+for i, item in enumerate(shop, 1):
+    print(i, item)`, "1 хліб\n2 сир",
+      "Спершу доповнюємо список, потім нумеруємо з 1."),
+    C({ q: "Напиши функцію `pair_sums(a, b)`, яка повертає список сум відповідних елементів двох списків. Використай `zip`.",
+      starter: `def pair_sums(a, b):
+    `,
+      tests: [{ call: "pair_sums([1, 2, 3], [10, 20, 30])", expect: "[11, 22, 33]" }, { call: "pair_sums([5], [1, 2])", expect: "[6]" }],
+      hint: "`for x, y in zip(a, b):` і додавай `x + y` у новий список.",
+      solution: `def pair_sums(a, b):
+    result = []
+    for x, y in zip(a, b):
+        result.append(x + y)
+    return result` }),
+  ]
+},
+// ===================== 7 =====================
+{
+  id: "sorting", kind: "learn", title: "Сортування",
+  about: "sort і sorted, сортування за спаданням і за довжиною, розворот списку.",
+  items: [
+    W(Q("Пригадай: що виведе `print([3, 1, 2][::-1])`?", ["`[2, 1, 3]`", "`[1, 2, 3]`", "`[3, 2, 1]`", "`[3, 1, 2]`"], 0, "Зріз з кроком −1 просто розвертає порядок. Це ще не сортування — розберемося, як упорядкувати за зростанням.")),
+    L("sort() і sorted()",
+      "Є два способи відсортувати список. Метод `lst.sort()` змінює сам список і повертає `None`. Функція `sorted(lst)` нічого не змінює, а повертає **новий** відсортований список.",
+      `a = [3, 1, 2]
+b = sorted(a)
+print(a, b)   # [3, 1, 2] [1, 2, 3]
+
+a.sort()
+print(a)      # [1, 2, 3]`),
+    Q("Що змінює сам список?", ["`lst.sort()`", "`sorted(lst)`", "Обидва", "Жоден"], 0, "`sorted` створює копію, а `sort` переставляє елементи в самому списку."),
+    O(`a = [4, 2, 9]
+print(sorted(a), a)
+print(a.sort())
+print(a)`, "[2, 4, 9] [4, 2, 9]\nNone\n[2, 4, 9]",
+      "`sorted` не чіпає `a`. `a.sort()` змінює список, але сам повертає `None` — саме його і надрукував другий `print`."),
+    L("За спаданням і за довжиною",
+      "`reverse=True` сортує від більшого до меншого. `key=len` каже Python порівнювати не самі елементи, а їхню довжину. А `lst.reverse()` просто розвертає список задом наперед, без сортування.",
+      `nums = [5, 2, 9]
+print(sorted(nums, reverse=True))   # [9, 5, 2]
+
+words = ["кавун", "їж", "сир"]
+print(sorted(words, key=len))       # ['їж', 'сир', 'кавун']`),
+    Q("Що поверне `sorted([\"bb\", \"a\", \"ccc\"], key=len, reverse=True)`?", ["`['ccc', 'bb', 'a']`", "`['a', 'bb', 'ccc']`", "`['bb', 'a', 'ccc']`", "`['ccc', 'a', 'bb']`"], 0, "Сортуємо за довжиною, від найдовшого."),
+    O(`print(sorted(["яблуко", "Банан", "аґрус"]))`, "['Банан', 'аґрус', 'яблуко']",
+      "Python порівнює коди символів. Усі великі літери мають менші коди, ніж малі, тому «Банан» опинився першим."),
+    F("Відсортуй слова від найкоротшого до найдовшого.",
+      `words = ["черепаха", "кіт", "собака"]
+print(sorted(words, key=___))`, [["len"]], "Порівнюємо довжини, тому `key=len`. Вийде `['кіт', 'собака', 'черепаха']`."),
+    C({ q: "Напиши функцію `median(lst)`, яка повертає середній за величиною елемент списку з непарною кількістю чисел. Початковий список змінюватися не повинен.",
+      starter: `def median(lst):
+    `,
+      tests: [{ call: "median([5, 1, 3])", expect: "3" }, { call: "median([9, 2, 7, 4, 1])", expect: "4" }, { call: "(lambda s: (median(s), s))([8, 6, 7])", expect: "(7, [8, 6, 7])", label: "Після виклику список не змінився" }],
+      hint: "Відсортуй копію через `sorted` і візьми елемент з індексом `len(lst) // 2`.",
+      solution: `def median(lst):
+    s = sorted(lst)
+    return s[len(s) // 2]` }),
+    C({ q: "Напиши функцію `insert_sorted(lst, x)`, яка вставляє `x` у вже відсортований список так, щоб він лишився відсортованим, і повертає список. Використовувати `sort` і `sorted` не можна!",
+      stars: 3,
+      forbid: ["sort"],
+      starter: `def insert_sorted(lst, x):
+    `,
+      tests: [{ call: "insert_sorted([1, 3, 5], 4)", expect: "[1, 3, 4, 5]" }, { call: "insert_sorted([2, 3], 1)", expect: "[1, 2, 3]" }, { call: "insert_sorted([1, 2], 9)", expect: "[1, 2, 9]" }, { call: "insert_sorted([], 2)", expect: "[2]" }],
+      hint: "Знайди перший індекс, де елемент більший за `x`, і зроби `insert` туди. Якщо такого немає, `x` іде в кінець.",
+      solution: `def insert_sorted(lst, x):
+    for i in range(len(lst)):
+        if lst[i] > x:
+            lst.insert(i, x)
+            return lst
+    lst.append(x)
+    return lst` }),
+  ]
+},
+// ===================== 8 =====================
+{
+  id: "comprehension", kind: "learn", title: "Генератори списків",
+  about: "Як створити новий список одним рядком: [вираз for x in список if умова].",
+  items: [
+    W(Q("Пригадай: що виведе цей код?", ["`[2, 4, 6]`", "`[1, 2, 3]`", "`[2]`", "`6`"], 0, "Звичайний цикл з `append`. Зараз навчимося писати те саме в один рядок.",
+      `result = []
+for x in [1, 2, 3]:
+    result.append(x * 2)
+print(result)`)),
+    L("Цикл в один рядок",
+      "Генератор списку — це короткий запис циклу, який збирає новий список. Читай його так: «`x * x` для кожного `x` з `range(1, 6)`».",
+      `squares = []
+for x in range(1, 6):
+    squares.append(x * x)
+
+squares = [x * x for x in range(1, 6)]
+# обидва варіанти дають [1, 4, 9, 16, 25]`),
+    Q("Що поверне `[x + 1 for x in [1, 2, 3]]`?", ["`[2, 3, 4]`", "`[1, 2, 3]`", "`[x + 1, x + 1, x + 1]`", "`7`"], 0, "До кожного елемента додаємо 1."),
+    L("Фільтр через if",
+      "Якщо в кінці дописати `if умова`, у новий список потраплять лише ті елементи, для яких умова виконується.",
+      `nums = [5, -2, 8, -1, 3]
+positive = [x for x in nums if x > 0]
+print(positive)   # [5, 8, 3]`),
+    O(`nums = [3, 8, 12, 5]
+print([x // 2 for x in nums])
+print([x for x in nums if x % 4 == 0])
+print([str(x) for x in nums if x > 4])`, "[1, 4, 6, 2]\n[8, 12]\n['8', '12', '5']",
+      "Перший рядок ділить кожне число націло на 2. Другий відбирає кратні 4. Третій відбирає числа більші за 4 і робить з них рядки, тому вони в лапках."),
+    F("Збери список довжин усіх слів.",
+      `words = ["сонце", "ліс", "небо"]
+lengths = [___(w) for w in words]
+print(lengths)`, [["len"]], "Для кожного слова беремо його довжину: `[5, 3, 4]`."),
+    Q("Який генератор замінить усі від'ємні числа на 0, а решту залишить?", ["`[x if x > 0 else 0 for x in nums]`", "`[x for x in nums if x > 0]`", "`[0 for x in nums if x < 0]`", "`[x for x in nums else 0]`"], 0,
+      "Якщо треба **замінити** значення, `if ... else` стоїть на початку. Якщо треба **відкинути** елементи, `if` стоїть у кінці."),
+    C({ q: "Напиши функцію `with_vat(prices)`, яка одним генератором додає до кожної ціни 20% і округлює до цілого через `round`.",
+      starter: `def with_vat(prices):
+    return `,
+      tests: [{ call: "with_vat([100, 50])", expect: "[120, 60]" }, { call: "with_vat([9])", expect: "[11]" }],
+      hint: "Ціна з 20% — це `p * 1.2`. Отже `[round(p * 1.2) for p in prices]`.",
+      solution: `def with_vat(prices):
+    return [round(p * 1.2) for p in prices]` }),
+    C({ q: "Напиши функцію `capitalize_all(words)`, яка генератором повертає слова з великої літери: `['київ', 'львів']` → `['Київ', 'Львів']`.",
+      starter: `def capitalize_all(words):
+    return `,
+      tests: [{ call: "capitalize_all(['київ', 'львів'])", expect: "['Київ', 'Львів']" }, { call: "capitalize_all(['а'])", expect: "['А']" }],
+      hint: "Перша літера великою — `w[0].upper()`, решта слова — `w[1:]`.",
+      solution: `def capitalize_all(words):
+    return [w[0].upper() + w[1:] for w in words]` }),
+  ]
+},
+// ===================== 9 =====================
+{
+  id: "nested", kind: "learn", title: "Вкладені списки",
+  about: "Таблиці зі списків: рядки, стовпці, перебір і морський бій.",
+  items: [
+    W(Q("Пригадай: чи можна покласти список усередину іншого списку?", ["Так, елементом списку може бути будь-що", "Ні, буде помилка", "Тільки якщо списки однакової довжини", "Тільки рядки"], 0, "Так. Саме так і будують таблиці.")),
+    L("Таблиця — це список рядків",
+      "Кожен рядок таблиці — окремий список, а вся таблиця — список цих рядків. Щоб дістати елемент, пишемо два індекси: спершу номер рядка, потім номер стовпця.",
+      `m = [[1, 2, 3],
+     [4, 5, 6]]
+print(m[0])      # [1, 2, 3] — перший рядок
+print(m[1][2])   # 6 — рядок 1, стовпець 2
+print(len(m))    # 2 — кількість рядків`),
+    Q("Що поверне `m[1][0]` для таблиці вище?", ["4", "2", "1", "5"], 0, "Рядок з індексом 1 — це `[4, 5, 6]`, а в ньому елемент з індексом 0 — це 4."),
+    O(`t = [[2, 4], [6, 8], [10, 12]]
+print(t[2])
+print(t[0][1] + t[1][0])
+print(len(t), len(t[-1]))`, "[10, 12]\n10\n3 2",
+      "`t[2]` — третій рядок. `t[0][1]` = 4, `t[1][0]` = 6, разом 10. Рядків 3, у кожному по 2 числа."),
+    L("Перебір таблиці",
+      "Щоб пройти всі елементи, потрібен цикл у циклі: зовнішній іде по рядках, внутрішній — по елементах рядка.",
+      `m = [[1, 2], [3, 4]]
+for row in m:
+    for x in row:
+        print(x, end=" ")
+    print()
+# 1 2
+# 3 4`),
+    O(`field = [["X", "."], [".", "O"]]
+for row in field:
+    print("".join(row))`, "X.\n.O", "Кожен рядок склеюємо в один рядок тексту без роздільника."),
+    F("Виведи суму кожного рядка таблиці.",
+      `m = [[1, 2, 3], [4, 5, 6]]
+for row in m:
+    print(sum(___))`, [["row"]], "Кожен рядок — звичайний список, тож `sum(row)` дає 6 і 15."),
+    C({ q: "Напиши функцію `column(m, j)`, яка повертає стовпець з номером `j` у вигляді списку.",
+      starter: `def column(m, j):
+    `,
+      tests: [{ call: "column([[1, 2], [3, 4], [5, 6]], 1)", expect: "[2, 4, 6]" }, { call: "column([['а', 'б', 'в']], 0)", expect: "['а']" }],
+      hint: "Пройди по рядках і з кожного візьми `row[j]`.",
+      solution: `def column(m, j):
+    result = []
+    for row in m:
+        result.append(row[j])
+    return result` }),
+    C({ q: "Морський бій. На полі `#` — це корабель, `.` — вода. Постріли — список пар `[рядок, стовпець]`. Напиши функцію `hits(field, shots)`, яка повертає кількість влучань.",
+      stars: 3,
+      starter: `def hits(field, shots):
+    `,
+      tests: [
+        { call: "hits([['#', '.'], ['.', '#']], [[0, 0], [0, 1], [1, 1]])", expect: "2" },
+        { call: "hits([['.', '.', '#']], [[0, 0]])", expect: "0" },
+        { call: "hits([['#', '#', '#']], [[0, 2], [0, 0]])", expect: "2" }],
+      hint: "Для кожного пострілу `r = shot[0]`, `c = shot[1]`. Влучання — якщо `field[r][c] == \"#\"`.",
+      solution: `def hits(field, shots):
+    count = 0
+    for shot in shots:
+        r = shot[0]
+        c = shot[1]
+        if field[r][c] == "#":
+            count += 1
+    return count` }),
+  ]
+},
+// ===================== 10 =====================
+{
+  id: "copy", kind: "learn", title: "Копії та пастки",
+  about: "Чому b = a — не копія і як не потрапити в пастку зі змінюваними списками.",
+  items: [
+    W(Q("Пригадай: що виведе `n = 3; m = n; m = m * 2; print(n)`?", ["3", "6", "9", "Помилку"], 0, "З числами все просто: `m` змінилась, `n` ні. А от зі списками буде цікавіше.")),
+    L("b = a — це не копія",
+      "Список — змінюваний об'єкт. Коли пишемо `b = a`, нового списку не з'являється: просто в того самого списку тепер два імені. Змінимо через `b` — зміниться і `a`. Щоб отримати окрему копію, пиши `a.copy()`, `a[:]` або `list(a)`.",
+      `a = [1, 2, 3]
+b = a          # те саме, друге ім'я
+b.append(4)
+print(a)       # [1, 2, 3, 4]
+
+c = a.copy()   # окрема копія
+c.append(5)
+print(a)       # [1, 2, 3, 4]`),
+    Q("Який рядок **не** створює окрему копію списку `a`?", ["`b = a`", "`b = a.copy()`", "`b = a[:]`", "`b = list(a)`"], 0, "`b = a` дає списку друге ім'я, а не копію."),
+    O(`a = ["кіт"]
+b = a
+b[0] = "пес"
+print(a)`, "['пес']", "`a` і `b` — один і той самий список, тож заміна через `b` видна і в `a`."),
+    O(`def reset_first(lst):
+    lst[0] = 0
+
+nums = [5, 6]
+reset_first(nums)
+print(nums)`, "[0, 6]",
+      "Функція отримує той самий список, а не копію, тому змінює його."),
+    L("Пастка з множенням",
+      "`[0] * 3` дає `[0, 0, 0]` — тут усе добре. Але `[[\".\"] * 3] * 3` створює список з трьох посилань на **один і той самий** рядок. Змінимо один — зміняться всі. Правильне поле 3×3 створюють генератором.",
+      `bad = [["."] * 3] * 3            # пастка!
+good = [["."] * 3 for _ in range(3)]
+good[0][0] = "X"
+print(good)
+# [['X', '.', '.'], ['.', '.', '.'], ['.', '.', '.']]`),
+    O(`grid = [[0] * 2] * 2
+grid[1][1] = 7
+print(grid)`, "[[0, 7], [0, 7]]",
+      "Обидва рядки — це той самий список, тому сімка з'явилася в кожному."),
+    O(`a = [[1], [2]]
+b = a[:]
+b[1].append(3)
+b[0] = [9]
+print(a)
+print(b)`, "[[1], [2, 3]]\n[[9], [2, 3]]",
+      "Зріз копіює лише зовнішній список. Внутрішній `[2]` спільний, тому трійка з'явилася в обох. А заміна `b[0]` на новий список стосується тільки `b`. Повну копію робить `copy.deepcopy(a)`."),
+    C({ q: "Напиши функцію `without_first(lst)`, яка повертає новий список без першого елемента. Початковий список має лишитися без змін.",
+      starter: `def without_first(lst):
+    `,
+      tests: [{ call: "without_first([1, 2, 3])", expect: "[2, 3]" }, { call: "(lambda a: (without_first(a), a))([7, 8, 9])", expect: "([8, 9], [7, 8, 9])", label: "Після виклику список не змінився" }],
+      hint: "Зріз `lst[1:]` створює новий список і нічого не ламає. А от `pop(0)` змінив би оригінал.",
+      solution: `def without_first(lst):
+    return lst[1:]` }),
+  ]
+},
+// ===================== 11 =====================
+{
+  id: "boss", kind: "boss", title: "Фінал",
+  about: "Задачі на все одразу. Згадаєш усе, що було на попередніх рівнях.",
+  items: [
+    W(Q("Що виведе програма?", ["`[1, 5]`", "`[1, 2, 5]`", "`[5, 1]`", "Помилку"], 0, "`pop(1)` видаляє 2, зріз `[::2]` бере елементи з індексами 0 і 2: 1 і 5.",
+      `a = [1, 2, 3, 5]
+a.pop(1)
+print(a[::2])`)),
+    W(Q("Що поверне `[len(w) for w in \"так ні\".split()]`?", ["`[3, 2]`", "`[6]`", "`[5]`", "`['так', 'ні']`"], 0, "Розбиваємо на слова і рахуємо довжину кожного.")),
+    W(Q("Яке поле 3×3 правильне?", ["`[[0] * 3 for _ in range(3)]`", "`[[0] * 3] * 3`", "Обидва", "Жодне"], 0, "Другий варіант — пастка: три посилання на один рядок.")),
+    C({ q: "Напиши функцію `duplicates(lst)`, яка повертає елементи, що трапляються більше одного разу, кожен по разу, у порядку першої появи: `[1, 2, 1, 3, 2, 1]` → `[1, 2]`.",
+      starter: `def duplicates(lst):
+    `,
+      tests: [{ call: "duplicates([1, 2, 1, 3, 2, 1])", expect: "[1, 2]" }, { call: "duplicates(['а', 'б'])", expect: "[]" }, { call: "duplicates([4, 4, 4])", expect: "[4]" }],
+      hint: "Для кожного елемента перевір `lst.count(x) > 1` і що його ще немає в результаті (`not in`).",
+      solution: `def duplicates(lst):
+    result = []
+    for x in lst:
+        if lst.count(x) > 1 and x not in result:
+            result.append(x)
+    return result` }),
+    C({ q: "Обмін у грі. Напиши функцію `trade(inv, give, get)`: якщо предмет `give` є в інвентарі, заміни його на `get` на тому самому місці й поверни `True`. Якщо немає — поверни `False` і нічого не змінюй.",
+      starter: `def trade(inv, give, get):
+    `,
+      tests: [{ call: "(lambda inv: (trade(inv, 'меч', 'лук'), inv))(['щит', 'меч', 'зілля'])", expect: "(True, ['щит', 'лук', 'зілля'])", label: "Обмін відбувся" }, { call: "(lambda inv: (trade(inv, 'меч', 'лук'), inv))(['щит'])", expect: "(False, ['щит'])", label: "Предмета немає" }],
+      hint: "Перевір `give in inv`, знайди місце через `inv.index(give)` і запиши туди `get`.",
+      solution: `def trade(inv, give, get):
+    if give in inv:
+        inv[inv.index(give)] = get
+        return True
+    return False` }),
+    C({ q: "Кубики. Напиши функцію `roll_dice(n)`, яка повертає список з `n` випадкових чисел від 1 до 6. Підключи модуль `random`.",
+      starter: `import random
+
+def roll_dice(n):
+    `,
+      tests: [{ call: "(lambda r: (len(r), min(r) >= 1, max(r) <= 6))(roll_dice(60))", expect: "(60, True, True)", label: "60 кидків, усі від 1 до 6" }, { call: "len(set(roll_dice(200))) == 6", expect: "True", label: "Випадають усі шість граней" }],
+      hint: "Порожній список і цикл `for i in range(n)`, у ньому `append(random.randint(1, 6))`.",
+      solution: `import random
+
+def roll_dice(n):
+    result = []
+    for i in range(n):
+        result.append(random.randint(1, 6))
+    return result` }),
+    C({ q: "Стиснення. Напиши функцію `compress(lst)`, яка рахує однакові елементи, що стоять поспіль: `['a', 'a', 'b', 'a']` → `[['a', 2], ['b', 1], ['a', 1]]`.",
+      stars: 3,
+      starter: `def compress(lst):
+    `,
+      tests: [{ call: "compress(['a', 'a', 'b', 'a'])", expect: "[['a', 2], ['b', 1], ['a', 1]]" }, { call: "compress([1, 1, 1])", expect: "[[1, 3]]" }, { call: "compress([])", expect: "[]" }],
+      hint: "Ідеш по списку. Якщо елемент такий самий, як в останній парі результату (`result[-1][0]`), збільшуй лічильник. Інакше додавай нову пару `[x, 1]`.",
+      solution: `def compress(lst):
+    result = []
+    for x in lst:
+        if result and result[-1][0] == x:
+            result[-1][1] += 1
+        else:
+            result.append([x, 1])
+    return result` }),
+  ]
+},
+];
+
+</script>
+<script>
+(function () {
+"use strict";
+const LEVELS = window.LEVELS;
+const app = document.getElementById("app");
+const MAX_HEARTS = 5;
+const KIND = { practice: "закріплення", learn: "нова тема", boss: "фінал" };
+const TYPE = { quiz: "Питання", output: "Що виведе?", bug: "Знайди помилку", order: "Збери код", fill: "Встав пропущене", code: "Напиши код", lesson: "Нове" };
+
+// ---------- збереження прогресу (лише в цьому браузері) ----------
+const KEY = "spyskovyi-kvest-v1";
+let prog = { stars: {}, all: false };
+try { const s = JSON.parse(localStorage.getItem(KEY) || "null"); if (s && s.stars) prog = s; } catch (e) {}
+function fixProg() { prog.stars = prog.stars || {}; prog.skin = prog.skin || "classic"; prog.acc = prog.acc || "none"; prog.name = prog.name || "Пітоша"; prog.all = false; }
+fixProg();
+function save() { try { localStorage.setItem(KEY, JSON.stringify(prog)); } catch (e) {} }
+
+// ---------- утиліти ----------
+const esc = s => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+const md = s => esc(s).replace(/`([^`]+)`/g, "<code>$1</code>").replace(/\*\*([^*]+)\*\*/g, "<b>$1</b>");
+const shuffle = a => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+const KW = new Set("def return for in if elif else while break continue True False None and or not import from lambda is pass as with try except".split(" "));
+const BI = new Set("print len range input int str float sum max min sorted list round type enumerate zip map abs".split(" "));
+function hl(code) {
+  const re = /(#.*$)|("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')|(\b\d+(?:\.\d+)?\b)|([A-Za-z_Ѐ-ӿ][\wЀ-ӿ]*)/gm;
+  let out = "", last = 0, m;
+  while ((m = re.exec(code))) {
+    out += esc(code.slice(last, m.index));
+    const t = m[0];
+    if (m[1]) out += `<span class="tok-com">${esc(t)}</span>`;
+    else if (m[2]) out += `<span class="tok-str">${esc(t)}</span>`;
+    else if (m[3]) out += `<span class="tok-num">${esc(t)}</span>`;
+    else if (KW.has(t)) out += `<span class="tok-kw">${t}</span>`;
+    else if (BI.has(t)) out += `<span class="tok-fn">${t}</span>`;
+    else out += esc(t);
+    last = m.index + t.length;
+  }
+  return out + esc(code.slice(last));
+}
+const pre = code => `<pre class="code">${hl(code)}</pre>`;
+const normOut = s => String(s).replace(/\r/g, "").replace(/"/g, "'").split("\n").map(l => l.trim().replace(/\s*([,\[\]\(\)])\s*/g, "$1").replace(/\s+/g, " ")).join("\n").replace(/^\n+|\n+$/g, "");
+const normFill = s => String(s).trim().replace(/"/g, "'").replace(/\s+/g, "");
+const levelOpen = i => prog.all || i === 0 || (prog.stars[LEVELS[i - 1].id] || 0) > 0;
+
+// ---------- змійка ----------
+const N = MAX_HEARTS;
+const mix = (a, b, t) => { t = Math.max(0, Math.min(1, t)); const h = x => [1, 3, 5].map(k => parseInt(x.substr(k, 2), 16)); const A = h(a), B = h(b); return "rgb(" + A.map((v, k) => Math.round(v + (B[k] - v) * t)).join(",") + ")"; };
+const SKINS = [
+  { id: "classic", name: "Класика", need: 0, col: () => "#3fae6b" },
+  { id: "loaf", name: "Батон", need: 2, col: () => "#d9a35b", rx: 9,
+    seg: (x, y) => `<path d="M${x + 5} ${y + 5} l5 -10 M${x + 12} ${y + 5} l5 -10" stroke="#f6d9a2" stroke-width="2.4" stroke-linecap="round"/>` },
+  { id: "sky", name: "Небо", need: 4, col: () => "#3d8bfd" },
+  { id: "sausage", name: "Сосиска", need: 6, col: () => "#e07a6e", rx: 11,
+    seg: (x, y, i) => (i > 0 ? `<path d="M${x + 23} ${y - 4} v8" stroke="#7a4a2a" stroke-width="2.2" stroke-linecap="round"/>` : "") + `<path d="M${x + 5} ${y - 6} q6 -3 12 0" stroke="rgba(255,255,255,.45)" stroke-width="2" fill="none" stroke-linecap="round"/>` },
+  { id: "sunset", name: "Захід сонця", need: 9, col: i => mix("#ff4f7b", "#ffa53d", i / N) },
+  { id: "melon", name: "Кавун", need: 11, col: () => "#2f8f3a", idx: "rgba(255,255,255,.8)",
+    seg: (x, y) => `<path d="M${x + 7} ${y - 10} v20 M${x + 15} ${y - 10} v20" stroke="#1b5e25" stroke-width="2.6"/>`,
+    head: "#ff5a63", headStroke: "#2f8f3a",
+    headDeco: (hx, hy) => [[6, -7], [8, 5], [31, -8], [5, -1]].map(([dx, dy]) => `<ellipse cx="${hx + dx}" cy="${hy + dy}" rx="1.3" ry="2" fill="#1b1b1b"/>`).join("") },
+  { id: "night", name: "Нічна", need: 15, col: () => "#4b3a8f", idx: "rgba(255,255,255,.75)",
+    seg: (x, y) => `<circle cx="${x + 4.5}" cy="${y - 6.5}" r="1.2" fill="#fff"/><circle cx="${x + 18}" cy="${y + 6.5}" r="1" fill="#fff"/>` },
+  { id: "train", name: "Потяг", need: 17, col: () => "#5b7bd5", rx: 3, idx: "#1b2a55",
+    seg: (x, y, i) => `<rect x="${x + 4}" y="${y - 7}" width="14" height="9" rx="2" fill="#dbe7ff"/><circle cx="${x + 6}" cy="${y + 11}" r="3.2" fill="#222"/><circle cx="${x + 16}" cy="${y + 11}" r="3.2" fill="#222"/>` + `<path d="M${x + 22} ${y + 3} h4" stroke="#444" stroke-width="2"/>`,
+    head: "#d64545", headRx: 5,
+    headDeco: (hx, hy, acc) => (acc === "none" ? `<rect x="${hx + 22}" y="${hy - 23}" width="7" height="10" fill="#333"/><circle cx="${hx + 26}" cy="${hy - 28}" r="3.4" fill="#cfd5df" opacity=".9"/><circle cx="${hx + 20}" cy="${hy - 32}" r="2.6" fill="#cfd5df" opacity=".7"/>` : "") + `<circle cx="${hx + 8}" cy="${hy + 15}" r="3.6" fill="#222"/><circle cx="${hx + 26}" cy="${hy + 15}" r="3.6" fill="#222"/>` },
+  { id: "cheese", name: "Сирна", need: 21, col: () => "#f5c84c", idx: "#8a6510",
+    seg: (x, y) => `<circle cx="${x + 5}" cy="${y - 5}" r="2.2" fill="#d9a92a"/><circle cx="${x + 17}" cy="${y + 5}" r="3" fill="#d9a92a"/><circle cx="${x + 6}" cy="${y + 7}" r="1.5" fill="#d9a92a"/>`,
+    headDeco: (hx, hy) => `<circle cx="${hx + 6}" cy="${hy + 6}" r="2.6" fill="#d9a92a"/><circle cx="${hx + 9}" cy="${hy - 9}" r="1.6" fill="#d9a92a"/>` },
+  { id: "gold", name: "Золота", need: 24, col: () => "#e0aa2b",
+    seg: (x, y) => `<rect x="${x + 4}" y="${y - 8}" width="5" height="3" rx="1.5" fill="rgba(255,255,255,.6)"/>` },
+  { id: "sock", name: "Шкарпетка", need: 27, col: i => (i % 2 ? "#fdfdfd" : "#ff6b6b"), rx: 5,
+    seg: (x, y) => `<path d="M${x + 1} ${y - 6} h20" stroke="#3d8bfd" stroke-width="2"/>`, head: "#ff6b6b",
+    headDeco: (hx, hy) => `<path d="M${hx + 1} ${hy + 9} h32" stroke="#3d8bfd" stroke-width="2"/>` },
+  { id: "rainbow", name: "Веселка", need: 33, col: i => `hsl(${(i * 62 + 330) % 360} 72% 55%)` },
+  { id: "glitch", name: "Глітч", ach: "fail", col: () => "#1a1a1a", idx: "#39ff14", jitter: true,
+    seg: () => "", head: "#1a1a1a",
+    headDeco: (hx, hy) => `<text x="${hx + 3}" y="${hy + 12}" font-family="monospace" font-size="6" fill="#39ff14">ERR</text>` },
+];
+const ACCS = [
+  { id: "none", name: "Без нічого", need: 0 },
+  { id: "moustache", name: "Вуса", need: 1 },
+  { id: "glasses", name: "Окуляри", need: 3 },
+  { id: "catears", name: "Котячі вушка", need: 5 },
+  { id: "cap", name: "Кепка", need: 7 },
+  { id: "cowboy", name: "Ковбойський капелюх", need: 9 },
+  { id: "scarf", name: "Шарф", need: 12 },
+  { id: "propeller", name: "Шапка з пропелером", need: 14 },
+  { id: "phones", name: "Навушники", need: 19 },
+  { id: "duck", name: "Каченя", need: 22 },
+  { id: "horn", name: "Ріжок єдинорога", need: 25 },
+  { id: "crown", name: "Корона", need: 30 },
+  { id: "halo", name: "Німб", ach: "perfect" },
+  { id: "pot", name: "Каструля", ach: "peek" },
+];
+const ACH = { fail: "Лишитися без хвоста", perfect: "Пройти рівень без жодної помилки", peek: "Підглянути розв'язок задачі" };
+const isOpen = x => x.ach ? !!(prog.ach && prog.ach[x.ach]) : x.need <= totalStars();
+const openIds = () => [...SKINS, ...ACCS].filter(isOpen).map(x => x.id);
+function achieve(key) {
+  prog.ach = prog.ach || {};
+  if (prog.ach[key]) return [];
+  prog.ach[key] = true; save();
+  return [...SKINS, ...ACCS].filter(x => x.ach === key);
+}
+const totalStars = () => LEVELS.reduce((s, l) => s + (prog.stars[l.id] || 0), 0);
+const skinOf = id => SKINS.find(s => s.id === id) || SKINS[0];
+const popName = () => (prog.name || "змійка").trim().toLowerCase().replace(/[^\wЀ-ӿ]+/g, "_") || "змійка";
+// len — скільки сегментів лишилось; falling — скільки щойно відвалилось
+function snakeSVG(o) {
+  const sk = skinOf(o.skin || prog.skin), acc = o.acc || prog.acc, len = o.len, falling = o.falling || 0, mood = o.mood || "happy";
+  const W = 8 + N * 26 + 44, H = 66;
+  const segX = i => 8 + (N - 1 - i) * 26, segY = i => 40 + Math.sin((N - i) * 1.15) * 5;
+  let g = "";
+  for (let i = N - 1; i >= 0; i--) {
+    const x = segX(i), y = segY(i);
+    const ghost = `<rect class="ghost" x="${x}" y="${y - 11}" width="22" height="22" rx="7"/>`;
+    const jx = sk.jitter ? [2, -3, 1, -2, 3][i] : 0, jy = sk.jitter ? [-2, 3, -3, 1, 2][i] : 0;
+    const rect = (fill, dx, op) => `<rect x="${x + jx + dx}" y="${y + jy - 11}" width="22" height="22" rx="${sk.rx ?? 7}" fill="${fill}"${op ? ` opacity="${op}"` : ` stroke="rgba(0,0,0,.22)" stroke-width="1.5"`}/>`;
+    const body = (sk.jitter ? rect("#00e5ff", -2.5, .8) + rect("#ff2bd6", 2.5, .8) : "") + rect(sk.col(i), 0)
+      + (sk.seg ? `<g transform="translate(${jx} ${jy})">${sk.seg(x, y, i)}</g>` : "")
+      + `<text x="${x + jx + 11}" y="${y + jy + 3.5}" class="segidx"${sk.idx ? ` style="fill:${sk.idx}"` : ""}>${i}</text>`;
+    if (i < len) g += `<g>${body}</g>`;
+    else if (i < len + falling) g += ghost + `<g class="fall">${body}</g>`;
+    else g += ghost;
+  }
+  const hx = segX(0) + 24, hy = 38, hc = sk.head || sk.col(-0.6);
+  let head = (sk.jitter ? `<rect x="${hx - 2.5}" y="${hy - 14}" width="34" height="28" rx="11" fill="#00e5ff" opacity=".8"/><rect x="${hx + 2.5}" y="${hy - 14}" width="34" height="28" rx="11" fill="#ff2bd6" opacity=".8"/>` : "")
+    + `<rect x="${hx}" y="${hy - 14}" width="34" height="28" rx="${sk.headRx ?? 11}" fill="${hc}" stroke="${sk.headStroke || "rgba(0,0,0,.25)"}" stroke-width="${sk.headStroke ? 3 : 1.5}"/>`
+    + (sk.headDeco ? sk.headDeco(hx, hy, acc) : "");
+  if (acc === "scarf") head = `<rect x="${hx - 7}" y="${hy + 1}" width="13" height="10" rx="3" fill="#e8483f"/><rect x="${hx - 4}" y="${hy + 8}" width="6" height="14" rx="2" fill="#e8483f" transform="rotate(14 ${hx - 1} ${hy + 8})"/><rect x="${hx - 7}" y="${hy + 4}" width="13" height="2.5" fill="#fff" opacity=".8"/>` + head;
+  const eye = (ex) => `<circle cx="${ex}" cy="${hy - 4}" r="4.6" fill="#fff"/><circle cx="${ex + 1.3}" cy="${hy - 3.6}" r="2.3" fill="#1b1b1b"/>`;
+  head += mood === "sad"
+    ? `<path d="M${hx + 12} ${hy - 5} l6 -2.5 M${hx + 21} ${hy - 7.5} l6 2.5" stroke="#1b1b1b" stroke-width="1.6"/>` + `<circle cx="${hx + 15}" cy="${hy - 1}" r="1.8" fill="#1b1b1b"/><circle cx="${hx + 24}" cy="${hy - 1}" r="1.8" fill="#1b1b1b"/>`
+    : eye(hx + 15) + eye(hx + 24);
+  if (mood === "happy") head += `<path d="M${hx + 20} ${hy + 6} Q${hx + 25} ${hy + 11} ${hx + 30} ${hy + 5}" stroke="#1b1b1b" stroke-width="1.7" fill="none" stroke-linecap="round"/><circle cx="${hx + 10}" cy="${hy + 5}" r="2.6" fill="rgba(255,120,150,.55)"/>`;
+  if (mood === "sad") head += `<path d="M${hx + 20} ${hy + 10} Q${hx + 25} ${hy + 5} ${hx + 30} ${hy + 10}" stroke="#1b1b1b" stroke-width="1.7" fill="none" stroke-linecap="round"/>`;
+  if (mood === "wow") head += `<ellipse cx="${hx + 26}" cy="${hy + 7}" rx="2.6" ry="3.2" fill="#1b1b1b"/><path d="M${hx + 33} ${hy + 3} l6 1 l3 -3 M${hx + 39} ${hy + 4} l3 3" stroke="#e8483f" stroke-width="1.5" fill="none"/>`;
+  if (acc === "glasses") head += `<g stroke="#1b1b1b" stroke-width="1.8" fill="rgba(160,210,255,.25)"><circle cx="${hx + 15}" cy="${hy - 4}" r="5.6"/><circle cx="${hx + 27}" cy="${hy - 4}" r="5.6"/></g><path d="M${hx + 20.6} ${hy - 4} h0.8 M${hx + 9.4} ${hy - 5} l-6 -1" stroke="#1b1b1b" stroke-width="1.8"/>`;
+  if (acc === "cap") head += `<path d="M${hx + 3} ${hy - 11} Q${hx + 15} ${hy - 29} ${hx + 30} ${hy - 11} Z" fill="#2f5bd3"/><ellipse cx="${hx + 34}" cy="${hy - 11}" rx="10" ry="3" fill="#1d3f9e"/><circle cx="${hx + 16}" cy="${hy - 21}" r="2" fill="#f2c94c"/>`;
+  if (acc === "phones") head += `<path d="M${hx + 4} ${hy - 4} Q${hx + 10} ${hy - 26} ${hx + 30} ${hy - 13}" stroke="#2b2b2b" stroke-width="3.2" fill="none"/><rect x="${hx}" y="${hy - 8}" width="9" height="13" rx="3.5" fill="#2b2b2b"/><circle cx="${hx + 4.5}" cy="${hy - 1.5}" r="2" fill="#ff4f7b"/>`;
+  if (acc === "moustache") head += `<g fill="#3a2416"><ellipse cx="${hx + 22}" cy="${hy + 4}" rx="5" ry="2.2" transform="rotate(-18 ${hx + 22} ${hy + 4})"/><ellipse cx="${hx + 30}" cy="${hy + 4}" rx="5" ry="2.2" transform="rotate(18 ${hx + 30} ${hy + 4})"/></g>`;
+  if (acc === "catears") head += `<path d="M${hx + 5} ${hy - 11} L${hx + 8} ${hy - 25} L${hx + 16} ${hy - 13} Z M${hx + 20} ${hy - 13} L${hx + 28} ${hy - 25} L${hx + 31} ${hy - 11} Z" fill="${hc}" stroke="rgba(0,0,0,.25)" stroke-width="1.2"/><path d="M${hx + 8} ${hy - 13} L${hx + 9} ${hy - 20} L${hx + 13} ${hy - 14} Z M${hx + 23} ${hy - 14} L${hx + 27} ${hy - 20} L${hx + 28} ${hy - 13} Z" fill="#ff9fb8"/>`;
+  if (acc === "cowboy") head += `<path d="M${hx + 7} ${hy - 13} Q${hx + 7} ${hy - 28} ${hx + 17} ${hy - 23} Q${hx + 27} ${hy - 28} ${hx + 27} ${hy - 13} Z" fill="#a0693a"/><rect x="${hx + 7}" y="${hy - 17}" width="20" height="3" fill="#3a2416"/><ellipse cx="${hx + 17}" cy="${hy - 13}" rx="21" ry="3.6" fill="#8b5a2b"/>`;
+  if (acc === "propeller") head += `<path d="M${hx + 4} ${hy - 11} Q${hx + 17} ${hy - 29} ${hx + 30} ${hy - 11} Z" fill="#e8483f"/><path d="M${hx + 17} ${hy - 20} v-14" stroke="#555" stroke-width="1.6"/><g class="prop" style="transform-origin:${hx + 17}px ${hy - 33}px"><ellipse cx="${hx + 11}" cy="${hy - 33}" rx="6" ry="1.8" fill="#f2c94c"/><ellipse cx="${hx + 23}" cy="${hy - 33}" rx="6" ry="1.8" fill="#3d8bfd"/></g><path d="M${hx + 6} ${hy - 13} Q${hx + 17} ${hy - 18} ${hx + 28} ${hy - 13}" stroke="#f2c94c" stroke-width="2" fill="none"/>`;
+  if (acc === "duck") head += `<ellipse cx="${hx + 15}" cy="${hy - 18}" rx="8.5" ry="5.5" fill="#ffd43b" stroke="#d9a400" stroke-width="1"/><circle cx="${hx + 21}" cy="${hy - 24}" r="4.6" fill="#ffd43b" stroke="#d9a400" stroke-width="1"/><path d="M${hx + 25} ${hy - 24.5} l5 1 l-5 2 Z" fill="#ff8c1a"/><circle cx="${hx + 22.5}" cy="${hy - 25.5}" r="1" fill="#1b1b1b"/>`;
+  if (acc === "horn") head += `<path d="M${hx + 13} ${hy - 13} L${hx + 19} ${hy - 35} L${hx + 24} ${hy - 13} Z" fill="#ffd6f0" stroke="#c45bab" stroke-width="1.2"/><path d="M${hx + 15} ${hy - 19} l7 -2 M${hx + 16.5} ${hy - 25} l5 -1.5" stroke="#c45bab" stroke-width="1.2"/>`;
+  if (acc === "halo") head += `<ellipse cx="${hx + 17}" cy="${hy - 22}" rx="12" ry="3.4" fill="none" stroke="#f2c230" stroke-width="2.6"/>`;
+  if (acc === "pot") head += `<rect x="${hx + 2}" y="${hy - 25}" width="30" height="15" rx="2" fill="#b8c0cc" stroke="#7d8794" stroke-width="1.2"/><rect x="${hx - 4}" y="${hy - 22}" width="7" height="3" rx="1.5" fill="#7d8794"/><rect x="${hx + 31}" y="${hy - 22}" width="7" height="3" rx="1.5" fill="#7d8794"/><path d="M${hx + 2} ${hy - 20} h30" stroke="#9aa3b0" stroke-width="1"/><rect x="${hx + 6}" y="${hy - 22}" width="5" height="9" rx="1.5" fill="rgba(255,255,255,.45)"/>`;
+  if (acc === "crown") head += `<path d="M${hx + 8} ${hy - 13} L${hx + 7} ${hy - 25} L${hx + 12.5} ${hy - 19} L${hx + 17} ${hy - 28} L${hx + 21.5} ${hy - 19} L${hx + 27} ${hy - 25} L${hx + 26} ${hy - 13} Z" fill="#f2c230" stroke="#b8860b" stroke-width="1.2"/><circle cx="${hx + 17}" cy="${hy - 17}" r="1.8" fill="#e8483f"/>`;
+  const pop = falling ? `<text class="poptxt" x="${segX(len + falling - 1) - 2}" y="12">${esc(popName())}.pop()</text>` : "";
+  return `<svg class="snake ${o.cls || ""}" viewBox="0 0 ${W} ${H}" role="img" aria-label="Змійка, сегментів: ${len} з ${N}">${g}<g class="head">${head}</g>${pop}</svg>`;
+}
+const starStr = (n, cls) => `<span class="${cls}">${[1, 2, 3].map(k => `<span class="${k <= n ? "on" : ""}">★</span>`).join("")}</span>`;
+
+// ---------- Python у браузері (Skulpt) ----------
+let skPromise = null;
+function loadPy() {
+  if (skPromise) return skPromise;
+  const add = src => new Promise((ok, fail) => { const s = document.createElement("script"); s.src = src; s.onload = ok; s.onerror = fail; document.head.appendChild(s); });
+  skPromise = add("https://cdn.jsdelivr.net/npm/skulpt@1.2.0/dist/skulpt.min.js")
+    .then(() => add("https://cdn.jsdelivr.net/npm/skulpt@1.2.0/dist/skulpt-stdlib.js"))
+    .catch(e => { skPromise = null; throw e; });
+  return skPromise;
+}
+async function runPy(code, inputs) {
+  await loadPy();
+  let out = ""; const q = (inputs || []).slice();
+  Sk.configure({
+    output: s => { out += s; },
+    read: x => { if (Sk.builtinFiles && Sk.builtinFiles.files[x] !== undefined) return Sk.builtinFiles.files[x]; throw new Error("Немає модуля " + x); },
+    inputfun: () => { if (!q.length) throw new Error("NOINPUT"); return q.shift(); },
+    inputfunTakesPrompt: true,
+    execLimit: 4000,
+    __future__: Sk.python3,
+  });
+  try {
+    await Sk.misceval.asyncToPromise(() => Sk.importMainWithBody("<stdin>", false, code, true));
+    return { out, err: null };
+  } catch (e) {
+    return { out, err: explainErr(e) };
+  }
+}
+function explainErr(e) {
+  const raw = e && e.toString ? e.toString() : String(e);
+  const tips = [
+    [/NOINPUT/, "Програма викликає input() більше разів, ніж є даних у тесті."],
+    [/TimeLimitError/, "Програма працює занадто довго. Можливо, цикл ніколи не закінчується."],
+    [/IndentationError|unindent|expected an indented/i, "Помилка відступів. Перевір, що тіло циклу, умови чи функції зсунуте на 4 пробіли."],
+    [/SyntaxError/, "Синтаксична помилка. Перевір двокрапки, дужки, лапки й відступи."],
+    [/IndexError/, "Індекс за межами списку. Ти звертаєшся до елемента, якого немає."],
+    [/NameError/, "Невідоме ім'я. Змінна чи функція ще не створена або написана з помилкою."],
+    [/TypeError/, "Помилка типів. Наприклад, додаєш число до рядка або передаєш у функцію не те."],
+    [/ValueError/, "Неправильне значення. Наприклад, int() від тексту або remove() елемента, якого немає."],
+    [/ZeroDivisionError/, "Ділення на нуль."],
+    [/AttributeError/, "У цього об'єкта немає такого методу. Перевір назву, наприклад append, а не add."],
+    [/KeyError/, "Немає такого ключа."],
+  ];
+  const tip = (tips.find(([r]) => r.test(raw)) || [null, "Під час виконання сталася помилка."])[1];
+  return { tip, raw: raw.replace("ExternalError: Error: NOINPUT", "input()").replace(/^ExternalError: Error: /, "") };
+}
+
+// ---------- стан рівня ----------
+let run = null; // { li, idx, hearts, mistakes, items, st }
+function startLevel(li) {
+  const lv = LEVELS[li];
+  run = { li, idx: 0, hearts: MAX_HEARTS, shown: MAX_HEARTS, mistakes: 0, leaves: 0, items: lv.items, st: {} };
+  hideGuard();
+  goFullscreen();
+  if (lv.items.some(it => it.t === "code" || it.t === "order")) loadPy().catch(() => {});
+  renderItem();
+  scrollTo(0, 0);
+}
+// ---------- вихід з гри під час рівня ----------
+// Епізод виходу: перехід на іншу вкладку, в інший застосунок або вихід з повноекранного режиму.
+// За один епізод — мінус один сегмент. Повернутися до гри можна лише кнопкою на заслоні.
+let awaySince = 0;          // коли учень пішов (0 — на місці)
+let guardOpen = false;      // заслона показана, штраф уже знято
+let wasFull = false;        // ми самі ввімкнули повноекранний режим
+const GRACE = 1500;
+const active = () => run && !run.over;
+function penalize(reason) {
+  if (!active() || guardOpen) return;
+  run.leaves = (run.leaves || 0) + 1;
+  lose(1);
+  frame0Hearts();
+  if (run.hearts <= 0) { hideGuard(); renderFail(); return; }
+  showGuard(reason);
+}
+function goneAway() { if (active() && !guardOpen && !awaySince) awaySince = Date.now(); }
+function cameBack() {
+  if (!awaySince || document.hidden) return;
+  const t = Date.now() - awaySince; awaySince = 0;
+  if (t >= GRACE) penalize("away");
+}
+document.addEventListener("visibilitychange", () => document.hidden ? goneAway() : cameBack());
+window.addEventListener("blur", goneAway);
+window.addEventListener("focus", cameBack);
+document.addEventListener("fullscreenchange", () => {
+  if (document.fullscreenElement) { wasFull = true; return; }
+  if (!wasFull) return;
+  wasFull = false;
+  if (active()) { awaySince = 0; penalize("fullscreen"); }
+});
+function showGuard(reason) {
+  guardOpen = true;
+  let g = document.getElementById("guard");
+  if (!g) { g = document.createElement("div"); g.id = "guard"; g.setAttribute("role", "alertdialog"); g.setAttribute("aria-modal", "true"); document.body.appendChild(g); }
+  const what = reason === "fullscreen" ? "Ти вийшов(-ла) з повноекранного режиму." : "Ти переходив(-ла) на іншу вкладку чи в інший застосунок.";
+  g.innerHTML = `<div class="guardcard">
+    ${snakeSVG({ len: run.hearts, mood: "sad", cls: "big" })}
+    <div class="stamp">Мінус сегмент!</div>
+    <p>${what} ${esc(prog.name)} злякалась і загубила шматок хвоста. Лишилось сегментів: ${run.hearts} з ${MAX_HEARTS}.</p>
+    <button class="btn" id="guard-back">Повернутися до гри</button>
+  </div>`;
+  g.hidden = false;
+  document.getElementById("guard-back").onclick = () => { hideGuard(); goFullscreen(); };
+  document.getElementById("guard-back").focus();
+}
+function hideGuard() { guardOpen = false; awaySince = 0; const g = document.getElementById("guard"); if (g) g.hidden = true; }
+function toast(text) {
+  let t = document.getElementById("toast");
+  if (!t) { t = document.createElement("div"); t.id = "toast"; t.setAttribute("role", "alert"); document.body.appendChild(t); }
+  t.textContent = text; t.className = "show";
+  clearTimeout(toast.tm); toast.tm = setTimeout(() => { t.className = ""; }, 4500);
+}
+function goFullscreen() {
+  try { const el = document.documentElement; if (!document.fullscreenElement && el.requestFullscreen) el.requestFullscreen().catch(() => {}); } catch (e) {}
+}
+function leaveFullscreen() {
+  wasFull = false;
+  try { if (document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(() => {}); } catch (e) {}
+}
+
+function lose(n) { run.shown = run.hearts; run.hearts = Math.max(0, run.hearts - (n || 1)); run.mistakes += (n || 1); }
+function next() {
+  if (run.hearts <= 0) return renderFail();
+  run.idx++; run.st = {};
+  if (run.idx >= run.items.length) return renderDone();
+  renderItem(); scrollTo(0, 0);
+}
+
+// ---------- карта ----------
+function renderMap() {
+  run = null; hideGuard(); leaveFullscreen();
+  const total = LEVELS.reduce((s, l) => s + (prog.stars[l.id] || 0), 0);
+  const n = LEVELS.length;
+  app.innerHTML = `
+  <header class="hero">
+    <div class="eyebrow">Python · 8 клас · списки</div>
+    <h1>Списковий квест</h1>
+    <p>Кожен рівень починається з розминки з основ. На рівнях «нова тема» спершу коротке пояснення, потім задачі. Наступний рівень відкривається, коли пройдено попередній.</p>
+    <div class="pet">
+      ${snakeSVG({ len: N, cls: "big" })}
+      <div class="petinfo">
+        <div class="petname">${esc(prog.name)}</div>
+        <div class="score">sum(stars) = <b>${total}</b> / ${n * 3}</div>
+        <button class="btn ghost small" id="wardrobe">Гардероб${(() => { const k = openIds().length - 2; return k > 0 ? ` · ${k} відкрито` : ""; })()}</button>
+      </div>
+    </div>
+  </header>
+  <div class="listopen">levels = [</div>
+  <div class="levels">
+    ${LEVELS.map((l, i) => {
+      const open = levelOpen(i); const s = prog.stars[l.id] || 0;
+      return `<button class="cell ${l.kind}" data-li="${i}" ${open ? "" : "disabled"} aria-label="Рівень ${i + 1}: ${esc(l.title)}">
+        <span class="idx"><span>[${i}]</span><span>[${i - n}]</span></span>
+        <span class="kind">${KIND[l.kind]}</span>
+        <h3>${esc(l.title)}</h3>
+        ${open ? starStr(s, "stars") : `<span class="lock">Спершу пройди [${i - 1}]</span>`}
+      </button>`;
+    }).join("")}
+  </div>
+  <div class="listclose">]</div>
+  <div class="legend"><span>★★★ — не більше однієї помилки на рівні</span><span>У змійки ${N} сегментів. Кожна помилка — <code>pop()</code> з хвоста</span><span>Задачі з кодом сегментів не забирають</span><span>Зірки відкривають нові скіни</span><span>Вийшов(-ла) з гри на іншу вкладку чи в інший застосунок — мінус сегмент</span></div>
+  `;
+  app.querySelectorAll(".cell").forEach(b => b.onclick = () => renderIntro(+b.dataset.li));
+  app.querySelector("#wardrobe").onclick = renderWardrobe;
+}
+
+
+function renderWardrobe() {
+  const total = totalStars();
+  const tile = (x, kind) => {
+    const open = isOpen(x), sel = prog[kind] === x.id;
+    const prev = snakeSVG(kind === "skin" ? { len: N, skin: x.id, acc: "none" } : { len: N, acc: x.id });
+    return `<button class="wtile ${sel ? "sel" : ""}" data-kind="${kind}" data-id="${x.id}" ${open ? "" : "disabled"}>
+      ${prev}<span class="wname">${esc(x.name)}</span>
+      <span class="wlock">${sel ? "Обрано" : open ? "Відкрито" : (x.ach ? "Секрет: " + ACH[x.ach].toLowerCase() : `Потрібно ★ ${x.need}`)}</span></button>`;
+  };
+  app.innerHTML = `<div class="center wardrobe">
+    <button class="link" id="back">← На карту</button>
+    <h2>Гардероб</h2>
+    <div class="pet">${snakeSVG({ len: N, cls: "big" })}
+      <div class="petinfo"><label class="answer-label" for="petname">Ім'я змійки</label>
+      <input type="text" id="petname" maxlength="16" value="${esc(prog.name)}" autocomplete="off">
+      <div class="status">У тебе ★ ${total} з ${LEVELS.length * 3}. Більше зірок — більше скінів.</div></div></div>
+    <h3>Забарвлення</h3>
+    <div class="wgrid">${SKINS.map(x => tile(x, "skin")).join("")}</div>
+    <h3>Аксесуари</h3>
+    <div class="wgrid">${ACCS.map(x => tile(x, "acc")).join("")}</div>
+  </div>`;
+  $("#back").onclick = renderMap;
+  $("#petname").addEventListener("change", e => { prog.name = e.target.value.trim().slice(0, 16) || "Пітоша"; save(); renderWardrobe(); });
+  app.querySelectorAll(".wtile").forEach(b => b.onclick = () => { prog[b.dataset.kind] = b.dataset.id; save(); renderWardrobe(); });
+}
+
+function renderIntro(li) {
+  const lv = LEVELS[li];
+  const counts = {};
+  lv.items.forEach(it => { const k = it.warm ? "Розминка з основ" : TYPE[it.t]; counts[k] = (counts[k] || 0) + 1; });
+  const best = prog.stars[lv.id] || 0;
+  app.innerHTML = `
+  <div class="center intro">
+    <button class="link" id="back">← На карту</button>
+    <div class="eyebrow">levels[${li}] · ${KIND[lv.kind]}</div>
+    <h2>${esc(lv.title)}</h2>
+    <p>${md(lv.about)}</p>
+    <ul class="plan">${Object.entries(counts).map(([k, v]) => `<li><span>×${v}</span>${k}</li>`).join("")}</ul>
+    ${best ? `<div>Твій рекорд: ${starStr(best, "stars")}</div>` : ""}
+    <p class="status">Під час рівня не перемикайся на інші вкладки й застосунки: кожен вихід з гри коштує змійці сегмент.</p>
+    <button class="btn" id="go">${best ? "Пройти ще раз" : "Почати"}</button>
+  </div>`;
+  app.querySelector("#back").onclick = renderMap;
+  app.querySelector("#go").onclick = () => startLevel(li);
+  scrollTo(0, 0);
+}
+
+// ---------- задача ----------
+function frame(it, body) {
+  const lv = LEVELS[run.li];
+  const pct = Math.round(run.idx / run.items.length * 100);
+  const chips = [];
+  if (it.warm) chips.push(`<span class="chip warm">Розминка</span>`);
+  chips.push(`<span class="chip ${it.t === "lesson" ? "new" : ""}">${TYPE[it.t]}</span>`);
+  if (it.stars === 3) chips.push(`<span class="chip">★★★ складна</span>`);
+  app.innerHTML = `
+  <div class="topbar">
+    <div class="row"><button class="link" id="quit">← Карта</button><span class="lvtitle">${esc(lv.title)} · ${run.idx + 1}/${run.items.length}</span></div>
+    <div class="snakebar" id="snake">${snakeSVG({ len: run.hearts, mood: run.hearts <= 1 ? "sad" : "happy" })}</div>
+    <div class="progress"><div style="width:${pct}%"></div></div>
+  </div>
+  <section class="card ${it.t === "lesson" ? "lesson" : ""}">
+    <div class="chips">${chips.join("")}</div>
+    ${body}
+    <div id="fb"></div>
+    <div class="actions" id="acts"></div>
+  </section>`;
+  app.querySelector("#quit").onclick = renderMap;
+}
+const $ = s => app.querySelector(s);
+function feedback(good, title, text, extra) {
+  if (good && $("#snake")) { $("#snake").innerHTML = snakeSVG({ len: run.hearts, mood: "wow", cls: "hop" }); }
+  $("#fb").innerHTML = `<div class="feedback ${good ? "good" : "bad"}"><div class="verdict">${title}</div>${extra || ""}${text ? `<p>${md(text)}</p>` : ""}</div>`;
+}
+function setActs(html, handlers) {
+  $("#acts").innerHTML = html;
+  Object.entries(handlers || {}).forEach(([id, fn]) => { const el = $("#" + id); if (el) el.onclick = fn; });
+}
+function nextBtn() { setActs(`<button class="btn" id="nx">${run.hearts <= 0 ? "Далі" : "Далі →"}</button>`, { nx: next }); $("#nx").focus({ preventScroll: true }); }
+const PRAISE = ["Правильно!", "Молодець!", "Так і є!", "Супер!", "Чудово!"];
+const praise = () => PRAISE[Math.floor(Math.random() * PRAISE.length)];
+
+function renderItem() {
+  const it = run.items[run.idx];
+  ({ lesson: rLesson, quiz: rQuiz, output: rOutput, bug: rBug, order: rOrder, fill: rFill, code: rCode })[it.t](it);
+}
+
+function rLesson(it) {
+  frame(it, `<h2>${esc(it.title)}</h2><p>${md(it.text)}</p>${it.code ? pre(it.code) : ""}`);
+  setActs(`<button class="btn" id="nx">Зрозуміло, далі →</button>`, { nx: next });
+}
+
+function rQuiz(it) {
+  const order = shuffle(it.options.map((_, i) => i));
+  frame(it, `<div class="q">${md(it.q)}</div>${it.code ? pre(it.code) : ""}
+    <div class="options">${order.map(i => `<button class="opt" data-i="${i}">${md(it.options[i])}</button>`).join("")}</div>`);
+  app.querySelectorAll(".opt").forEach(b => b.onclick = () => {
+    const i = +b.dataset.i, ok = i === it.a;
+    app.querySelectorAll(".opt").forEach(o => { o.disabled = true; if (+o.dataset.i === it.a) o.classList.add("right"); });
+    if (!ok) { b.classList.add("wrong"); lose(); }
+    frame0Hearts();
+    feedback(ok, ok ? praise() : "Не зовсім", it.why);
+    nextBtn();
+  });
+}
+function frame0Hearts() {
+  const box = $("#snake"); if (!box) return;
+  const falling = Math.max(0, (run.shown ?? MAX_HEARTS) - run.hearts);
+  run.shown = run.hearts;
+  box.innerHTML = snakeSVG({ len: run.hearts, falling, mood: run.hearts <= 1 ? "sad" : falling ? "sad" : "happy" });
+}
+
+function attemptWrong(it, revealHtml) {
+  run.st.tries = (run.st.tries || 0) + 1; lose(); frame0Hearts();
+  if (run.st.tries >= 2 || run.hearts <= 0) {
+    feedback(false, "Не зовсім", it.why, revealHtml);
+    nextBtn(); return true;
+  }
+  feedback(false, "Спробуй ще раз", "");
+  return false;
+}
+
+function rOutput(it) {
+  const lines = it.a.split("\n").length;
+  frame(it, `<div class="q">${md(it.q || "Що виведе ця програма?")}</div>${pre(it.code)}
+    <label class="answer-label" for="ans">Твоя відповідь${lines > 1 ? ` (${lines} рядки, кожен з нового рядка)` : ""}:</label>
+    <textarea id="ans" rows="${Math.max(2, lines + 1)}" spellcheck="false" autocomplete="off"></textarea>
+    ${/[\[(']/.test(it.a) ? `<div class="status">Пиши точно так, як надрукує Python: список — у квадратних дужках, рядки всередині списку — в лапках.</div>` : ""}`);
+  const loose = s => normOut(s).replace(/[\[\]()'\s]/g, "");
+  const check = () => {
+    const v = $("#ans").value;
+    if (!v.trim()) return;
+    if (normOut(v) === normOut(it.a)) {
+      $("#ans").disabled = true;
+      feedback(true, praise(), it.why); nextBtn();
+    } else if (loose(v) === loose(it.a)) {
+      const why = /\[/.test(it.a) && !/\[/.test(v)
+        ? "Значення правильні, але `print` виводить список разом із квадратними дужками, наприклад `[1, 2]`. Допиши дужки й перевір ще раз."
+        : "Значення правильні, але Python друкує їх трохи інакше. Перевір дужки та лапки: рядки всередині списку виводяться в лапках, наприклад `['а', 'б']`.";
+      feedback(false, "Майже!", why);
+    } else if (attemptWrong(it, `<p>Правильна відповідь:</p><pre class="code">${esc(it.a)}</pre>`)) $("#ans").disabled = true;
+  };
+  setActs(`<button class="btn" id="ck">Перевірити</button>`, { ck: check });
+  $("#ans").focus({ preventScroll: true });
+}
+
+function rBug(it) {
+  const lines = it.code.split("\n");
+  frame(it, `<div class="q">${md(it.q)}</div>
+    <div class="buglines">${lines.map((l, i) => `<button class="bugline" data-i="${i}"><span class="ln">${i + 1}</span><span>${hl(l) || " "}</span></button>`).join("")}</div>`);
+  app.querySelectorAll(".bugline").forEach(b => b.onclick = () => {
+    const ok = +b.dataset.i === it.a;
+    app.querySelectorAll(".bugline").forEach(o => { o.disabled = true; if (+o.dataset.i === it.a) o.classList.add("right"); });
+    if (!ok) { b.classList.add("wrong"); lose(); frame0Hearts(); }
+    feedback(ok, ok ? praise() : "Не зовсім", it.why); nextBtn();
+  });
+}
+
+function rOrder(it) {
+  const correct = it.code.split("\n");
+  let pool = shuffle(correct.map((_, i) => i));
+  if (pool.every((v, i) => v === i) && pool.length > 1) pool.push(pool.shift());
+  let ans = [];
+  frame(it, `<div class="q">${md(it.q)}</div>
+    <div class="answer-label">Натискай рядки по черзі, щоб скласти програму. Натисни на рядок у програмі, щоб повернути його назад.</div>
+    <div class="zone target" id="tz"></div>
+    <div class="answer-label">Рядки:</div>
+    <div class="zone" id="pz"></div>`);
+  let locked = false;
+  const draw = () => {
+    $("#tz").innerHTML = ans.length ? ans.map((k, p) => `<button class="piece" data-p="${p}">${hl(correct[k])}</button>`).join("") : `<div class="empty">Тут з'явиться твоя програма</div>`;
+    $("#pz").innerHTML = pool.length ? pool.map((k, p) => `<button class="piece" data-q="${p}">${hl(correct[k])}</button>`).join("") : `<div class="empty">Усі рядки використано</div>`;
+    if (locked) { app.querySelectorAll(".piece").forEach(b => b.disabled = true); return; }
+    app.querySelectorAll("#tz .piece").forEach(b => b.onclick = () => { pool.push(ans.splice(+b.dataset.p, 1)[0]); draw(); });
+    app.querySelectorAll("#pz .piece").forEach(b => b.onclick = () => { ans.push(pool.splice(+b.dataset.q, 1)[0]); draw(); });
+    $("#ck").disabled = pool.length > 0;
+  };
+  const reveal = `<p>Правильна програма:</p>${pre(it.code)}`;
+  const check = async () => {
+    const exact = ans.every((v, i) => v === i);
+    let ok = exact, note = "";
+    if (!exact && it.out) {
+      setActs(`<span class="status">Запускаю програму…</span>`);
+      try {
+        const r = await runPy(ans.map(k => correct[k]).join("\n"), []);
+        ok = !r.err && normOut(r.out) === normOut(it.out);
+        note = r.err ? `<p>Програма видала помилку: ${esc(r.err.tip)}</p>` : `<p>Твоя програма вивела:</p><pre class="code">${esc(r.out.trim() || "(нічого)")}</pre>`;
+      } catch (e) { ok = false; }
+      setActs(`<button class="btn" id="ck">Перевірити</button>`, { ck: check });
+    }
+    if (ok) { locked = true; draw(); feedback(true, praise(), it.why); nextBtn(); return; }
+    run.st.tries = (run.st.tries || 0) + 1; lose(); frame0Hearts();
+    if (run.st.tries >= 2 || run.hearts <= 0) { locked = true; draw(); feedback(false, "Не зовсім", it.why, note + reveal); nextBtn(); }
+    else feedback(false, "Спробуй ще раз", "Порядок неправильний. Переставляй рядки й перевір знову.", note);
+  };
+  setActs(`<button class="btn" id="ck">Перевірити</button>`, { ck: check });
+  draw();
+}
+
+function rFill(it) {
+  const parts = it.code.split("___");
+  let html = "";
+  parts.forEach((p, i) => {
+    html += hl(p);
+    if (i < parts.length - 1) {
+      const w = Math.max(3, ...it.a[i].map(s => s.length)) + 1;
+      html += `<input type="text" id="b${i}" data-i="${i}" style="width:${w + 2}ch" spellcheck="false" autocomplete="off" aria-label="Пропуск ${i + 1}">`;
+    }
+  });
+  frame(it, `<div class="q">${md(it.q)}</div><pre class="code fillcode">${html}</pre>`);
+  const ins = [...app.querySelectorAll(".fillcode input")];
+  const check = () => {
+    if (ins.some(x => !x.value.trim())) return;
+    let all = true;
+    ins.forEach((x, i) => { const ok = it.a[i].some(a => normFill(a) === normFill(x.value)); x.classList.toggle("right", ok); x.classList.toggle("wrong", !ok); all = all && ok; });
+    if (all) { ins.forEach(x => x.disabled = true); feedback(true, praise(), it.why); nextBtn(); return; }
+    let filled = it.code; it.a.forEach(a => { filled = filled.replace("___", a[0]); });
+    if (attemptWrong(it, `<p>Правильно так:</p>${pre(filled)}`)) ins.forEach(x => x.disabled = true);
+  };
+  ins.forEach(x => x.addEventListener("keydown", e => { if (e.key === "Enter") check(); }));
+  setActs(`<button class="btn" id="ck">Перевірити</button>`, { ck: check });
+  if (ins[0]) ins[0].focus({ preventScroll: true });
+}
+
+// --- задача з кодом ---
+function editorKeys(ta) {
+  ta.addEventListener("keydown", e => {
+    const s = ta.selectionStart, v = ta.value;
+    if (e.key === "Tab" && !e.shiftKey) { e.preventDefault(); ta.setRangeText("    ", s, ta.selectionEnd, "end"); }
+    else if (e.key === "Enter" && !e.ctrlKey && !e.metaKey) {
+      e.preventDefault();
+      const lineStart = v.lastIndexOf("\n", s - 1) + 1;
+      const line = v.slice(lineStart, s);
+      let ind = (line.match(/^\s*/) || [""])[0];
+      if (/:\s*$/.test(line)) ind += "    ";
+      ta.setRangeText("\n" + ind, s, ta.selectionEnd, "end");
+    } else if (e.key === "Backspace" && s === ta.selectionEnd) {
+      const lineStart = v.lastIndexOf("\n", s - 1) + 1;
+      const before = v.slice(lineStart, s);
+      if (before.length >= 4 && /^ +$/.test(before)) { e.preventDefault(); const n = before.length % 4 || 4; ta.setRangeText("", s - n, s, "end"); }
+    }
+  });
+}
+function rCode(it) {
+  if (run.st.code === undefined) run.st.code = it.starter || "";
+  frame(it, `<div class="q">${md(it.q)}</div>
+    <label class="answer-label" for="ed">Твій код:</label>
+    <textarea id="ed" class="editor" rows="10" spellcheck="false" autocomplete="off" autocapitalize="off"></textarea>
+    <div id="hintbox"></div>
+    <div class="tests" id="tests"></div>`);
+  const ed = $("#ed"); ed.value = run.st.code;
+  let cm = null;
+  if (window.CodeMirror) {
+    cm = CodeMirror.fromTextArea(ed, {
+      mode: "python", lineNumbers: true, indentUnit: 4, tabSize: 4, indentWithTabs: false, smartIndent: true,
+      viewportMargin: Infinity, inputStyle: "textarea", spellcheck: false, autocorrect: false,
+      extraKeys: { Tab: c => c.somethingSelected() ? c.execCommand("indentMore") : c.execCommand("insertSoftTab"), "Shift-Tab": "indentLess" },
+    });
+    cm.on("change", () => { run.st.code = cm.getValue(); });
+    cm.focus(); cm.setCursor(cm.lineCount(), 0);
+  } else {
+    editorKeys(ed);
+    ed.addEventListener("input", () => { run.st.code = ed.value; });
+    ed.focus({ preventScroll: true }); ed.setSelectionRange(ed.value.length, ed.value.length);
+  }
+  const getSrc = () => cm ? cm.getValue() : ed.value;
+  const lockEd = () => { if (cm) cm.setOption("readOnly", "nocursor"); else ed.disabled = true; };
+  run.st.fails = run.st.fails || 0;
+  const acts = () => {
+    setActs(`<button class="link" id="hn">Підказка</button>${run.st.fails >= 2 ? `<button class="link" id="sol">Показати розв'язок (−2 сегменти)</button>` : ""}<span class="spacer"></span><button class="btn" id="ck">Перевірити</button>`, {
+      hn: () => { $("#hintbox").innerHTML = `<div class="hint">${md(it.hint)}</div>`; },
+      sol: () => { lose(2); frame0Hearts(); lockEd(); const f = achieve("peek"); feedback(false, "Розв'язок", "Розбери його і спробуй написати сам наступного разу." + (f.length ? " А ще в гардеробі тепер є каструля на голову. Для підглядачів." : ""), pre(it.solution)); nextBtn(); },
+      ck: check,
+    });
+  };
+  const check = async () => {
+    const src = getSrc();
+    if (it.forbid && it.forbid.some(f => src.includes(f))) {
+      $("#tests").innerHTML = `<div class="test fail"><div class="head">Заборонено</div>У цій задачі не можна використовувати ${it.forbid.map(f => `<code>${esc(f)}</code>`).join(", ")}. Напиши алгоритм сам.</div>`;
+      return;
+    }
+    setActs(`<span class="status">Перевіряю…</span>`);
+    let results = [];
+    try {
+      for (const t of it.tests) {
+        if (t.call) {
+          const r = await runPy(src + "\n__r = repr(" + t.call + ")\nprint('@@R@@' + __r)\n", []);
+          const [printed, got] = r.out.split("@@R@@");
+          const ok = !r.err && got !== undefined && got.trim() === t.expect;
+          results.push({ ok, label: t.label || t.call, expect: t.expect, got: got !== undefined ? got.trim() : null, printed: (printed || "").trim(), err: r.err, call: t.call });
+        } else {
+          const r = await runPy(src, t.input);
+          const norm = s => s.replace(/\r/g, "").split("\n").map(l => l.replace(/\s+$/, "")).join("\n").trim();
+          const ok = !r.err && norm(r.out) === norm(t.expect);
+          results.push({ ok, label: "Введення: " + t.input.join(" ↵ "), expect: t.expect, got: norm(r.out), err: r.err });
+        }
+      }
+    } catch (e) {
+      $("#tests").innerHTML = `<div class="test fail"><div class="head">Не вдалося завантажити Python</div>Перевір інтернет і натисни «Перевірити» ще раз.</div>`;
+      acts(); return;
+    }
+    const allOk = results.every(r => r.ok);
+    $("#tests").innerHTML = results.map(r => `<div class="test ${r.ok ? "ok" : "fail"}">
+      <div class="head">${r.ok ? "✓" : "✗"} ${esc(r.label)}</div>
+      ${r.ok ? "" : r.err ? `<div>${esc(r.err.tip)}</div><pre>${esc(r.err.raw)}</pre>` : `<div>Очікували:</div><pre>${esc(r.expect)}</pre><div>Отримали:</div><pre>${esc(r.got === null || r.got === "" ? "(нічого)" : r.got)}</pre>`}
+      ${!r.ok && r.call && !r.err && r.got === "None" ? `<div>Функція нічого не повертає. Можливо, забув(-ла) <code>return</code>?</div>` : ""}
+    </div>`).join("");
+    if (allOk) { lockEd(); feedback(true, praise(), "Усі тести пройдено.", ""); nextBtn(); }
+    else { run.st.fails++; acts(); }
+  };
+  acts();
+}
+
+// ---------- кінець рівня ----------
+function renderDone() {
+  run.over = true; hideGuard(); leaveFullscreen();
+  const lv = LEVELS[run.li];
+  const s = run.mistakes <= 1 ? 3 : run.mistakes <= 3 ? 2 : 1;
+  const prev = prog.stars[lv.id] || 0;
+  const before = openIds();
+  if (s > prev) { prog.stars[lv.id] = s; save(); }
+  if (run.mistakes === 0) achieve("perfect");
+  const fresh = [...SKINS, ...ACCS].filter(x => isOpen(x) && !before.includes(x.id));
+  const hasNext = run.li + 1 < LEVELS.length;
+  const msg = s === 3 ? "Відмінно!" : s === 2 ? "Добре!" : "Пройдено!";
+  app.innerHTML = `<div class="center">
+    <div class="stamp">${msg}</div>
+    <h2>${esc(lv.title)}</h2>
+    ${snakeSVG({ len: run.hearts, mood: s === 3 ? "wow" : "happy", cls: "big" })}
+    ${starStr(s, "bigstars")}
+    ${fresh.length ? `<div class="unlock">Відкрито в гардеробі: ${fresh.map(x => `<b>${esc(x.name)}</b>`).join(", ")}</div>` : ""}
+    <p>Помилок: ${run.mistakes}. ${s < 3 ? "Три зірки дають, якщо помилок не більше однієї." : run.mistakes === 0 ? "Чистий рівень!" : "Майже ідеально!"}${s > prev && prev ? " Новий рекорд!" : ""}${run.leaves ? ` Виходів з гри: ${run.leaves}.` : ""}</p>
+    <div class="row">${hasNext ? `<button class="btn" id="nx">Наступний рівень →</button>` : ""}<button class="btn ghost" id="map">На карту</button><button class="link" id="again">Пройти ще раз</button>${fresh.length ? `<button class="link" id="ward">Приміряти</button>` : ""}</div>
+  </div>`;
+  const li = run.li;
+  if (fresh.length) $("#ward").onclick = renderWardrobe;
+  if (hasNext) $("#nx").onclick = () => renderIntro(li + 1);
+  $("#map").onclick = renderMap;
+  $("#again").onclick = () => startLevel(li);
+  scrollTo(0, 0);
+}
+function renderFail() {
+  run.over = true; hideGuard(); leaveFullscreen();
+  const li = run.li;
+  const fresh = achieve("fail");
+  app.innerHTML = `<div class="center">
+    <div class="stamp">${esc(prog.name)} лишилась без хвоста</div>
+    ${snakeSVG({ len: 0, mood: "sad", cls: "big" })}
+    <h2>${esc(LEVELS[li].title)}</h2>
+    <p>Нічого страшного. Перечитай пояснення до задач, де були помилки, і спробуй ще раз — задачі ті самі, відповіді в питаннях перемішаються, а хвіст відросте.</p>
+    ${fresh.length ? `<div class="unlock">Утішний приз у гардеробі: <b>${esc(fresh[0].name)}</b></div>` : ""}
+    <div class="row"><button class="btn" id="again">Почати рівень заново</button><button class="btn ghost" id="map">На карту</button>${fresh.length ? `<button class="link" id="ward">Приміряти</button>` : ""}</div>
+  </div>`;
+  if (fresh.length) $("#ward").onclick = renderWardrobe;
+  $("#again").onclick = () => startLevel(li);
+  $("#map").onclick = renderMap;
+  scrollTo(0, 0);
+}
+
+window.__game = { runPy, LEVELS, startLevel, goto: (li, k) => { startLevel(li); run.idx = k; run.st = {}; renderItem(); } };
+renderMap();
+})();
+
+</script>
+
+</body>
+</html>
