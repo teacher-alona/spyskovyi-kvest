@@ -199,6 +199,11 @@ textarea { resize: vertical; line-height: 1.6; }
 #toast.show { opacity: 1; transform: none; }
 #guard { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; padding: 16px; background: color-mix(in srgb, var(--paper) 88%, transparent); backdrop-filter: blur(6px); }
 .guardcard { background: var(--card); border: 2px solid var(--red); border-radius: 16px; padding: 22px; max-width: 440px; display: grid; gap: 14px; justify-items: start; box-shadow: 0 16px 40px rgba(0,0,0,.25); }
+.whoami { display: flex; gap: 12px; align-items: center; justify-content: flex-end; font-size: .9rem; color: var(--muted); min-height: 1.4em; }
+.login { max-width: 420px; }
+.logintitle { font-size: clamp(2rem, 7vw, 3rem); color: var(--ink); font-weight: 700; }
+.loginform { display: grid; gap: 8px; width: 100%; }
+.loginform input { max-width: 100%; }
 /* ---------- змійка ---------- */
 .snake { display: block; width: 100%; max-width: 190px; height: auto; overflow: visible; }
 .snake.big { max-width: 280px; }
@@ -208,6 +213,8 @@ textarea { resize: vertical; line-height: 1.6; }
 @keyframes fall { 30% { transform: translate(-2px, -6px) rotate(-10deg); } to { transform: translate(-8px, 40px) rotate(-50deg); opacity: 0; } }
 .snake .poptxt { font-family: var(--f-code); font-size: 10px; font-weight: 600; fill: var(--red); animation: rise 1.6s ease-out forwards; }
 @keyframes rise { 0% { opacity: 0; transform: translateY(6px); } 20% { opacity: 1; transform: none; } 70% { opacity: 1; } to { opacity: 0; transform: translateY(-6px); } }
+.snake .flame { animation: flick .25s ease-in-out infinite alternate; transform-box: fill-box; transform-origin: right center; }
+@keyframes flick { to { transform: scaleX(1.35); } }
 .snake .prop { animation: spin 1.2s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 .snake.hop .head { animation: hop .55s ease; transform-box: fill-box; transform-origin: bottom; }
@@ -1369,7 +1376,117 @@ let prog = { stars: {}, all: false };
 try { const s = JSON.parse(localStorage.getItem(KEY) || "null"); if (s && s.stars) prog = s; } catch (e) {}
 function fixProg() { prog.stars = prog.stars || {}; prog.skin = prog.skin || "classic"; prog.acc = prog.acc || "none"; prog.name = prog.name || "Пітоша"; prog.all = false; }
 fixProg();
-function save() { try { localStorage.setItem(KEY, JSON.stringify(prog)); } catch (e) {} }
+function save() { prog.updatedAt = Date.now(); try { localStorage.setItem(KEY, JSON.stringify(prog)); } catch (e) {} scheduleSync(); }
+
+// ---------- акаунти (Google Таблиця через Apps Script) ----------
+const API = "https://script.google.com/macros/s/AKfycbzz2E9hzUOpcGkDMOzLDrQZIxqwHNrInr2nWlIP2vs9xHrtPnxU3b1JxwZGUKYEgn3-/exec";
+const SKEY = "spyskovyi-kvest-session";
+let session = null;            // { login, pin, name, cls }
+let offline = false;           // гра без входу
+try { session = JSON.parse(localStorage.getItem(SKEY) || "null"); } catch (e) {}
+async function api(body) {
+  const r = await fetch(API, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(body), redirect: "follow" });
+  return r.json();
+}
+function summary() {
+  return {
+    levels: LEVELS.map(l => prog.stars[l.id] || 0),
+    total: LEVELS.reduce((a, l) => a + (prog.stars[l.id] || 0), 0),
+    bytes: prog.bytes || 0, leaves: prog.leaves || 0,
+    snake: prog.name, skin: prog.skin, acc: prog.acc,
+  };
+}
+let syncTimer = null, syncing = false, dirty = false, again = false;
+function scheduleSync(now) {
+  if (!session || offline) return;
+  dirty = true;
+  clearTimeout(syncTimer);
+  syncTimer = setTimeout(syncNow, now ? 0 : 1500);
+}
+async function syncNow() {
+  if (!session || offline || !dirty) return;
+  if (syncing) { again = true; return; }
+  syncing = true; dirty = false; again = false;
+  let failed = false;
+  try {
+    const r = await api({ action: "save", login: session.login, pin: session.pin, data: prog, summary: summary() });
+    if (!r.ok) failed = true;
+  } catch (e) { failed = true; }
+  syncing = false;
+  if (failed) { dirty = true; syncTimer = setTimeout(syncNow, 8000); }
+  else if (again || dirty) { dirty = true; syncTimer = setTimeout(syncNow, 300); }
+}
+window.addEventListener("pagehide", () => { if (dirty) syncNow(); });
+
+function renderLogin(msg) {
+  run = null;
+  app.innerHTML = `<div class="center login">
+    <div class="eyebrow">Python · списки</div>
+    <h1 class="logintitle">Списковий квест</h1>
+    ${snakeSVG({ len: N, cls: "big", skin: "classic", acc: "none" })}
+    <form id="lf" class="loginform" autocomplete="off">
+      <label class="answer-label" for="lg">Логін</label>
+      <input type="text" id="lg" autocapitalize="off" spellcheck="false" placeholder="наприклад, prizvyshche.i" required>
+      <label class="answer-label" for="pn">PIN</label>
+      <input type="text" id="pn" inputmode="numeric" maxlength="8" placeholder="4 цифри" required>
+      <div id="lmsg" class="status">${msg ? esc(msg) : "Логін і PIN дає вчителька."}</div>
+      <div class="row"><button class="btn" id="lgo" type="submit">Увійти</button><span id="lalt"></span></div>
+    </form>
+  </div>`;
+  $("#lf").addEventListener("submit", async e => {
+    e.preventDefault();
+    const login = $("#lg").value.trim().toLowerCase(), pin = $("#pn").value.trim();
+    if (!login || !pin) return;
+    $("#lgo").disabled = true; $("#lmsg").textContent = "Перевіряю…";
+    try {
+      const r = await api({ action: "login", login, pin });
+      if (!r.ok) { $("#lgo").disabled = false; $("#lmsg").textContent = "Невірний логін або PIN. Перевір і спробуй ще раз."; return; }
+      session = { login, pin, name: r.name, cls: r.cls };
+      try { localStorage.setItem(SKEY, JSON.stringify(session)); } catch (e2) {}
+      applyServer(r.data);
+      renderMap();
+    } catch (err) {
+      $("#lgo").disabled = false;
+      $("#lmsg").textContent = "Не вдалося з'єднатися з сервером. Перевір інтернет і спробуй ще раз.";
+      $("#lalt").innerHTML = `<button class="link" type="button" id="off">Грати без збереження</button>`;
+      $("#off").onclick = () => { offline = true; renderMap(); };
+    }
+  });
+  $("#lg").focus();
+}
+// дані з таблиці мають перевагу; локальний прогрес беремо лише якщо він цього ж учня або нічий
+function applyServer(data) {
+  const localNewer = prog.owner === session.login && (prog.updatedAt || 0) > ((data && data.updatedAt) || 0);
+  if (data && typeof data === "object" && !localNewer) { prog = data; }
+  else if (prog.owner && prog.owner !== session.login) { prog = { stars: {}, all: false, ach: {} }; }
+  prog.owner = session.login;
+  fixProg();
+  try { localStorage.setItem(KEY, JSON.stringify(prog)); } catch (e) {}
+  if (localNewer || !data) { dirty = true; scheduleSync(true); }
+}
+async function boot() {
+  if (!session) return renderLogin();
+  if (prog.owner === session.login) renderMap(); else app.innerHTML = `<div class="center"><p class="status">Завантажую твій прогрес…</p></div>`;
+  try {
+    const r = await api({ action: "login", login: session.login, pin: session.pin });
+    if (!r.ok) { session = null; try { localStorage.removeItem(SKEY); } catch (e) {} return renderLogin("Вхід застарів. Увійди ще раз."); }
+    session.name = r.name; session.cls = r.cls;
+    const before = JSON.stringify(prog);
+    applyServer(r.data);
+    if (!run && JSON.stringify(prog) !== before) renderMap();
+    else if (!run && !app.querySelector(".hero")) renderMap();
+  } catch (e) {
+    if (prog.owner === session.login) { if (!app.querySelector(".hero") && !run) renderMap(); }
+    else renderLogin("Не вдалося з'єднатися з сервером.");
+  }
+}
+function logout() {
+  if (dirty) syncNow();
+  session = null; offline = false;
+  try { localStorage.removeItem(SKEY); localStorage.removeItem(KEY); } catch (e) {}
+  prog = { stars: {}, all: false, ach: {} }; fixProg();
+  renderLogin();
+}
 
 // ---------- утиліти ----------
 const esc = s => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
@@ -1427,6 +1544,11 @@ const SKINS = [
   { id: "sock", name: "Шкарпетка", need: 27, col: i => (i % 2 ? "#fdfdfd" : "#ff6b6b"), rx: 5,
     seg: (x, y) => `<path d="M${x + 1} ${y - 6} h20" stroke="#3d8bfd" stroke-width="2"/>`, head: "#ff6b6b",
     headDeco: (hx, hy) => `<path d="M${hx + 1} ${hy + 9} h32" stroke="#3d8bfd" stroke-width="2"/>` },
+  { id: "rocket", name: "Ракета", need: 30, col: () => "#e9eef6", rx: 4, idx: "#1b2a55",
+    seg: (x, y, i) => `<rect x="${x}" y="${y - 2}" width="22" height="4" fill="#e8483f"/>`
+      + (i === N - 1 ? `<path d="M${x + 2} ${y - 11} L${x - 6} ${y - 19} L${x + 10} ${y - 11} Z M${x + 2} ${y + 11} L${x - 6} ${y + 19} L${x + 10} ${y + 11} Z" fill="#e8483f"/><g class="flame"><path d="M${x} ${y - 6} Q${x - 14} ${y} ${x} ${y + 6} Z" fill="#ffb02e"/><path d="M${x} ${y - 3} Q${x - 8} ${y} ${x} ${y + 3} Z" fill="#fff3b0"/></g>` : ""),
+    head: "#e9eef6", headRx: 8,
+    headDeco: (hx, hy) => `<path d="M${hx + 30} ${hy - 13} Q${hx + 46} ${hy - 6} ${hx + 48} ${hy} Q${hx + 46} ${hy + 6} ${hx + 30} ${hy + 13} Z" fill="#e8483f" stroke="rgba(0,0,0,.25)" stroke-width="1.2"/><rect x="${hx}" y="${hy + 7}" width="30" height="3" fill="#e8483f"/>` },
   { id: "rainbow", name: "Веселка", need: 33, col: i => `hsl(${(i * 62 + 330) % 360} 72% 55%)` },
   { id: "glitch", name: "Глітч", ach: "fail", col: () => "#1a1a1a", idx: "#39ff14", jitter: true,
     seg: () => "", head: "#1a1a1a",
@@ -1447,8 +1569,10 @@ const ACCS = [
   { id: "crown", name: "Корона", need: 30 },
   { id: "halo", name: "Німб", ach: "perfect" },
   { id: "pot", name: "Каструля", ach: "peek" },
+  { id: "devil", name: "Роги диявола", ach: "lastdeath", secret: true },
+  { id: "loafhat", name: "Батон на голові", ach: "loafhat", secret: true },
 ];
-const ACH = { fail: "Лишитися без хвоста", perfect: "Пройти рівень без жодної помилки", peek: "Підглянути розв'язок задачі" };
+const ACH = { fail: "Лишитися без хвоста", perfect: "Пройти рівень без жодної помилки", peek: "Підглянути розв'язок задачі", lastdeath: "", loafhat: "" };
 const isOpen = x => x.ach ? !!(prog.ach && prog.ach[x.ach]) : x.need <= totalStars();
 const openIds = () => [...SKINS, ...ACCS].filter(isOpen).map(x => x.id);
 function achieve(key) {
@@ -1462,9 +1586,10 @@ const skinOf = id => SKINS.find(s => s.id === id) || SKINS[0];
 const popName = () => (prog.name || "змійка").trim().toLowerCase().replace(/[^\wЀ-ӿ]+/g, "_") || "змійка";
 // len — скільки сегментів лишилось; falling — скільки щойно відвалилось
 function snakeSVG(o) {
-  const sk = skinOf(o.skin || prog.skin), acc = o.acc || prog.acc, len = o.len, falling = o.falling || 0, mood = o.mood || "happy";
-  const W = 8 + N * 26 + 44, H = 66;
-  const segX = i => 8 + (N - 1 - i) * 26, segY = i => 40 + Math.sin((N - i) * 1.15) * 5;
+  const accId = o.acc || prog.acc, accItem = ACCS.find(a => a.id === accId);
+  const sk = skinOf(o.skin || prog.skin), acc = o.acc ? o.acc : (accItem && isOpen(accItem) ? accId : "none"), len = o.len, falling = o.falling || 0, mood = o.mood || "happy";
+  const W = 18 + N * 26 + 58, H = 66;
+  const segX = i => 18 + (N - 1 - i) * 26, segY = i => 40 + Math.sin((N - i) * 1.15) * 5;
   let g = "";
   for (let i = N - 1; i >= 0; i--) {
     const x = segX(i), y = segY(i);
@@ -1499,6 +1624,8 @@ function snakeSVG(o) {
   if (acc === "propeller") head += `<path d="M${hx + 4} ${hy - 11} Q${hx + 17} ${hy - 29} ${hx + 30} ${hy - 11} Z" fill="#e8483f"/><path d="M${hx + 17} ${hy - 20} v-14" stroke="#555" stroke-width="1.6"/><g class="prop" style="transform-origin:${hx + 17}px ${hy - 33}px"><ellipse cx="${hx + 11}" cy="${hy - 33}" rx="6" ry="1.8" fill="#f2c94c"/><ellipse cx="${hx + 23}" cy="${hy - 33}" rx="6" ry="1.8" fill="#3d8bfd"/></g><path d="M${hx + 6} ${hy - 13} Q${hx + 17} ${hy - 18} ${hx + 28} ${hy - 13}" stroke="#f2c94c" stroke-width="2" fill="none"/>`;
   if (acc === "duck") head += `<ellipse cx="${hx + 15}" cy="${hy - 18}" rx="8.5" ry="5.5" fill="#ffd43b" stroke="#d9a400" stroke-width="1"/><circle cx="${hx + 21}" cy="${hy - 24}" r="4.6" fill="#ffd43b" stroke="#d9a400" stroke-width="1"/><path d="M${hx + 25} ${hy - 24.5} l5 1 l-5 2 Z" fill="#ff8c1a"/><circle cx="${hx + 22.5}" cy="${hy - 25.5}" r="1" fill="#1b1b1b"/>`;
   if (acc === "horn") head += `<path d="M${hx + 13} ${hy - 13} L${hx + 19} ${hy - 35} L${hx + 24} ${hy - 13} Z" fill="#ffd6f0" stroke="#c45bab" stroke-width="1.2"/><path d="M${hx + 15} ${hy - 19} l7 -2 M${hx + 16.5} ${hy - 25} l5 -1.5" stroke="#c45bab" stroke-width="1.2"/>`;
+  if (acc === "loafhat") head += `<g transform="rotate(-8 ${hx + 17} ${hy - 19})"><rect x="${hx + 1}" y="${hy - 25}" width="32" height="12" rx="6" fill="#d9a35b" stroke="#a8743a" stroke-width="1.3"/><path d="M${hx + 8} ${hy - 15} l4 -8 M${hx + 15} ${hy - 15} l4 -8 M${hx + 22} ${hy - 15} l4 -8" stroke="#f6d9a2" stroke-width="2" stroke-linecap="round"/></g>`;
+  if (acc === "devil") head += `<g fill="#d42a2a" stroke="#8a1010" stroke-width="1.2" stroke-linejoin="round"><path d="M${hx + 6} ${hy - 12} Q${hx + 1} ${hy - 21} ${hx + 6} ${hy - 29} Q${hx + 8} ${hy - 20} ${hx + 14} ${hy - 13} Z"/><path d="M${hx + 21} ${hy - 13} Q${hx + 27} ${hy - 20} ${hx + 29} ${hy - 29} Q${hx + 34} ${hy - 21} ${hx + 29} ${hy - 12} Z"/></g>`;
   if (acc === "halo") head += `<ellipse cx="${hx + 17}" cy="${hy - 22}" rx="12" ry="3.4" fill="none" stroke="#f2c230" stroke-width="2.6"/>`;
   if (acc === "pot") head += `<rect x="${hx + 2}" y="${hy - 25}" width="30" height="15" rx="2" fill="#b8c0cc" stroke="#7d8794" stroke-width="1.2"/><rect x="${hx - 4}" y="${hy - 22}" width="7" height="3" rx="1.5" fill="#7d8794"/><rect x="${hx + 31}" y="${hy - 22}" width="7" height="3" rx="1.5" fill="#7d8794"/><path d="M${hx + 2} ${hy - 20} h30" stroke="#9aa3b0" stroke-width="1"/><rect x="${hx + 6}" y="${hy - 22}" width="5" height="9" rx="1.5" fill="rgba(255,255,255,.45)"/>`;
   if (acc === "crown") head += `<path d="M${hx + 8} ${hy - 13} L${hx + 7} ${hy - 25} L${hx + 12.5} ${hy - 19} L${hx + 17} ${hy - 28} L${hx + 21.5} ${hy - 19} L${hx + 27} ${hy - 25} L${hx + 26} ${hy - 13} Z" fill="#f2c230" stroke="#b8860b" stroke-width="1.2"/><circle cx="${hx + 17}" cy="${hy - 17}" r="1.8" fill="#e8483f"/>`;
@@ -1576,6 +1703,7 @@ const active = () => run && !run.over;
 function penalize(reason) {
   if (!active() || guardOpen) return;
   run.leaves = (run.leaves || 0) + 1;
+  prog.leaves = (prog.leaves || 0) + 1; save();
   lose(1);
   frame0Hearts();
   if (run.hearts <= 0) { hideGuard(); renderFail(); return; }
@@ -1641,6 +1769,7 @@ function renderMap() {
   const n = LEVELS.length;
   app.innerHTML = `
   <header class="hero">
+    <div class="whoami">${session ? `<span>${esc(session.name)}${session.cls ? " · " + esc(session.cls) : ""}</span><button class="link" id="logout">Вийти</button>` : offline ? `<span>Гра без збереження</span><button class="link" id="logout">Увійти</button>` : ""}</div>
     <div class="eyebrow">Python · 8 клас · списки</div>
     <h1>Списковий квест</h1>
     <p>Кожен рівень починається з розминки з основ. На рівнях «нова тема» спершу коротке пояснення, потім задачі. Наступний рівень відкривається, коли пройдено попередній.</p>
@@ -1670,17 +1799,18 @@ function renderMap() {
   `;
   app.querySelectorAll(".cell").forEach(b => b.onclick = () => renderIntro(+b.dataset.li));
   app.querySelector("#wardrobe").onclick = renderWardrobe;
+  if (app.querySelector("#logout")) app.querySelector("#logout").onclick = logout;
 }
 
 
 function renderWardrobe() {
   const total = totalStars();
   const tile = (x, kind) => {
-    const open = isOpen(x), sel = prog[kind] === x.id;
+    const open = isOpen(x), sel = open && prog[kind] === x.id;
     const prev = snakeSVG(kind === "skin" ? { len: N, skin: x.id, acc: "none" } : { len: N, acc: x.id });
     return `<button class="wtile ${sel ? "sel" : ""}" data-kind="${kind}" data-id="${x.id}" ${open ? "" : "disabled"}>
       ${prev}<span class="wname">${esc(x.name)}</span>
-      <span class="wlock">${sel ? "Обрано" : open ? "Відкрито" : (x.ach ? "Секрет: " + ACH[x.ach].toLowerCase() : `Потрібно ★ ${x.need}`)}</span></button>`;
+      <span class="wlock">${sel ? "Обрано" : open ? "Відкрито" : (x.secret ? "Секрет" : x.ach ? "Секрет: " + ACH[x.ach].toLowerCase() : `Потрібно ★ ${x.need}`)}</span></button>`;
   };
   app.innerHTML = `<div class="center wardrobe">
     <button class="link" id="back">← На карту</button>
@@ -1993,8 +2123,10 @@ function renderDone() {
   const s = run.mistakes <= 1 ? 3 : run.mistakes <= 3 ? 2 : 1;
   const prev = prog.stars[lv.id] || 0;
   const before = openIds();
-  if (s > prev) { prog.stars[lv.id] = s; save(); }
+  if (s > prev) { prog.stars[lv.id] = s; }
+  save(); scheduleSync(true);
   if (run.mistakes === 0) achieve("perfect");
+  if (lv.id === "slices" && prog.skin === "loaf" && prog.acc === "pot") achieve("loafhat");
   const fresh = [...SKINS, ...ACCS].filter(x => isOpen(x) && !before.includes(x.id));
   const hasNext = run.li + 1 < LEVELS.length;
   const msg = s === 3 ? "Відмінно!" : s === 2 ? "Добре!" : "Пройдено!";
@@ -2017,13 +2149,13 @@ function renderDone() {
 function renderFail() {
   run.over = true; hideGuard(); leaveFullscreen();
   const li = run.li;
-  const fresh = achieve("fail");
+  const fresh = [...achieve("fail"), ...(run.idx >= run.items.length - 1 ? achieve("lastdeath") : [])];
   app.innerHTML = `<div class="center">
     <div class="stamp">${esc(prog.name)} лишилась без хвоста</div>
     ${snakeSVG({ len: 0, mood: "sad", cls: "big" })}
     <h2>${esc(LEVELS[li].title)}</h2>
     <p>Нічого страшного. Перечитай пояснення до задач, де були помилки, і спробуй ще раз — задачі ті самі, відповіді в питаннях перемішаються, а хвіст відросте.</p>
-    ${fresh.length ? `<div class="unlock">Утішний приз у гардеробі: <b>${esc(fresh[0].name)}</b></div>` : ""}
+    ${fresh.length ? `<div class="unlock">${fresh.length > 1 ? "Утішні призи" : "Утішний приз"} у гардеробі: ${fresh.map(x => `<b>${esc(x.name)}</b>`).join(", ")}</div>` : ""}
     <div class="row"><button class="btn" id="again">Почати рівень заново</button><button class="btn ghost" id="map">На карту</button>${fresh.length ? `<button class="link" id="ward">Приміряти</button>` : ""}</div>
   </div>`;
   if (fresh.length) $("#ward").onclick = renderWardrobe;
@@ -2033,7 +2165,7 @@ function renderFail() {
 }
 
 window.__game = { runPy, LEVELS, startLevel, goto: (li, k) => { startLevel(li); run.idx = k; run.st = {}; renderItem(); } };
-renderMap();
+boot();
 })();
 
 </script>
