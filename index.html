@@ -204,6 +204,11 @@ textarea { resize: vertical; line-height: 1.6; }
 .logintitle { font-size: clamp(2rem, 7vw, 3rem); color: var(--ink); font-weight: 700; }
 .loginform { display: grid; gap: 8px; width: 100%; }
 .loginform input { max-width: 100%; }
+.sync { font-size: .85rem; font-weight: 700; }
+.sync.ok { color: var(--green); }
+.sync.saving { color: var(--muted); }
+.sync.fail { color: var(--red); }
+.whoami { flex-wrap: wrap; }
 /* ---------- змійка ---------- */
 .snake { display: block; width: 100%; max-width: 190px; height: auto; overflow: visible; }
 .snake.big { max-width: 280px; }
@@ -1407,16 +1412,39 @@ async function syncNow() {
   if (!session || offline || !dirty) return;
   if (syncing) { again = true; return; }
   syncing = true; dirty = false; again = false;
-  let failed = false;
+  setSync("saving");
+  let failed = false, why = "";
   try {
     const r = await api({ action: "save", login: session.login, pin: session.pin, data: prog, summary: summary() });
-    if (!r.ok) failed = true;
-  } catch (e) { failed = true; }
+    if (!r.ok) { failed = true; why = r.error || "server"; }
+  } catch (e) { failed = true; why = "network"; }
   syncing = false;
-  if (failed) { dirty = true; syncTimer = setTimeout(syncNow, 8000); }
+  if (failed) { dirty = true; setSync("fail", why); syncTimer = setTimeout(syncNow, 8000); }
   else if (again || dirty) { dirty = true; syncTimer = setTimeout(syncNow, 300); }
+  else setSync("ok");
 }
-window.addEventListener("pagehide", () => { if (dirty) syncNow(); });
+// стан збереження видно на карті й на екрані результату
+let syncState = "ok", syncWhy = "";
+function syncLabel() {
+  if (!session || offline) return "";
+  if (syncState === "saving") return `<span class="sync saving">Зберігаю…</span>`;
+  if (syncState === "fail") return `<span class="sync fail">Не збережено${syncWhy === "network" ? ": немає зв'язку з таблицею" : syncWhy ? ": " + esc(syncWhy) : ""}. Спробую ще раз</span>`;
+  return `<span class="sync ok">Збережено ✓</span>`;
+}
+function setSync(st, why) {
+  syncState = st; syncWhy = why || "";
+  document.querySelectorAll(".syncbox").forEach(el => { el.innerHTML = syncLabel(); });
+}
+// якщо вкладку закривають, відправляємо останній стан навіть без відповіді
+function beacon() {
+  if (!dirty || !session || offline || !navigator.sendBeacon) return;
+  try {
+    const body = JSON.stringify({ action: "save", login: session.login, pin: session.pin, data: prog, summary: summary() });
+    navigator.sendBeacon(API, new Blob([body], { type: "text/plain;charset=utf-8" }));
+  } catch (e) {}
+}
+window.addEventListener("pagehide", beacon);
+document.addEventListener("visibilitychange", () => { if (document.hidden) beacon(); });
 
 function renderLogin(msg) {
   run = null;
@@ -1443,7 +1471,7 @@ function renderLogin(msg) {
       if (!r.ok) { $("#lgo").disabled = false; $("#lmsg").textContent = "Невірний логін або PIN. Перевір і спробуй ще раз."; return; }
       session = { login, pin, name: r.name, cls: r.cls };
       try { localStorage.setItem(SKEY, JSON.stringify(session)); } catch (e2) {}
-      applyServer(r.data);
+      applyServer(r.data, r.levels, r.bytes);
       renderMap();
     } catch (err) {
       $("#lgo").disabled = false;
@@ -1455,14 +1483,33 @@ function renderLogin(msg) {
   $("#lg").focus();
 }
 // дані з таблиці мають перевагу; локальний прогрес беремо лише якщо він цього ж учня або нічий
-function applyServer(data) {
-  const localNewer = prog.owner === session.login && (prog.updatedAt || 0) > ((data && data.updatedAt) || 0);
-  if (data && typeof data === "object" && !localNewer) { prog = data; }
-  else if (prog.owner && prog.owner !== session.login) { prog = { stars: {}, all: false, ach: {} }; }
+// зводимо разом: прогрес у таблиці, прогрес у цьому браузері та ручні зміни вчительки в колонках рівнів
+function applyServer(data, cols, colBytes) {
+  const mine = prog.owner === session.login;
+  const hasData = data && typeof data === "object";
+  let merged;
+  if (hasData && mine) {
+    const newer = (prog.updatedAt || 0) > (data.updatedAt || 0) ? prog : data;
+    merged = Object.assign({}, newer);
+    merged.stars = {};
+    LEVELS.forEach(l => { const v = Math.max((prog.stars || {})[l.id] || 0, (data.stars || {})[l.id] || 0); if (v) merged.stars[l.id] = v; });
+    merged.ach = Object.assign({}, data.ach || {}, prog.ach || {});
+    merged.leaves = Math.max(prog.leaves || 0, data.leaves || 0);
+    merged.bytes = Math.max(prog.bytes || 0, data.bytes || 0);
+  } else if (hasData) merged = data;
+  else if (!prog.owner || mine) merged = prog;            // старий прогрес у цьому браузері переходить в акаунт
+  else merged = { stars: {}, all: false, ach: {} };       // браузер іншого учня — починаємо з нуля
+  merged.stars = merged.stars || {};
+  let teacherEdit = false;
+  (cols || []).forEach((v, i) => { const l = LEVELS[i]; const n = Math.min(3, Math.max(0, Math.round(v))); if (l && n > (merged.stars[l.id] || 0)) { merged.stars[l.id] = n; teacherEdit = true; } });
+  if ((colBytes || 0) > (merged.bytes || 0)) { merged.bytes = colBytes; teacherEdit = true; }
+  const changed = !hasData || teacherEdit || JSON.stringify(merged) !== JSON.stringify(data);
+  prog = merged;
   prog.owner = session.login;
   fixProg();
+  if (changed) prog.updatedAt = Date.now();
   try { localStorage.setItem(KEY, JSON.stringify(prog)); } catch (e) {}
-  if (localNewer || !data) { dirty = true; scheduleSync(true); }
+  if (changed) { dirty = true; scheduleSync(true); }
 }
 async function boot() {
   if (!session) return renderLogin();
@@ -1472,7 +1519,7 @@ async function boot() {
     if (!r.ok) { session = null; try { localStorage.removeItem(SKEY); } catch (e) {} return renderLogin("Вхід застарів. Увійди ще раз."); }
     session.name = r.name; session.cls = r.cls;
     const before = JSON.stringify(prog);
-    applyServer(r.data);
+    applyServer(r.data, r.levels, r.bytes);
     if (!run && JSON.stringify(prog) !== before) renderMap();
     else if (!run && !app.querySelector(".hero")) renderMap();
   } catch (e) {
@@ -1769,7 +1816,7 @@ function renderMap() {
   const n = LEVELS.length;
   app.innerHTML = `
   <header class="hero">
-    <div class="whoami">${session ? `<span>${esc(session.name)}${session.cls ? " · " + esc(session.cls) : ""}</span><button class="link" id="logout">Вийти</button>` : offline ? `<span>Гра без збереження</span><button class="link" id="logout">Увійти</button>` : ""}</div>
+    <div class="whoami">${session ? `<span class="syncbox">${syncLabel()}</span><span>${esc(session.name)}${session.cls ? " · " + esc(session.cls) : ""}</span><button class="link" id="logout">Вийти</button>` : offline ? `<span>Гра без збереження</span><button class="link" id="logout">Увійти</button>` : ""}</div>
     <div class="eyebrow">Python · 8 клас · списки</div>
     <h1>Списковий квест</h1>
     <p>Кожен рівень починається з розминки з основ. На рівнях «нова тема» спершу коротке пояснення, потім задачі. Наступний рівень відкривається, коли пройдено попередній.</p>
@@ -2137,6 +2184,7 @@ function renderDone() {
     ${starStr(s, "bigstars")}
     ${fresh.length ? `<div class="unlock">Відкрито в гардеробі: ${fresh.map(x => `<b>${esc(x.name)}</b>`).join(", ")}</div>` : ""}
     <p>Помилок: ${run.mistakes}. ${s < 3 ? "Три зірки дають, якщо помилок не більше однієї." : run.mistakes === 0 ? "Чистий рівень!" : "Майже ідеально!"}${s > prev && prev ? " Новий рекорд!" : ""}${run.leaves ? ` Виходів з гри: ${run.leaves}.` : ""}</p>
+    <div class="syncbox">${syncLabel()}</div>
     <div class="row">${hasNext ? `<button class="btn" id="nx">Наступний рівень →</button>` : ""}<button class="btn ghost" id="map">На карту</button><button class="link" id="again">Пройти ще раз</button>${fresh.length ? `<button class="link" id="ward">Приміряти</button>` : ""}</div>
   </div>`;
   const li = run.li;
