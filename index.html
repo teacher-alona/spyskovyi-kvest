@@ -1379,7 +1379,7 @@ fixProg();
 function save() { prog.updatedAt = Date.now(); try { localStorage.setItem(KEY, JSON.stringify(prog)); } catch (e) {} scheduleSync(); }
 
 // ---------- акаунти (Google Таблиця через Apps Script) ----------
-const API = "https://script.google.com/macros/s/AKfycbzz2E9hzUOpcGkDMOzLDrQZIxqwHNrInr2nWlIP2vs9xHrtPnxU3b1JxwZGUKYEgn3-/exec";
+const API = "https://script.google.com/macros/s/AKfycbzPtRGlYI4osS-xL-J_pAZ2A2HxTWUeuecjy9-13MgAdFIzkDnYuCr1qmLHqZvqWkQMWQ/exec";
 const SKEY = "spyskovyi-kvest-session";
 let session = null;            // { login, pin, name, cls }
 let offline = false;           // гра без входу
