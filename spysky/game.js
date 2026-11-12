@@ -6,7 +6,8 @@ const GI = Object.assign({ id: "spysky", title: "Списковий квест",
 const GAME = GI.id;
 const MAX_HEARTS = KV.N;
 const KIND = { practice: "закріплення", learn: "нова тема", boss: "фінал" };
-const TYPE = { quiz: "Питання", output: "Що виведе?", bug: "Знайди помилку", order: "Збери код", fill: "Встав пропущене", code: "Напиши код", lesson: "Нове" };
+const TYPE = Object.assign({ quiz: "Питання", output: "Що виведе?", bug: "Знайди помилку", order: "Збери код", fill: "Встав пропущене", code: "Напиши код", lesson: "Нове" }, GI.types || {});
+const PLAIN = !!GI.plain; // гра без Python: звичайні підписи, відповіді без урахування великих літер
 const { esc, md, shuffle, fmtTime, starStr, snakeSVG, achieve, isOpen, openIds, SKINS, ACCS } = KV;
 const N = KV.N;
 const app = KV.app();
@@ -44,8 +45,9 @@ function hl(code) {
   return out + esc(code.slice(last));
 }
 const pre = code => `<pre class="code">${hl(code)}</pre>`;
-const normOut = s => String(s).replace(/\r/g, "").replace(/"/g, "'").split("\n").map(l => l.trim().replace(/\s*([,\[\]\(\)])\s*/g, "$1").replace(/\s+/g, " ")).join("\n").replace(/^\n+|\n+$/g, "");
-const normFill = s => String(s).trim().replace(/"/g, "'").replace(/\s+/g, "");
+const normOut0 = s => String(s).replace(/\r/g, "").replace(/"/g, "'").split("\n").map(l => l.trim().replace(/\s*([,\[\]\(\)])\s*/g, "$1").replace(/\s+/g, " ")).join("\n").replace(/^\n+|\n+$/g, "");
+const normOut = s => PLAIN ? normOut0(s).toLowerCase() : normOut0(s);
+const normFill = s => { const v = String(s).trim().replace(/"/g, "'").replace(/\s+/g, ""); return PLAIN ? v.toLowerCase() : v; };
 const levelOpen = i => i === 0 || (gd().stars[LEVELS[i - 1].id] || 0) > 0;
 
 // ---------- змійка й гардероб — у core ----------
@@ -213,28 +215,28 @@ function renderMap() {
       ${snakeSVG({ len: N, cls: "big" })}
       <div class="petinfo">
         <div class="petname">${esc(pf().name)}</div>
-        <div class="score">sum(stars) = <b>${total}</b> / ${n * 3}</div>
+        <div class="score">${PLAIN ? "Зірок:" : "sum(stars) ="} <b>${total}</b> / ${n * 3}</div>
         <div class="mystats">Спроб рівнів: <b>${LEVELS.reduce((a, l) => a + ((gd().attempts || {})[l.id] || 0), 0)}</b> · Виходів з гри: <b class="${gd().leaves ? "bad" : ""}">${gd().leaves || 0}</b>${gd().awayMs ? ` · Поза грою: <b class="bad">${fmtTime(gd().awayMs)}</b>` : ""}</div>
         <button class="btn ghost small" id="wardrobe">Гардероб${(() => { const k = openIds().length - 2; return k > 0 ? ` · ${k} відкрито` : ""; })()}</button>
       </div>
     </div>
   </header>
-  <div class="listopen">levels = [</div>
+  <div class="listopen">${PLAIN ? "Рівні" : "levels = ["}</div>
   <div class="levels">
     ${LEVELS.map((l, i) => {
       const open = levelOpen(i); const s = gd().stars[l.id] || 0;
       return `<button class="cell ${l.kind}" data-li="${i}" ${open ? "" : "disabled"} aria-label="Рівень ${i + 1}: ${esc(l.title)}">
-        <span class="idx"><span>[${i}]</span><span>[${i - n}]</span></span>
+        <span class="idx">${PLAIN ? `<span>${i + 1}</span>` : `<span>[${i}]</span><span>[${i - n}]</span>`}</span>
         <span class="kind">${KIND[l.kind]}</span>
         <h3>${esc(l.title)}</h3>
-        ${open ? starStr(s, "stars") : `<span class="lock">Спершу пройди [${i - 1}]</span>`}
+        ${open ? starStr(s, "stars") : `<span class="lock">Спершу пройди ${PLAIN ? "рівень " + i : `[${i - 1}]`}</span>`}
         ${open && ((gd().attempts || {})[l.id] || (gd().lvLeaves || {})[l.id]) ? `<span class="cellstat">спроб: ${(gd().attempts || {})[l.id] || 0}${(gd().lvLeaves || {})[l.id] ? ` · <b>виходів: ${gd().lvLeaves[l.id]}</b>` : ""}</span>` : ""}
       </button>`;
     }).join("")}
   </div>
-  <div class="listclose">]</div>
+  <div class="listclose">${PLAIN ? "" : "]"}</div>
   <div class="version">версія ${KV.VERSION}</div>
-  <div class="legend"><span>★★★ — не більше однієї помилки на рівні</span><span>У змійки ${N} сегментів. Кожна помилка — <code>pop()</code> з хвоста</span><span>Задачі з кодом сегментів не забирають</span><span>Зірки відкривають нові скіни</span><span>Вийшов(-ла) з гри на іншу вкладку чи в інший застосунок — мінус сегмент</span></div>
+  <div class="legend"><span>★★★ — не більше однієї помилки на рівні</span><span>У змійки ${N} сегментів. Кожна помилка — ${PLAIN ? "мінус сегмент з хвоста" : "<code>pop()</code> з хвоста"}</span>${PLAIN ? "" : "<span>Задачі з кодом сегментів не забирають</span>"}<span>Зірки відкривають нові скіни</span><span>Вийшов(-ла) з гри на іншу вкладку чи в інший застосунок — мінус сегмент</span></div>
   `;
   app.querySelectorAll(".cell").forEach(b => b.onclick = () => renderIntro(+b.dataset.li));
   app.querySelector("#wardrobe").onclick = renderWardrobe;
@@ -342,18 +344,18 @@ function attemptWrong(it, revealHtml) {
 
 function rOutput(it) {
   const lines = it.a.split("\n").length;
-  frame(it, `<div class="q">${md(it.q || "Що виведе ця програма?")}</div>${pre(it.code)}
+  frame(it, `<div class="q">${md(it.q || "Що виведе ця програма?")}</div>${it.code ? pre(it.code) : ""}
     <label class="answer-label" for="ans">Твоя відповідь${lines > 1 ? ` (${lines} рядки, кожен з нового рядка)` : ""}:</label>
     <textarea id="ans" rows="${Math.max(2, lines + 1)}" spellcheck="false" autocomplete="off"></textarea>
-    ${/[\[(']/.test(it.a) ? `<div class="status">Пиши точно так, як надрукує Python: список — у квадратних дужках, рядки всередині списку — в лапках.</div>` : ""}`);
+    ${!PLAIN && /[\[(']/.test(it.a) ? `<div class="status">Пиши точно так, як надрукує Python: список — у квадратних дужках, рядки всередині списку — в лапках.</div>` : ""}`);
   const loose = s => normOut(s).replace(/[\[\]()'\s]/g, "");
   const check = () => {
     const v = $("#ans").value;
     if (!v.trim()) return;
-    if (normOut(v) === normOut(it.a)) {
+    if (normOut(v) === normOut(it.a) || (it.accept || []).some(x => normOut(v) === normOut(x))) {
       $("#ans").disabled = true;
       feedback(true, praise(), it.why); nextBtn();
-    } else if (loose(v) === loose(it.a)) {
+    } else if (!PLAIN && loose(v) === loose(it.a)) {
       const why = /\[/.test(it.a) && !/\[/.test(v)
         ? "Значення правильні, але `print` виводить список разом із квадратними дужками, наприклад `[1, 2]`. Допиши дужки й перевір ще раз."
         : "Значення правильні, але Python друкує їх трохи інакше. Перевір дужки та лапки: рядки всередині списку виводяться в лапках, наприклад `['а', 'б']`.";
@@ -382,20 +384,20 @@ function rOrder(it) {
   if (pool.every((v, i) => v === i) && pool.length > 1) pool.push(pool.shift());
   let ans = [];
   frame(it, `<div class="q">${md(it.q)}</div>
-    <div class="answer-label">Натискай рядки по черзі, щоб скласти програму. Натисни на рядок у програмі, щоб повернути його назад.</div>
+    <div class="answer-label">${PLAIN ? "Натискай рядки по черзі в правильному порядку. Натисни на вибраний рядок, щоб повернути його назад." : "Натискай рядки по черзі, щоб скласти програму. Натисни на рядок у програмі, щоб повернути його назад."}</div>
     <div class="zone target" id="tz"></div>
     <div class="answer-label">Рядки:</div>
     <div class="zone" id="pz"></div>`);
   let locked = false;
   const draw = () => {
-    $("#tz").innerHTML = ans.length ? ans.map((k, p) => `<button class="piece" data-p="${p}">${hl(correct[k])}</button>`).join("") : `<div class="empty">Тут з'явиться твоя програма</div>`;
+    $("#tz").innerHTML = ans.length ? ans.map((k, p) => `<button class="piece" data-p="${p}">${hl(correct[k])}</button>`).join("") : `<div class="empty">${PLAIN ? "Тут з'явиться твоя відповідь" : "Тут з'явиться твоя програма"}</div>`;
     $("#pz").innerHTML = pool.length ? pool.map((k, p) => `<button class="piece" data-q="${p}">${hl(correct[k])}</button>`).join("") : `<div class="empty">Усі рядки використано</div>`;
     if (locked) { app.querySelectorAll(".piece").forEach(b => b.disabled = true); return; }
     app.querySelectorAll("#tz .piece").forEach(b => b.onclick = () => { pool.push(ans.splice(+b.dataset.p, 1)[0]); draw(); });
     app.querySelectorAll("#pz .piece").forEach(b => b.onclick = () => { ans.push(pool.splice(+b.dataset.q, 1)[0]); draw(); });
     $("#ck").disabled = pool.length > 0;
   };
-  const reveal = `<p>Правильна програма:</p>${pre(it.code)}`;
+  const reveal = `<p>${PLAIN ? "Правильний порядок:" : "Правильна програма:"}</p>${pre(it.code)}`;
   const check = async () => {
     const exact = ans.every((v, i) => v === i);
     let ok = exact, note = "";
