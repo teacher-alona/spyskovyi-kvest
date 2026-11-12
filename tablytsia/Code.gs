@@ -6,7 +6,7 @@
  * Аркуші «Прогрес: <гра>»: прогрес у кожній грі — заповнюються самі.
  * Старий аркуш «Прогрес» сам перейменовується на «Прогрес: Списки».
  */
-const VERSION = "2026.11.12";
+const VERSION = "2026.11.12-2";
 const SPYSKY_SHEET = "Прогрес: Списки";
 const DATA_HEADER = "Дані гри (не змінювати)";
 
@@ -155,10 +155,20 @@ function writeGame(st, name, data, s) {
   while (levels.length < n) levels.push("");
   const extra = sh.getRange(1, dc + 1, 1, 3).getDisplayValues()[0];
   if (!extra[0]) sh.getRange(1, dc + 1, 1, 3).setValues([["Поза грою, хв", "Спроб рівнів", "Спроби по рівнях"]]);
-  const row = [st.login, st.name, st.cls, Number(s.total) || 0, Number(s.bytes) || 0, Number(s.leaves) || 0]
+  const r0 = findRow(sh, st.login);
+  // зірки в таблиці ніколи не зменшуються: ручні трійки вчительки не затре навіть стара копія гри
+  if (r0 && n > 0) {
+    const cur = sh.getRange(r0, 7, 1, n).getValues()[0];
+    for (let i = 0; i < n; i++) {
+      const a = Number(cur[i]) || 0, b = Number(levels[i]) || 0;
+      if (a > b) levels[i] = a;
+    }
+  }
+  const sum = levels.reduce((t, v) => t + (Number(v) || 0), 0);
+  const row = [st.login, st.name, st.cls, Math.max(Number(s.total) || 0, sum), Number(s.bytes) || 0, Number(s.leaves) || 0]
     .concat(levels)
     .concat([s.snake || "", s.skin || "", s.acc || "", new Date(), JSON.stringify(data),
       Number(s.awayMin) || 0, Number(s.attemptsTotal) || 0, (s.attempts || []).join(" · ")]);
-  const r = findRow(sh, st.login) || sh.getLastRow() + 1;
+  const r = r0 || sh.getLastRow() + 1;
   sh.getRange(r, 1, 1, row.length).setValues([row]);
 }
