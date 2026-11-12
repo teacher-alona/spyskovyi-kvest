@@ -1,0 +1,43 @@
+/* Портал: вхід один раз, далі список ігор для класу учня, змійка й гардероб. */
+(function () {
+"use strict";
+const { esc, $ } = KV;
+const app = KV.app();
+const sum = o => Object.values(o || {}).reduce((a, b) => a + b, 0);
+function renderHome() {
+  const access = KV.access, p = KV.profile();
+  const games = KV.GAMES.filter(g => !access || access.includes(g.id) || access.includes(g.title.toLowerCase()));
+  const total = KV.totalStars(), maxAll = KV.GAMES.reduce((s, g) => s + g.max, 0);
+  const first = (KV.session && KV.session.name || "").split(" ").slice(-1)[0];
+  app.innerHTML = `
+  <header class="hero">
+    ${KV.whoami()}
+    <div class="eyebrow">Python, цифрова грамотність і не тільки</div>
+    <h1>ІТ-квести</h1>
+    <p>${first ? `Привіт, ${esc(first)}! ` : ""}Вибери гру. Зірки з усіх ігор рахуються разом і відкривають нові скіни для змійки.</p>
+    <div class="pet">
+      ${KV.snakeSVG({ len: KV.N, cls: "big" })}
+      <div class="petinfo">
+        <div class="petname">${esc(p.name)}</div>
+        <div class="score">★ <b>${total}</b> / ${maxAll} в усіх іграх</div>
+        <button class="btn ghost small" id="wardrobe">Гардероб${(() => { const k = KV.openIds().length - 2; return k > 0 ? ` · ${k} відкрито` : ""; })()}</button>
+      </div>
+    </div>
+  </header>
+  <div class="games">
+    ${games.length ? games.map(g => {
+      const d = KV.gameData(g.id), s = sum(d.stars), att = sum(d.attempts);
+      return `<a class="game" href="${g.path}">
+        <span class="gsub">${esc(g.sub)}</span>
+        <h3>${esc(g.title)}</h3>
+        <div class="gbar"><div style="width:${Math.round(s / g.max * 100)}%"></div></div>
+        <span class="gstat">★ ${s} / ${g.max}${att ? ` · спроб: ${att}` : ""}${d.leaves ? ` · виходів з гри: ${d.leaves}` : ""}</span>
+      </a>`;
+    }).join("") : `<p class="empty-games">Для твого класу ігор поки немає.</p>`}
+  </div>
+  <div class="version">версія ${KV.VERSION}</div>`;
+  KV.bindWhoami();
+  $("#wardrobe").onclick = () => KV.renderWardrobe(renderHome, "До ігор");
+}
+KV.boot({ title: "ІТ-квести", eyebrow: "Python, цифрова грамотність і не тільки", onReady: renderHome, isIdle: () => !app.firstElementChild || !!app.querySelector(".hero") });
+})();

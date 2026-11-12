@@ -1,0 +1,459 @@
+/* Спільний рушій для всіх ігор порталу: вхід, профіль і прогрес, синхронізація з таблицею,
+   змійка з гардеробом, заслона при виході з гри. Кожна гра підключає цей файл і додає свої рівні. */
+(function () {
+"use strict";
+const VERSION = "2026.11.12";
+const API = "https://script.google.com/macros/s/AKfycbzPtRGlYI4osS-xL-J_pAZ2A2HxTWUeuecjy9-13MgAdFIzkDnYuCr1qmLHqZvqWkQMWQ/exec";
+
+// Усі ігри порталу. sheet — назва аркуша з прогресом у таблиці вчительки.
+const GAMES = [
+  { id: "spysky", title: "Списковий квест", sub: "Python · списки", path: "spysky/", sheet: "Прогрес: Списки", max: 36 },
+];
+
+// ---------- утиліти ----------
+const esc = s => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+const md = s => esc(s).replace(/`([^`]+)`/g, "<code>$1</code>").replace(/\*\*([^*]+)\*\*/g, "<b>$1</b>");
+const shuffle = a => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+const fmtTime = ms => { const t = Math.round(ms / 1000), m = Math.floor(t / 60), sec = t % 60; return m ? `${m} хв ${sec} с` : `${sec} с`; };
+const starStr = (n, cls) => `<span class="${cls}">${[1, 2, 3].map(k => `<span class="${k <= n ? "on" : ""}">★</span>`).join("")}</span>`;
+const app = () => document.getElementById("app");
+const $ = s => app().querySelector(s);
+const lsGet = k => { try { return JSON.parse(localStorage.getItem(k) || "null"); } catch (e) { return null; } };
+const lsSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
+const lsDel = k => { try { localStorage.removeItem(k); } catch (e) {} };
+
+// ---------- сховище: профіль (змійка, спільна для всіх ігор) + прогрес кожної гри ----------
+const SKEY = "kv-session", DKEY = "kv-store";
+const PROFILE_KEYS = ["name", "skin", "acc", "ach"];
+// поля старого формату «Спискового квесту», які тепер живуть у профілі
+const splitLegacy = old => {
+  const profile = {}, game = {};
+  Object.entries(old || {}).forEach(([k, v]) => { if (PROFILE_KEYS.includes(k)) profile[k] = v; else if (k !== "owner" && k !== "all") game[k] = v; });
+  profile.updatedAt = old && old.updatedAt || 0;
+  return { profile, game };
+};
+let store = lsGet(DKEY);
+let session = lsGet(SKEY);
+// переїзд зі старої гри: ключі spyskovyi-kvest-*
+if (!store) {
+  const old = lsGet("spyskovyi-kvest-v1");
+  if (old && old.stars) { const sp = splitLegacy(old); store = { owner: old.owner || null, profile: sp.profile, games: { spysky: sp.game } }; }
+}
+if (!session) { session = lsGet("spyskovyi-kvest-session"); if (session) lsSet(SKEY, session); }
+const blankStore = () => ({ owner: null, profile: {}, games: {} });
+if (!store) store = blankStore();
+function fixStore() {
+  store.profile = store.profile || {}; store.games = store.games || {};
+  const p = store.profile; p.skin = p.skin || "classic"; p.acc = p.acc || "none"; p.name = p.name || "Пітоша"; p.ach = p.ach || {};
+}
+fixStore();
+const gameData = id => { const g = store.games[id] = store.games[id] || {}; g.stars = g.stars || {}; return g; };
+const profile = () => store.profile;
+let currentGame = null; // id гри на цій сторінці (null — портал)
+let gameSummary = null; // функція гри: що записати в її аркуш
+function persist() { lsSet(DKEY, store); }
+// save(): після будь-якої зміни прогресу чи профілю
+function save(part) {
+  const now = Date.now();
+  if (part === "profile" || !currentGame) store.profile.updatedAt = now;
+  if (currentGame) gameData(currentGame).updatedAt = now;
+  if (part === "both") store.profile.updatedAt = now;
+  persist(); scheduleSync();
+}
+const totalStars = () => Object.values(store.games).reduce((s, g) => s + Object.values((g && g.stars) || {}).reduce((a, b) => a + b, 0), 0);
+
+// ---------- зв'язок з таблицею ----------
+let offline = false;
+let serverV = +(lsGet("kv-server-v") || 1);   // 2 — новий скрипт таблиці (кілька ігор)
+async function api(body) {
+  const r = await fetch(API, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(body), redirect: "follow" });
+  return r.json();
+}
+function payload() {
+  const body = { action: "save", login: session.login, pin: session.pin, v: 2, profile: store.profile };
+  if (currentGame) {
+    const G = GAMES.find(g => g.id === currentGame), g = gameData(currentGame), s = gameSummary ? gameSummary(g) : {};
+    Object.assign(s, { snake: store.profile.name, skin: store.profile.skin, acc: store.profile.acc });
+    body.game = { id: currentGame, sheet: G.sheet, data: g, summary: s };
+    // для старого скрипта (одна гра, аркуш «Прогрес»)
+    if (currentGame === "spysky") { body.data = Object.assign({}, g, { name: store.profile.name, skin: store.profile.skin, acc: store.profile.acc, ach: store.profile.ach }); body.summary = s; }
+  }
+  return body;
+}
+let syncTimer = null, syncing = false, dirty = false, again = false;
+function scheduleSync(now) {
+  if (!session || offline) return;
+  if (serverV < 2 && !currentGame) return;   // старий скрипт уміє зберігати лише прогрес гри
+  dirty = true;
+  clearTimeout(syncTimer);
+  syncTimer = setTimeout(syncNow, now ? 0 : 1500);
+}
+async function syncNow() {
+  if (!session || offline || !dirty) return;
+  if (syncing) { again = true; return; }
+  syncing = true; dirty = false; again = false;
+  setSync("saving");
+  let failed = false, why = "";
+  try {
+    const r = await api(payload());
+    if (!r.ok) { failed = true; why = r.error || "server"; }
+  } catch (e) { failed = true; why = "network"; }
+  syncing = false;
+  if (failed) { dirty = true; setSync("fail", why); syncTimer = setTimeout(syncNow, 8000); }
+  else if (again || dirty) { dirty = true; syncTimer = setTimeout(syncNow, 300); }
+  else setSync("ok");
+}
+let syncState = "ok", syncWhy = "";
+function syncLabel() {
+  if (!session || offline) return "";
+  if (syncState === "saving") return `<span class="sync saving">Зберігаю…</span>`;
+  if (syncState === "fail") return `<span class="sync fail">Не збережено${syncWhy === "network" ? ": немає зв'язку з таблицею" : syncWhy ? ": " + esc(syncWhy) : ""}. Спробую ще раз</span>`;
+  return `<span class="sync ok">Збережено ✓</span>`;
+}
+function setSync(st, why) { syncState = st; syncWhy = why || ""; document.querySelectorAll(".syncbox").forEach(el => { el.innerHTML = syncLabel(); }); }
+function beacon() {
+  if (!dirty || !session || offline || !navigator.sendBeacon) return;
+  try { navigator.sendBeacon(API, new Blob([JSON.stringify(payload())], { type: "text/plain;charset=utf-8" })); } catch (e) {}
+}
+window.addEventListener("pagehide", beacon);
+document.addEventListener("visibilitychange", () => { if (document.hidden) beacon(); });
+
+// ---------- зведення даних з таблиці й браузера ----------
+const mx = (a, b) => { const o = Object.assign({}, b || {}); Object.entries(a || {}).forEach(([k, v]) => { o[k] = Math.max(v, o[k] || 0); }); return o; };
+function mergeGame(local, remote) {
+  if (!remote) return local || {};
+  if (!local) return remote;
+  const newer = (local.updatedAt || 0) > (remote.updatedAt || 0) ? local : remote;
+  const m = Object.assign({}, newer);
+  m.stars = mx(local.stars, remote.stars);
+  m.attempts = mx(local.attempts, remote.attempts);
+  m.lvLeaves = mx(local.lvLeaves, remote.lvLeaves);
+  ["leaves", "bytes", "awayMs"].forEach(k => { m[k] = Math.max(local[k] || 0, remote[k] || 0); });
+  return m;
+}
+function mergeProfile(local, remote) {
+  if (!remote) return local || {};
+  if (!local) return remote;
+  const newer = (local.updatedAt || 0) > (remote.updatedAt || 0) ? local : remote;
+  const m = Object.assign({}, newer);
+  m.ach = Object.assign({}, remote.ach || {}, local.ach || {});
+  return m;
+}
+// r — відповідь сервера на вхід (новий скрипт: profile + games; старий: data + levels + bytes)
+function applyServer(r) {
+  serverV = r.v >= 2 ? 2 : 1; lsSet("kv-server-v", serverV);
+  const mine = store.owner === session.login;
+  if (!mine && store.owner) store = blankStore();               // браузер іншого учня
+  const before = JSON.stringify(store);
+  let remoteProfile = r.profile || null;
+  const remoteGames = {};
+  if (r.games) Object.entries(r.games).forEach(([id, x]) => { remoteGames[id] = x; });
+  else if ("data" in r) remoteGames.spysky = { data: r.data, levels: r.levels, bytes: r.bytes };   // старий скрипт
+  Object.entries(remoteGames).forEach(([id, x]) => {
+    let data = x && x.data;
+    if (data && (data.name || data.skin || data.acc || data.ach)) {   // старий формат: профіль усередині гри
+      const sp = splitLegacy(data); data = sp.game;
+      if (!remoteProfile) remoteProfile = sp.profile; else remoteProfile.ach = Object.assign({}, sp.profile.ach || {}, remoteProfile.ach || {});
+    }
+    const merged = mergeGame(store.games[id], data);
+    merged.stars = merged.stars || {};
+    // ручні зміни вчительки в колонках рівнів (лише збільшення)
+    const G = GAMES.find(g => g.id === id);
+    if (x && x.levels && G && G.levelIds) x.levels.forEach((v, i) => { const lid = G.levelIds[i], n = Math.min(3, Math.max(0, Math.round(v))); if (lid && n > (merged.stars[lid] || 0)) merged.stars[lid] = n; });
+    if (x && x.bytes > (merged.bytes || 0)) merged.bytes = x.bytes;
+    store.games[id] = merged;
+  });
+  store.profile = mergeProfile(store.profile, remoteProfile);
+  store.owner = session.login;
+  fixStore();
+  const changed = JSON.stringify(store) !== before;
+  persist();
+  if (changed || !r.profile) { dirty = true; scheduleSync(true); }
+  return changed;
+}
+const loginBody = (login, pin) => ({ action: "login", login, pin, v: 2, games: GAMES.map(g => ({ id: g.id, sheet: g.sheet })) });
+let access = lsGet("kv-access");
+
+// ---------- вхід ----------
+// opts.onReady — що показати після входу; opts.title/eyebrow — заголовок екрана входу
+let bootOpts = {};
+function renderLogin(msg) {
+  app().innerHTML = `<div class="center login">
+    <div class="eyebrow">${esc(bootOpts.eyebrow || "Python, цифрова грамотність і не тільки")}</div>
+    <h1 class="logintitle">${esc(bootOpts.title || "ІТ-квести")}</h1>
+    ${snakeSVG({ len: 5, cls: "big", skin: "classic", acc: "none" })}
+    <form id="lf" class="loginform" autocomplete="off">
+      <label class="answer-label" for="lg">Логін</label>
+      <input type="text" id="lg" autocapitalize="off" spellcheck="false" placeholder="наприклад, prizvyshche.i" required>
+      <label class="answer-label" for="pn">PIN</label>
+      <input type="text" id="pn" inputmode="numeric" maxlength="8" placeholder="4 цифри" required>
+      <div id="lmsg" class="status">${msg ? esc(msg) : "Логін і PIN дає вчителька."}</div>
+      <div class="row"><button class="btn" id="lgo" type="submit">Увійти</button><span id="lalt"></span></div>
+    </form>
+    <div class="version">версія ${VERSION}</div>
+  </div>`;
+  $("#lf").addEventListener("submit", async e => {
+    e.preventDefault();
+    const login = $("#lg").value.trim().toLowerCase(), pin = $("#pn").value.trim();
+    if (!login || !pin) return;
+    $("#lgo").disabled = true; $("#lmsg").textContent = "Перевіряю…";
+    try {
+      const r = await api(loginBody(login, pin));
+      if (!r.ok) { $("#lgo").disabled = false; $("#lmsg").textContent = r.error === "auth" || !r.error ? "Невірний логін або PIN. Перевір і спробуй ще раз." : "Таблиця відповіла помилкою: " + r.error; return; }
+      session = { login, pin, name: r.name, cls: r.cls };
+      lsSet(SKEY, session);
+      access = r.access || null; lsSet("kv-access", access);
+      applyServer(r);
+      bootOpts.onReady();
+    } catch (err) {
+      $("#lgo").disabled = false;
+      $("#lmsg").textContent = "Не вдалося з'єднатися з сервером. Перевір інтернет і спробуй ще раз.";
+      $("#lalt").innerHTML = `<button class="link" type="button" id="off">Грати без збереження</button>`;
+      $("#off").onclick = () => { offline = true; bootOpts.onReady(); };
+    }
+  });
+  $("#lg").focus();
+}
+// boot: показує екран входу або одразу гру; onRefresh — перемалювати, якщо з таблиці прийшли нові дані
+async function boot(opts) {
+  bootOpts = opts;
+  if (!session) return renderLogin();
+  if (store.owner === session.login) opts.onReady(); else app().innerHTML = `<div class="center"><p class="status">Завантажую твій прогрес…</p></div>`;
+  try {
+    const r = await api(loginBody(session.login, session.pin));
+    if (!r.ok && r.error === "auth") { session = null; lsDel(SKEY); return renderLogin("Вхід застарів. Увійди ще раз."); }
+    if (!r.ok) throw new Error(r.error || "server");
+    session.name = r.name; session.cls = r.cls; lsSet(SKEY, session);
+    access = r.access || null; lsSet("kv-access", access);
+    const changed = applyServer(r);
+    if (opts.isIdle()) opts.onReady(changed);
+  } catch (e) {
+    if (store.owner === session.login) { if (opts.isIdle()) opts.onReady(); }
+    else renderLogin("Не вдалося з'єднатися з сервером.");
+  }
+}
+function logout() {
+  if (dirty) syncNow();
+  session = null; offline = false;
+  lsDel(SKEY); lsDel(DKEY); lsDel("kv-access");
+  store = blankStore(); fixStore();
+  renderLogin();
+}
+// рядок «хто увійшов» для шапки
+function whoami() {
+  return `<div class="whoami">${session ? `<span class="syncbox">${syncLabel()}</span><span>${esc(session.name)}${session.cls ? " · " + esc(session.cls) : ""}</span><button class="link" id="logout">Вийти</button>` : offline ? `<span>Гра без збереження</span><button class="link" id="logout">Увійти</button>` : ""}</div>`;
+}
+function bindWhoami() { const b = $("#logout"); if (b) b.onclick = logout; }
+
+// ---------- змійка ----------
+const N = 5;
+const mix = (a, b, t) => { t = Math.max(0, Math.min(1, t)); const h = x => [1, 3, 5].map(k => parseInt(x.substr(k, 2), 16)); const A = h(a), B = h(b); return "rgb(" + A.map((v, k) => Math.round(v + (B[k] - v) * t)).join(",") + ")"; };
+const SKINS = [
+  { id: "classic", name: "Класика", need: 0, col: () => "#3fae6b" },
+  { id: "loaf", name: "Батон", need: 2, col: () => "#d9a35b", rx: 9,
+    seg: (x, y) => `<path d="M${x + 5} ${y + 5} l5 -10 M${x + 12} ${y + 5} l5 -10" stroke="#f6d9a2" stroke-width="2.4" stroke-linecap="round"/>` },
+  { id: "sky", name: "Небо", need: 4, col: () => "#3d8bfd" },
+  { id: "sausage", name: "Сосиска", need: 6, col: () => "#e07a6e", rx: 11,
+    seg: (x, y, i) => (i > 0 ? `<path d="M${x + 23} ${y - 4} v8" stroke="#7a4a2a" stroke-width="2.2" stroke-linecap="round"/>` : "") + `<path d="M${x + 5} ${y - 6} q6 -3 12 0" stroke="rgba(255,255,255,.45)" stroke-width="2" fill="none" stroke-linecap="round"/>` },
+  { id: "sunset", name: "Захід сонця", need: 9, col: i => mix("#ff4f7b", "#ffa53d", i / N) },
+  { id: "melon", name: "Кавун", need: 11, col: () => "#2f8f3a", idx: "rgba(255,255,255,.8)",
+    seg: (x, y) => `<path d="M${x + 7} ${y - 10} v20 M${x + 15} ${y - 10} v20" stroke="#1b5e25" stroke-width="2.6"/>`,
+    head: "#ff5a63", headStroke: "#2f8f3a",
+    headDeco: (hx, hy) => [[6, -7], [8, 5], [31, -8], [5, -1]].map(([dx, dy]) => `<ellipse cx="${hx + dx}" cy="${hy + dy}" rx="1.3" ry="2" fill="#1b1b1b"/>`).join("") },
+  { id: "night", name: "Нічна", need: 15, col: () => "#4b3a8f", idx: "rgba(255,255,255,.75)",
+    seg: (x, y) => `<circle cx="${x + 4.5}" cy="${y - 6.5}" r="1.2" fill="#fff"/><circle cx="${x + 18}" cy="${y + 6.5}" r="1" fill="#fff"/>` },
+  { id: "train", name: "Потяг", need: 17, col: () => "#5b7bd5", rx: 3, idx: "#1b2a55",
+    seg: (x, y) => `<rect x="${x + 4}" y="${y - 7}" width="14" height="9" rx="2" fill="#dbe7ff"/><circle cx="${x + 6}" cy="${y + 11}" r="3.2" fill="#222"/><circle cx="${x + 16}" cy="${y + 11}" r="3.2" fill="#222"/>` + `<path d="M${x + 22} ${y + 3} h4" stroke="#444" stroke-width="2"/>`,
+    head: "#d64545", headRx: 5,
+    headDeco: (hx, hy, acc) => (acc === "none" ? `<rect x="${hx + 22}" y="${hy - 23}" width="7" height="10" fill="#333"/><circle cx="${hx + 26}" cy="${hy - 28}" r="3.4" fill="#cfd5df" opacity=".9"/><circle cx="${hx + 20}" cy="${hy - 32}" r="2.6" fill="#cfd5df" opacity=".7"/>` : "") + `<circle cx="${hx + 8}" cy="${hy + 15}" r="3.6" fill="#222"/><circle cx="${hx + 26}" cy="${hy + 15}" r="3.6" fill="#222"/>` },
+  { id: "cheese", name: "Сирна", need: 21, col: () => "#f5c84c", idx: "#8a6510",
+    seg: (x, y) => `<circle cx="${x + 5}" cy="${y - 5}" r="2.2" fill="#d9a92a"/><circle cx="${x + 17}" cy="${y + 5}" r="3" fill="#d9a92a"/><circle cx="${x + 6}" cy="${y + 7}" r="1.5" fill="#d9a92a"/>`,
+    headDeco: (hx, hy) => `<circle cx="${hx + 6}" cy="${hy + 6}" r="2.6" fill="#d9a92a"/><circle cx="${hx + 9}" cy="${hy - 9}" r="1.6" fill="#d9a92a"/>` },
+  { id: "gold", name: "Золота", need: 24, col: () => "#e0aa2b",
+    seg: (x, y) => `<rect x="${x + 4}" y="${y - 8}" width="5" height="3" rx="1.5" fill="rgba(255,255,255,.6)"/>` },
+  { id: "sock", name: "Шкарпетка", need: 27, col: i => (i % 2 ? "#fdfdfd" : "#ff6b6b"), rx: 5,
+    seg: (x, y) => `<path d="M${x + 1} ${y - 6} h20" stroke="#3d8bfd" stroke-width="2"/>`, head: "#ff6b6b",
+    headDeco: (hx, hy) => `<path d="M${hx + 1} ${hy + 9} h32" stroke="#3d8bfd" stroke-width="2"/>` },
+  { id: "rocket", name: "Ракета", need: 30, col: () => "#e9eef6", rx: 4, idx: "#1b2a55",
+    seg: (x, y, i) => `<rect x="${x}" y="${y - 2}" width="22" height="4" fill="#e8483f"/>`
+      + (i === N - 1 ? `<path d="M${x + 2} ${y - 11} L${x - 6} ${y - 19} L${x + 10} ${y - 11} Z M${x + 2} ${y + 11} L${x - 6} ${y + 19} L${x + 10} ${y + 11} Z" fill="#e8483f"/><g class="flame"><path d="M${x} ${y - 6} Q${x - 14} ${y} ${x} ${y + 6} Z" fill="#ffb02e"/><path d="M${x} ${y - 3} Q${x - 8} ${y} ${x} ${y + 3} Z" fill="#fff3b0"/></g>` : ""),
+    head: "#e9eef6", headRx: 8,
+    headDeco: (hx, hy) => `<path d="M${hx + 30} ${hy - 13} Q${hx + 46} ${hy - 6} ${hx + 48} ${hy} Q${hx + 46} ${hy + 6} ${hx + 30} ${hy + 13} Z" fill="#e8483f" stroke="rgba(0,0,0,.25)" stroke-width="1.2"/><rect x="${hx}" y="${hy + 7}" width="30" height="3" fill="#e8483f"/>` },
+  { id: "rainbow", name: "Веселка", need: 33, col: i => `hsl(${(i * 62 + 330) % 360} 72% 55%)` },
+  { id: "glitch", name: "Глітч", ach: "fail", col: () => "#1a1a1a", idx: "#39ff14", jitter: true,
+    seg: () => "", head: "#1a1a1a",
+    headDeco: (hx, hy) => `<text x="${hx + 3}" y="${hy + 12}" font-family="monospace" font-size="6" fill="#39ff14">ERR</text>` },
+];
+const ACCS = [
+  { id: "none", name: "Без нічого", need: 0 },
+  { id: "moustache", name: "Вуса", need: 1 },
+  { id: "glasses", name: "Окуляри", need: 3 },
+  { id: "catears", name: "Котячі вушка", need: 5 },
+  { id: "cap", name: "Кепка", need: 7 },
+  { id: "cowboy", name: "Ковбойський капелюх", need: 9 },
+  { id: "scarf", name: "Шарф", need: 12 },
+  { id: "propeller", name: "Шапка з пропелером", need: 14 },
+  { id: "phones", name: "Навушники", need: 19 },
+  { id: "duck", name: "Каченя", need: 22 },
+  { id: "horn", name: "Ріжок єдинорога", need: 25 },
+  { id: "crown", name: "Корона", need: 30 },
+  { id: "halo", name: "Німб", ach: "perfect" },
+  { id: "pot", name: "Каструля", ach: "peek" },
+  { id: "devil", name: "Роги диявола", ach: "lastdeath", secret: true },
+  { id: "loafhat", name: "Батон на голові", ach: "loafhat", secret: true },
+];
+const ACH = { fail: "Лишитися без хвоста", perfect: "Пройти рівень без жодної помилки", peek: "Підглянути розв'язок задачі", lastdeath: "", loafhat: "" };
+const isOpen = x => x.ach ? !!(store.profile.ach && store.profile.ach[x.ach]) : x.need <= totalStars();
+const openIds = () => [...SKINS, ...ACCS].filter(isOpen).map(x => x.id);
+function achieve(key) {
+  const p = store.profile; p.ach = p.ach || {};
+  if (p.ach[key]) return [];
+  p.ach[key] = true; save("both");
+  return [...SKINS, ...ACCS].filter(x => x.ach === key);
+}
+const skinOf = id => SKINS.find(s => s.id === id) || SKINS[0];
+const popName = () => (store.profile.name || "змійка").trim().toLowerCase().replace(/[^\wЀ-ӿ]+/g, "_") || "змійка";
+// len — скільки сегментів лишилось; falling — скільки щойно відвалилось
+function snakeSVG(o) {
+  const p = store.profile;
+  const accId = o.acc || p.acc, accItem = ACCS.find(a => a.id === accId);
+  const sk = skinOf(o.skin || p.skin), acc = o.acc ? o.acc : (accItem && isOpen(accItem) ? accId : "none"), len = o.len, falling = o.falling || 0, mood = o.mood || "happy";
+  const W = 18 + N * 26 + 58, H = 66;
+  const segX = i => 18 + (N - 1 - i) * 26, segY = i => 40 + Math.sin((N - i) * 1.15) * 5;
+  let g = "";
+  for (let i = N - 1; i >= 0; i--) {
+    const x = segX(i), y = segY(i);
+    const ghost = `<rect class="ghost" x="${x}" y="${y - 11}" width="22" height="22" rx="7"/>`;
+    const jx = sk.jitter ? [2, -3, 1, -2, 3][i] : 0, jy = sk.jitter ? [-2, 3, -3, 1, 2][i] : 0;
+    const rect = (fill, dx, op) => `<rect x="${x + jx + dx}" y="${y + jy - 11}" width="22" height="22" rx="${sk.rx ?? 7}" fill="${fill}"${op ? ` opacity="${op}"` : ` stroke="rgba(0,0,0,.22)" stroke-width="1.5"`}/>`;
+    const body = (sk.jitter ? rect("#00e5ff", -2.5, .8) + rect("#ff2bd6", 2.5, .8) : "") + rect(sk.col(i), 0)
+      + (sk.seg ? `<g transform="translate(${jx} ${jy})">${sk.seg(x, y, i)}</g>` : "")
+      + `<text x="${x + jx + 11}" y="${y + jy + 3.5}" class="segidx"${sk.idx ? ` style="fill:${sk.idx}"` : ""}>${i}</text>`;
+    if (i < len) g += `<g>${body}</g>`;
+    else if (i < len + falling) g += ghost + `<g class="fall">${body}</g>`;
+    else g += ghost;
+  }
+  const hx = segX(0) + 24, hy = 38, hc = sk.head || sk.col(-0.6);
+  let head = (sk.jitter ? `<rect x="${hx - 2.5}" y="${hy - 14}" width="34" height="28" rx="11" fill="#00e5ff" opacity=".8"/><rect x="${hx + 2.5}" y="${hy - 14}" width="34" height="28" rx="11" fill="#ff2bd6" opacity=".8"/>` : "")
+    + `<rect x="${hx}" y="${hy - 14}" width="34" height="28" rx="${sk.headRx ?? 11}" fill="${hc}" stroke="${sk.headStroke || "rgba(0,0,0,.25)"}" stroke-width="${sk.headStroke ? 3 : 1.5}"/>`
+    + (sk.headDeco ? sk.headDeco(hx, hy, acc) : "");
+  if (acc === "scarf") head = `<rect x="${hx - 7}" y="${hy + 1}" width="13" height="10" rx="3" fill="#e8483f"/><rect x="${hx - 4}" y="${hy + 8}" width="6" height="14" rx="2" fill="#e8483f" transform="rotate(14 ${hx - 1} ${hy + 8})"/><rect x="${hx - 7}" y="${hy + 4}" width="13" height="2.5" fill="#fff" opacity=".8"/>` + head;
+  const eye = (ex) => `<circle cx="${ex}" cy="${hy - 4}" r="4.6" fill="#fff"/><circle cx="${ex + 1.3}" cy="${hy - 3.6}" r="2.3" fill="#1b1b1b"/>`;
+  head += mood === "sad"
+    ? `<path d="M${hx + 12} ${hy - 5} l6 -2.5 M${hx + 21} ${hy - 7.5} l6 2.5" stroke="#1b1b1b" stroke-width="1.6"/>` + `<circle cx="${hx + 15}" cy="${hy - 1}" r="1.8" fill="#1b1b1b"/><circle cx="${hx + 24}" cy="${hy - 1}" r="1.8" fill="#1b1b1b"/>`
+    : eye(hx + 15) + eye(hx + 24);
+  if (mood === "happy") head += `<path d="M${hx + 20} ${hy + 6} Q${hx + 25} ${hy + 11} ${hx + 30} ${hy + 5}" stroke="#1b1b1b" stroke-width="1.7" fill="none" stroke-linecap="round"/><circle cx="${hx + 10}" cy="${hy + 5}" r="2.6" fill="rgba(255,120,150,.55)"/>`;
+  if (mood === "sad") head += `<path d="M${hx + 20} ${hy + 10} Q${hx + 25} ${hy + 5} ${hx + 30} ${hy + 10}" stroke="#1b1b1b" stroke-width="1.7" fill="none" stroke-linecap="round"/>`;
+  if (mood === "wow") head += `<ellipse cx="${hx + 26}" cy="${hy + 7}" rx="2.6" ry="3.2" fill="#1b1b1b"/><path d="M${hx + 33} ${hy + 3} l6 1 l3 -3 M${hx + 39} ${hy + 4} l3 3" stroke="#e8483f" stroke-width="1.5" fill="none"/>`;
+  if (acc === "glasses") head += `<g stroke="#1b1b1b" stroke-width="1.8" fill="rgba(160,210,255,.25)"><circle cx="${hx + 15}" cy="${hy - 4}" r="5.6"/><circle cx="${hx + 27}" cy="${hy - 4}" r="5.6"/></g><path d="M${hx + 20.6} ${hy - 4} h0.8 M${hx + 9.4} ${hy - 5} l-6 -1" stroke="#1b1b1b" stroke-width="1.8"/>`;
+  if (acc === "cap") head += `<path d="M${hx + 3} ${hy - 11} Q${hx + 15} ${hy - 29} ${hx + 30} ${hy - 11} Z" fill="#2f5bd3"/><ellipse cx="${hx + 34}" cy="${hy - 11}" rx="10" ry="3" fill="#1d3f9e"/><circle cx="${hx + 16}" cy="${hy - 21}" r="2" fill="#f2c94c"/>`;
+  if (acc === "phones") head += `<path d="M${hx + 4} ${hy - 4} Q${hx + 10} ${hy - 26} ${hx + 30} ${hy - 13}" stroke="#2b2b2b" stroke-width="3.2" fill="none"/><rect x="${hx}" y="${hy - 8}" width="9" height="13" rx="3.5" fill="#2b2b2b"/><circle cx="${hx + 4.5}" cy="${hy - 1.5}" r="2" fill="#ff4f7b"/>`;
+  if (acc === "moustache") head += `<g fill="#3a2416"><ellipse cx="${hx + 22}" cy="${hy + 4}" rx="5" ry="2.2" transform="rotate(-18 ${hx + 22} ${hy + 4})"/><ellipse cx="${hx + 30}" cy="${hy + 4}" rx="5" ry="2.2" transform="rotate(18 ${hx + 30} ${hy + 4})"/></g>`;
+  if (acc === "catears") head += `<path d="M${hx + 5} ${hy - 11} L${hx + 8} ${hy - 25} L${hx + 16} ${hy - 13} Z M${hx + 20} ${hy - 13} L${hx + 28} ${hy - 25} L${hx + 31} ${hy - 11} Z" fill="${hc}" stroke="rgba(0,0,0,.25)" stroke-width="1.2"/><path d="M${hx + 8} ${hy - 13} L${hx + 9} ${hy - 20} L${hx + 13} ${hy - 14} Z M${hx + 23} ${hy - 14} L${hx + 27} ${hy - 20} L${hx + 28} ${hy - 13} Z" fill="#ff9fb8"/>`;
+  if (acc === "cowboy") head += `<path d="M${hx + 7} ${hy - 13} Q${hx + 7} ${hy - 28} ${hx + 17} ${hy - 23} Q${hx + 27} ${hy - 28} ${hx + 27} ${hy - 13} Z" fill="#a0693a"/><rect x="${hx + 7}" y="${hy - 17}" width="20" height="3" fill="#3a2416"/><ellipse cx="${hx + 17}" cy="${hy - 13}" rx="21" ry="3.6" fill="#8b5a2b"/>`;
+  if (acc === "propeller") head += `<path d="M${hx + 4} ${hy - 11} Q${hx + 17} ${hy - 29} ${hx + 30} ${hy - 11} Z" fill="#e8483f"/><path d="M${hx + 17} ${hy - 20} v-14" stroke="#555" stroke-width="1.6"/><g class="prop" style="transform-origin:${hx + 17}px ${hy - 33}px"><ellipse cx="${hx + 11}" cy="${hy - 33}" rx="6" ry="1.8" fill="#f2c94c"/><ellipse cx="${hx + 23}" cy="${hy - 33}" rx="6" ry="1.8" fill="#3d8bfd"/></g><path d="M${hx + 6} ${hy - 13} Q${hx + 17} ${hy - 18} ${hx + 28} ${hy - 13}" stroke="#f2c94c" stroke-width="2" fill="none"/>`;
+  if (acc === "duck") head += `<ellipse cx="${hx + 15}" cy="${hy - 18}" rx="8.5" ry="5.5" fill="#ffd43b" stroke="#d9a400" stroke-width="1"/><circle cx="${hx + 21}" cy="${hy - 24}" r="4.6" fill="#ffd43b" stroke="#d9a400" stroke-width="1"/><path d="M${hx + 25} ${hy - 24.5} l5 1 l-5 2 Z" fill="#ff8c1a"/><circle cx="${hx + 22.5}" cy="${hy - 25.5}" r="1" fill="#1b1b1b"/>`;
+  if (acc === "horn") head += `<path d="M${hx + 13} ${hy - 13} L${hx + 19} ${hy - 35} L${hx + 24} ${hy - 13} Z" fill="#ffd6f0" stroke="#c45bab" stroke-width="1.2"/><path d="M${hx + 15} ${hy - 19} l7 -2 M${hx + 16.5} ${hy - 25} l5 -1.5" stroke="#c45bab" stroke-width="1.2"/>`;
+  if (acc === "loafhat") head += `<g transform="rotate(-8 ${hx + 17} ${hy - 19})"><rect x="${hx + 1}" y="${hy - 25}" width="32" height="12" rx="6" fill="#d9a35b" stroke="#a8743a" stroke-width="1.3"/><path d="M${hx + 8} ${hy - 15} l4 -8 M${hx + 15} ${hy - 15} l4 -8 M${hx + 22} ${hy - 15} l4 -8" stroke="#f6d9a2" stroke-width="2" stroke-linecap="round"/></g>`;
+  if (acc === "devil") head += `<g fill="#d42a2a" stroke="#8a1010" stroke-width="1.2" stroke-linejoin="round"><path d="M${hx + 6} ${hy - 12} Q${hx + 1} ${hy - 21} ${hx + 6} ${hy - 29} Q${hx + 8} ${hy - 20} ${hx + 14} ${hy - 13} Z"/><path d="M${hx + 21} ${hy - 13} Q${hx + 27} ${hy - 20} ${hx + 29} ${hy - 29} Q${hx + 34} ${hy - 21} ${hx + 29} ${hy - 12} Z"/></g>`;
+  if (acc === "halo") head += `<ellipse cx="${hx + 17}" cy="${hy - 22}" rx="12" ry="3.4" fill="none" stroke="#f2c230" stroke-width="2.6"/>`;
+  if (acc === "pot") head += `<rect x="${hx + 2}" y="${hy - 25}" width="30" height="15" rx="2" fill="#b8c0cc" stroke="#7d8794" stroke-width="1.2"/><rect x="${hx - 4}" y="${hy - 22}" width="7" height="3" rx="1.5" fill="#7d8794"/><rect x="${hx + 31}" y="${hy - 22}" width="7" height="3" rx="1.5" fill="#7d8794"/><path d="M${hx + 2} ${hy - 20} h30" stroke="#9aa3b0" stroke-width="1"/><rect x="${hx + 6}" y="${hy - 22}" width="5" height="9" rx="1.5" fill="rgba(255,255,255,.45)"/>`;
+  if (acc === "crown") head += `<path d="M${hx + 8} ${hy - 13} L${hx + 7} ${hy - 25} L${hx + 12.5} ${hy - 19} L${hx + 17} ${hy - 28} L${hx + 21.5} ${hy - 19} L${hx + 27} ${hy - 25} L${hx + 26} ${hy - 13} Z" fill="#f2c230" stroke="#b8860b" stroke-width="1.2"/><circle cx="${hx + 17}" cy="${hy - 17}" r="1.8" fill="#e8483f"/>`;
+  const pop = falling ? `<text class="poptxt" x="${segX(len + falling - 1) - 2}" y="12">${esc(popName())}.pop()</text>` : "";
+  return `<svg class="snake ${o.cls || ""}" viewBox="0 0 ${W} ${H}" role="img" aria-label="Змійка, сегментів: ${len} з ${N}">${g}<g class="head">${head}</g>${pop}</svg>`;
+}
+
+// ---------- гардероб (спільний для всіх ігор) ----------
+function renderWardrobe(back, backLabel) {
+  const total = totalStars(), maxAll = GAMES.reduce((s, g) => s + g.max, 0), p = store.profile;
+  const tile = (x, kind) => {
+    const open = isOpen(x), sel = open && p[kind] === x.id;
+    const prev = snakeSVG(kind === "skin" ? { len: N, skin: x.id, acc: "none" } : { len: N, acc: x.id });
+    return `<button class="wtile ${sel ? "sel" : ""}" data-kind="${kind}" data-id="${x.id}" ${open ? "" : "disabled"}>
+      ${prev}<span class="wname">${esc(x.name)}</span>
+      <span class="wlock">${sel ? "Обрано" : open ? "Відкрито" : (x.secret ? "Секрет" : x.ach ? "Секрет: " + ACH[x.ach].toLowerCase() : `Потрібно ★ ${x.need}`)}</span></button>`;
+  };
+  app().innerHTML = `<div class="center wardrobe">
+    <button class="link" id="back">← ${esc(backLabel || "Назад")}</button>
+    <h2>Гардероб</h2>
+    <div class="pet">${snakeSVG({ len: N, cls: "big" })}
+      <div class="petinfo"><label class="answer-label" for="petname">Ім'я змійки</label>
+      <input type="text" id="petname" maxlength="16" value="${esc(p.name)}" autocomplete="off">
+      <div class="status">У тебе ★ ${total} з ${maxAll} в усіх іграх. Більше зірок — більше скінів.</div></div></div>
+    <h3>Забарвлення</h3>
+    <div class="wgrid">${SKINS.map(x => tile(x, "skin")).join("")}</div>
+    <h3>Аксесуари</h3>
+    <div class="wgrid">${ACCS.map(x => tile(x, "acc")).join("")}</div>
+  </div>`;
+  $("#back").onclick = back;
+  $("#petname").addEventListener("change", e => { p.name = e.target.value.trim().slice(0, 16) || "Пітоша"; save("profile"); renderWardrobe(back, backLabel); });
+  app().querySelectorAll(".wtile").forEach(b => b.onclick = () => { p[b.dataset.kind] = b.dataset.id; save("profile"); renderWardrobe(back, backLabel); });
+}
+
+// ---------- вихід з гри під час рівня ----------
+// Гра повідомляє, чи йде рівень (isActive), і отримує штраф (onPenalty) з причиною, кількістю сегментів і часом.
+const GRACE = 1500, AWAY_STEP = 30000;
+let leaveCfg = { isActive: () => false, onPenalty: () => {} };
+let awaySince = 0, guardOpen = false, wasFull = false;
+function goneAway() { if (leaveCfg.isActive() && !awaySince) awaySince = Date.now(); }
+function cameBack() {
+  if (!awaySince || document.hidden) return;
+  const t = Date.now() - awaySince; awaySince = 0;
+  if (t < GRACE || !leaveCfg.isActive()) return;
+  // якщо заслона вже висить, за сам вихід уже знято — рахуємо лише час
+  const n = (guardOpen ? 0 : 1) + Math.floor(t / AWAY_STEP);
+  leaveCfg.onPenalty("away", n, t, guardOpen);
+}
+document.addEventListener("visibilitychange", () => document.hidden ? goneAway() : cameBack());
+window.addEventListener("blur", goneAway);
+window.addEventListener("focus", cameBack);
+document.addEventListener("fullscreenchange", () => {
+  if (document.fullscreenElement) { wasFull = true; return; }
+  if (!wasFull) return;
+  wasFull = false;
+  if (leaveCfg.isActive()) leaveCfg.onPenalty("fullscreen", 1, 0, guardOpen);
+});
+// o: { reason, lost, time, hearts, max }
+function showGuard(o) {
+  guardOpen = true;
+  let g = document.getElementById("guard");
+  if (!g) { g = document.createElement("div"); g.id = "guard"; g.setAttribute("role", "alertdialog"); g.setAttribute("aria-modal", "true"); document.body.appendChild(g); }
+  const what = o.reason === "fullscreen" ? "Ти вийшов(-ла) з повноекранного режиму." : "Ти переходив(-ла) на іншу вкладку чи в інший застосунок.";
+  const lost = o.lost || 1, tm = o.time || 0;
+  const word = lost === 1 ? "сегмент" : lost < 5 ? "сегменти" : "сегментів";
+  g.innerHTML = `<div class="guardcard">
+    ${snakeSVG({ len: o.hearts, mood: "sad", cls: "big" })}
+    <div class="stamp">Мінус ${lost === 1 ? "сегмент" : lost + " " + word}!</div>
+    <p>${what}${tm >= GRACE ? ` Тебе не було ${fmtTime(tm)}.` : ""} ${esc(store.profile.name)} злякалась і загубила ${lost === 1 ? "шматок хвоста" : lost + " " + word}. Лишилось сегментів: ${o.hearts} з ${o.max}.</p>
+    <p class="status">Кожні 30 секунд поза грою — ще мінус сегмент.</p>
+    <button class="btn" id="guard-back">Повернутися до гри</button>
+  </div>`;
+  g.hidden = false;
+  document.getElementById("guard-back").onclick = () => { hideGuard(); goFullscreen(); };
+  document.getElementById("guard-back").focus();
+}
+function hideGuard() { guardOpen = false; awaySince = 0; const g = document.getElementById("guard"); if (g) g.hidden = true; if (leaveCfg.onHide) leaveCfg.onHide(); }
+function goFullscreen() {
+  try { const el = document.documentElement; if (!document.fullscreenElement && el.requestFullscreen) el.requestFullscreen().catch(() => {}); } catch (e) {}
+}
+function leaveFullscreen() {
+  wasFull = false;
+  try { if (document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(() => {}); } catch (e) {}
+}
+function toast(text) {
+  let t = document.getElementById("toast");
+  if (!t) { t = document.createElement("div"); t.id = "toast"; t.setAttribute("role", "alert"); document.body.appendChild(t); }
+  t.textContent = text; t.className = "show";
+  clearTimeout(toast.tm); toast.tm = setTimeout(() => { t.className = ""; }, 4500);
+}
+
+window.KV = {
+  VERSION, GAMES, esc, md, shuffle, fmtTime, starStr, $, app,
+  get session() { return session; }, get offline() { return offline; }, get access() { return access; },
+  profile, gameData, totalStars, save, scheduleSync, syncLabel, boot, logout, whoami, bindWhoami,
+  useGame: (id, summaryFn, levelIds) => { currentGame = id; gameSummary = summaryFn; const G = GAMES.find(g => g.id === id); if (G) G.levelIds = levelIds; },
+  N, SKINS, ACCS, isOpen, openIds, achieve, snakeSVG, renderWardrobe,
+  leave: { configure: cfg => { leaveCfg = Object.assign({ isActive: () => false, onPenalty: () => {} }, cfg); }, GRACE, AWAY_STEP },
+  get guardOpen() { return guardOpen; }, showGuard, hideGuard, goFullscreen, leaveFullscreen, toast,
+};
+})();
