@@ -6,7 +6,7 @@ const GI = Object.assign({ id: "spysky", title: "Списковий квест",
 const GAME = GI.id;
 const MAX_HEARTS = KV.N;
 const KIND = { practice: "закріплення", learn: "нова тема", boss: "фінал" };
-const TYPE = Object.assign({ quiz: "Питання", output: "Що виведе?", bug: "Знайди помилку", order: "Збери код", fill: "Встав пропущене", code: "Напиши код", lesson: "Нове" }, GI.types || {});
+const TYPE = Object.assign({ quiz: "Питання", output: "Що виведе?", bug: "Знайди помилку", order: "Збери код", fill: "Встав пропущене", code: "Напиши код", lesson: "Нове" }, window.GAME_TYPE_LABELS || {}, GI.types || {});
 const PLAIN = !!GI.plain; // гра без Python: звичайні підписи, відповіді без урахування великих літер
 const { esc, md, shuffle, fmtTime, starStr, snakeSVG, achieve, isOpen, openIds, SKINS, ACCS } = KV;
 const N = KV.N;
@@ -142,10 +142,10 @@ async function startLevel(li) {
   goFullscreen();
   hideGuard();
   run = null;
-  app.innerHTML = `<div class="center"><div class="eyebrow">levels[${li}]</div><h2>${esc(lv.title)}</h2>${snakeSVG({ len: N, cls: "big" })}<p class="status">Готую завдання…</p></div>`;
+  app.innerHTML = `<div class="center"><div class="eyebrow">${PLAIN ? `Рівень ${li + 1}` : `levels[${li}]`}</div><h2>${esc(lv.title)}</h2>${snakeSVG({ len: N, cls: "big" })}<p class="status">Готую завдання…</p></div>`;
   const items = resolveItems(lv);
   try {
-    await loadPy();
+    if (!PLAIN) await loadPy(); // ігри без Python не тягнуть Skulpt
     await prepareItems(items);
   } catch (e) {
     app.innerHTML = `<div class="center"><h2>${esc(lv.title)}</h2><p>Не вдалося підготувати завдання. Найчастіше причина — немає інтернету, бо Python завантажується з мережі.</p>
@@ -304,8 +304,15 @@ const praise = () => PRAISE[Math.floor(Math.random() * PRAISE.length)];
 
 function renderItem() {
   const it = run.items[run.idx];
-  ({ lesson: rLesson, quiz: rQuiz, output: rOutput, bug: rBug, order: rOrder, fill: rFill, code: rCode })[it.t](it);
+  const base = { lesson: rLesson, quiz: rQuiz, output: rOutput, bug: rBug, order: rOrder, fill: rFill, code: rCode };
+  if (base[it.t]) return base[it.t](it);
+  (window.GAME_TYPES || {})[it.t](it, API); // тренажери з core/sims.js
 }
+// усе, що потрібно тренажерам з інших файлів
+const API = {
+  frame: (it, body) => frame(it, body), feedback, setActs, nextBtn, praise, frame0Hearts, $, md, esc, pre,
+  lose: n => lose(n), get hearts() { return run.hearts; }, get st() { return run.st; },
+};
 
 function rLesson(it) {
   frame(it, `<h2>${esc(it.title)}</h2><p>${md(it.text)}</p>${it.code ? pre(it.code) : ""}`);

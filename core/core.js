@@ -2,7 +2,7 @@
    змійка з гардеробом, заслона при виході з гри. Кожна гра підключає цей файл і додає свої рівні. */
 (function () {
 "use strict";
-const VERSION = "2026.11.12-6";
+const VERSION = "2026.11.12-7";
 const API = "https://script.google.com/macros/s/AKfycbzPtRGlYI4osS-xL-J_pAZ2A2HxTWUeuecjy9-13MgAdFIzkDnYuCr1qmLHqZvqWkQMWQ/exec";
 
 // Усі ігри порталу. sheet — назва аркуша з прогресом у таблиці вчительки.
@@ -11,13 +11,15 @@ const GAMES = [
     levelIds: ["index","slices","methods","loops","search","strings","tools","sorting","comprehension","nested","copy","boss"] },
   { id: "python6", title: "Перші кроки в Python", sub: "Python · print, змінні, input", path: "python6/", sheet: "Прогрес: Перші кроки", max: 21,
     levelIds: ["intro","print","math","types","vars","input","final"] },
-  { id: "fajly", title: "Файли і папки", sub: "Цифрова грамотність · 5 клас", path: "fajly/", sheet: "Прогрес: Файли", max: 24,
-    levelIds: ["basics","names","ext","path","shortcuts","actions","final","hardware"] },
+  { id: "fajly", title: "Файли і папки", sub: "Цифрова грамотність · 5 клас", path: "fajly/", sheet: "Прогрес: Файли", max: 30,
+    levelIds: ["basics","names","extlearn","ext","path","shortcuts","actions","explorer","final","hardware"] },
+  { id: "klavishi", title: "Гарячі клавіші", sub: "Цифрова грамотність · 5 клас", path: "klavishi/", sheet: "Прогрес: Клавіші", max: 18,
+    levelIds: ["copy","edit","files","windows","train","test"] },
 ];
 
 // ---------- утиліти ----------
 const esc = s => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-const md = s => esc(s).replace(/`([^`]+)`/g, "<code>$1</code>").replace(/\*\*([^*]+)\*\*/g, "<b>$1</b>");
+const md = s => esc(s).replace(/`([^`]+)`/g, "<code>$1</code>").replace(/\*\*([^*]+)\*\*/g, "<b>$1</b>").replace(/\n/g, "<br>");
 const shuffle = a => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
 const fmtTime = ms => { const t = Math.round(ms / 1000), m = Math.floor(t / 60), sec = t % 60; return m ? `${m} хв ${sec} с` : `${sec} с`; };
 const starStr = (n, cls) => `<span class="${cls}">${[1, 2, 3].map(k => `<span class="${k <= n ? "on" : ""}">★</span>`).join("")}</span>`;
