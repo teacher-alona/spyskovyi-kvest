@@ -2,7 +2,8 @@
 (function () {
 "use strict";
 const LEVELS = window.LEVELS;
-const GAME = "spysky";
+const GI = Object.assign({ id: "spysky", title: "Списковий квест", eyebrow: "Python · списки", intro: "Кожен рівень починається з розминки з основ. На рівнях «нова тема» спершу коротке пояснення, потім задачі. Наступний рівень відкривається, коли пройдено попередній." }, window.GAME_INFO || {});
+const GAME = GI.id;
 const MAX_HEARTS = KV.N;
 const KIND = { practice: "закріплення", learn: "нова тема", boss: "фінал" };
 const TYPE = { quiz: "Питання", output: "Що виведе?", bug: "Знайди помилку", order: "Збери код", fill: "Встав пропущене", code: "Напиши код", lesson: "Нове" };
@@ -205,9 +206,9 @@ function renderMap() {
   app.innerHTML = `
   <header class="hero">
     <div class="topnav"><a class="link" href="../">← Усі ігри</a>${KV.whoami()}</div>
-    <div class="eyebrow">Python · списки</div>
-    <h1>Списковий квест</h1>
-    <p>Кожен рівень починається з розминки з основ. На рівнях «нова тема» спершу коротке пояснення, потім задачі. Наступний рівень відкривається, коли пройдено попередній.</p>
+    <div class="eyebrow">${esc(GI.eyebrow)}</div>
+    <h1>${esc(GI.title)}</h1>
+    <p>${esc(GI.intro)}</p>
     <div class="pet">
       ${snakeSVG({ len: N, cls: "big" })}
       <div class="petinfo">
@@ -583,5 +584,5 @@ function renderFail() {
 
 
 window.__game = { runPy, LEVELS, startLevel, items: () => run && run.items, goto: async (li, k) => { await startLevel(li); run.idx = k; run.st = {}; renderItem(); } };
-KV.boot({ title: "Списковий квест", eyebrow: "Python · списки", onReady: renderMap, isIdle: () => !run && (!app.firstElementChild || !!app.querySelector(".hero") || !!app.querySelector(".bootwait")) });
+KV.boot({ title: GI.title, eyebrow: GI.eyebrow, onReady: renderMap, isIdle: () => !run && (!app.firstElementChild || !!app.querySelector(".hero") || !!app.querySelector(".bootwait")) });
 })();

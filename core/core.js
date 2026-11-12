@@ -2,13 +2,15 @@
    змійка з гардеробом, заслона при виході з гри. Кожна гра підключає цей файл і додає свої рівні. */
 (function () {
 "use strict";
-const VERSION = "2026.11.12-4";
+const VERSION = "2026.11.12-5";
 const API = "https://script.google.com/macros/s/AKfycbzPtRGlYI4osS-xL-J_pAZ2A2HxTWUeuecjy9-13MgAdFIzkDnYuCr1qmLHqZvqWkQMWQ/exec";
 
 // Усі ігри порталу. sheet — назва аркуша з прогресом у таблиці вчительки.
 const GAMES = [
   { id: "spysky", title: "Списковий квест", sub: "Python · списки", path: "spysky/", sheet: "Прогрес: Списки", max: 36,
     levelIds: ["index","slices","methods","loops","search","strings","tools","sorting","comprehension","nested","copy","boss"] },
+  { id: "python6", title: "Перші кроки в Python", sub: "Python · print, змінні, input", path: "python6/", sheet: "Прогрес: Перші кроки", max: 21,
+    levelIds: ["intro","print","math","types","vars","input","final"] },
 ];
 
 // ---------- утиліти ----------

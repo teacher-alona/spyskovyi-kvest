@@ -72,7 +72,7 @@ function accessSheet() {
   const classes = [];
   ss().getSheetByName("Учні").getDataRange().getDisplayValues().slice(1).forEach(r => { if (r[3] && classes.indexOf(r[3]) < 0) classes.push(r[3]); });
   if (classes.length) sh.getRange(2, 1, classes.length, 2).setValues(classes.map(c => [c, "spysky"]));
-  sh.getRange(2, 3).setValue("Ігри пишемо через кому. Коди ігор: spysky — «Списковий квест». Якщо класу немає в списку, він бачить усі ігри.");
+  sh.getRange(2, 3).setValue("Ігри пишемо через кому. Коди ігор: spysky — «Списковий квест», python6 — «Перші кроки в Python». Якщо класу немає в списку, він бачить усі ігри.");
   sh.setFrozenRows(1);
   return sh;
 }
