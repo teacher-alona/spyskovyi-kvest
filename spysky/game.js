@@ -48,7 +48,7 @@ const pre = code => `<pre class="code">${hl(code)}</pre>`;
 const normOut0 = s => String(s).replace(/\r/g, "").replace(/"/g, "'").split("\n").map(l => l.trim().replace(/\s*([,\[\]\(\)])\s*/g, "$1").replace(/\s+/g, " ")).join("\n").replace(/^\n+|\n+$/g, "");
 const normOut = s => PLAIN ? normOut0(s).toLowerCase() : normOut0(s);
 const normFill = s => { const v = String(s).trim().replace(/"/g, "'").replace(/\s+/g, ""); return PLAIN ? v.toLowerCase() : v; };
-const levelOpen = i => i === 0 || (gd().stars[LEVELS[i - 1].id] || 0) > 0;
+const levelOpen = i => !!GI.openAll || i === 0 || (gd().stars[LEVELS[i - 1].id] || 0) > 0;
 
 // ---------- змійка й гардероб — у core ----------
 
