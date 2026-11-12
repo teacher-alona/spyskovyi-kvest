@@ -2,7 +2,7 @@
    змійка з гардеробом, заслона при виході з гри. Кожна гра підключає цей файл і додає свої рівні. */
 (function () {
 "use strict";
-const VERSION = "2026.11.12";
+const VERSION = "2026.11.12-2";
 const API = "https://script.google.com/macros/s/AKfycbzPtRGlYI4osS-xL-J_pAZ2A2HxTWUeuecjy9-13MgAdFIzkDnYuCr1qmLHqZvqWkQMWQ/exec";
 
 // Усі ігри порталу. sheet — назва аркуша з прогресом у таблиці вчительки.
@@ -168,7 +168,8 @@ function applyServer(r) {
   fixStore();
   const changed = JSON.stringify(store) !== before;
   persist();
-  if (changed || !r.profile) { dirty = true; scheduleSync(true); }
+  // зберігаємо лише якщо щось справді змінилось (або новий скрипт ще не має профілю), щоб не затерти ручні зміни вчительки
+  if (changed || (r.v >= 2 && !r.profile)) { dirty = true; scheduleSync(true); }
   return changed;
 }
 const loginBody = (login, pin) => ({ action: "login", login, pin, v: 2, games: GAMES.map(g => ({ id: g.id, sheet: g.sheet })) });
