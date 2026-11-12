@@ -258,3 +258,6 @@ textarea { resize: vertical; line-height: 1.6; }
 .wtile.shop[disabled] .snake { filter: none; opacity: .55; }
 .status.bytes { margin-top: 4px; }
 .bytesgot { font-weight: 700; margin: 6px 0; }
+.paint { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 12px; }
+.paint .pchip { font: inherit; font-weight: 700; font-size: .85rem; padding: 6px 12px; border-radius: 999px; border: 2px solid var(--line); background: var(--card); cursor: pointer; }
+.paint .pchip.on { border-color: var(--ink); background: var(--ink-soft); }

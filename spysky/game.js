@@ -559,8 +559,8 @@ function renderDone() {
   if (earned) gd().bytes = (gd().bytes || 0) + earned;
   save(); KV.scheduleSync(true);
   if (run.mistakes === 0) achieve("perfect");
-  if (run.mistakes === 0 && pf().acc === "devil") achieve("angel");
-  if (lv.id === "slices" && pf().skin === "loaf" && pf().acc === "pot") achieve("loafhat");
+  if (run.mistakes === 0 && KV.hasAcc("devil")) achieve("angel");
+  if (lv.id === "slices" && pf().skin === "loaf" && KV.hasAcc("pot")) achieve("loafhat");
   const fresh = [...SKINS, ...ACCS].filter(x => isOpen(x) && !before.includes(x.id));
   const hasNext = run.li + 1 < LEVELS.length;
   const msg = s === 3 ? "Відмінно!" : s === 2 ? "Добре!" : "Пройдено!";

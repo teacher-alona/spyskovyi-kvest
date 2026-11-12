@@ -2,7 +2,7 @@
    змійка з гардеробом, заслона при виході з гри. Кожна гра підключає цей файл і додає свої рівні. */
 (function () {
 "use strict";
-const VERSION = "2026.11.12-9";
+const VERSION = "2026.11.12-10";
 const API = "https://script.google.com/macros/s/AKfycbzPtRGlYI4osS-xL-J_pAZ2A2HxTWUeuecjy9-13MgAdFIzkDnYuCr1qmLHqZvqWkQMWQ/exec";
 
 // Усі ігри порталу. sheet — назва аркуша з прогресом у таблиці вчительки.
@@ -53,7 +53,7 @@ const blankStore = () => ({ owner: null, profile: {}, games: {} });
 if (!store) store = blankStore();
 function fixStore() {
   store.profile = store.profile || {}; store.games = store.games || {};
-  const p = store.profile; p.skin = p.skin || "classic"; p.acc = p.acc || "none"; p.name = p.name || "Пітоша"; p.ach = p.ach || {}; p.bought = Array.isArray(p.bought) ? p.bought : [];
+  const p = store.profile; p.skin = p.skin || "classic"; p.acc = p.acc || "none"; p.name = p.name || "Пітоша"; p.ach = p.ach || {}; p.bought = Array.isArray(p.bought) ? p.bought : []; p.mix = p.mix && typeof p.mix === "object" ? p.mix : {};
 }
 fixStore();
 const gameData = id => { const g = store.games[id] = store.games[id] || {}; g.stars = g.stars || {}; return g; };
@@ -327,6 +327,12 @@ const ACCS = [
   { id: "wizard", name: "Капелюх чарівника", price: 60 },
   { id: "loafhat", name: "Батон на голові", ach: "loafhat", secret: true },
 ];
+// місце аксесуара: з одного місця можна вдягти лише одну річ, з різних — скільки завгодно
+const SLOT = { cap: "hat", cowboy: "hat", propeller: "hat", crown: "hat", horn: "hat", halo: "hat", pot: "hat", loafhat: "hat", devil: "hat", wizard: "hat", duck: "hat", catears: "hat",
+  glasses: "eyes", pirate: "eyes", moustache: "face", scarf: "neck", phones: "ears", bow: "decor", flower: "decor", wings: "back" };
+const SLOT_NAME = { hat: "на голову", eyes: "на очі", face: "на обличчя", neck: "на шию", ears: "навушники", decor: "прикраса", back: "на спину" };
+const accList = () => String(store.profile.acc || "").split(",").map(x => x.trim()).filter(x => x && x !== "none");
+const hasAcc = id => accList().includes(id);
 const ACH = { fail: "Лишитися без хвоста", perfect: "Пройти рівень без жодної помилки", peek: "Підглянути розв'язок задачі", lastdeath: "", loafhat: "", angel: "" };
 // ---------- байти ----------
 const BYTES_PERFECT = 5;
@@ -347,13 +353,18 @@ const popName = () => (store.profile.name || "змійка").trim().toLowerCase(
 // len — скільки сегментів лишилось; falling — скільки щойно відвалилось
 function snakeSVG(o) {
   const p = store.profile;
-  const accId = o.acc || p.acc, accItem = ACCS.find(a => a.id === accId);
-  const sk = skinOf(o.skin || p.skin), acc = o.acc ? o.acc : (accItem && isOpen(accItem) ? accId : "none"), len = o.len, falling = o.falling || 0, mood = o.mood || "happy";
+  // аксесуари: o.acc — для попереднього перегляду, інакше вдягнуте (лише відкрите)
+  const A = new Set(o.acc ? String(o.acc).split(",").filter(x => x !== "none") : accList().filter(id => { const it = ACCS.find(a => a.id === id); return it && isOpen(it); }));
+  const has = id => A.has(id), acc = A.size ? [...A].join(",") : "none";
+  // забарвлення: o.skin — уся змійка одного кольору; інакше кожен блок може мати своє (p.mix)
+  const mix = o.skin ? {} : (p.mix || {});
+  const skinAt = k => { const id = mix[k]; const it = id && SKINS.find(x => x.id === id); return it && isOpen(it) ? it : skinOf(o.skin || p.skin); };
+  const len = o.len, falling = o.falling || 0, mood = o.mood || "happy";
   const W = 18 + N * 26 + 58, H = 66;
   const segX = i => 18 + (N - 1 - i) * 26, segY = i => 40 + Math.sin((N - i) * 1.15) * 5;
   let g = "";
   for (let i = N - 1; i >= 0; i--) {
-    const x = segX(i), y = segY(i);
+    const x = segX(i), y = segY(i), sk = skinAt(i);
     const ghost = `<rect class="ghost" x="${x}" y="${y - 11}" width="22" height="22" rx="7"/>`;
     const jx = sk.jitter ? [2, -3, 1, -2, 3][i] : 0, jy = sk.jitter ? [-2, 3, -3, 1, 2][i] : 0;
     const rect = (fill, dx, op) => `<rect x="${x + jx + dx}" y="${y + jy - 11}" width="22" height="22" rx="${sk.rx ?? 7}" fill="${fill}"${op ? ` opacity="${op}"` : ` stroke="rgba(0,0,0,.22)" stroke-width="1.5"`}/>`;
@@ -361,16 +372,16 @@ function snakeSVG(o) {
       + (sk.seg ? `<g transform="translate(${jx} ${jy})">${sk.seg(x, y, i)}</g>` : "")
       + `<text x="${x + jx + 11}" y="${y + jy + 3.5}" class="segidx"${sk.idx ? ` style="fill:${sk.idx}"` : ""}>${i}</text>`;
     const wing = (dx, fill) => `<path d="M${x + 12 + dx} ${y - 8} C${x + 7 + dx} ${y - 26} ${x - 5 + dx} ${y - 32} ${x - 16 + dx} ${y - 30} Q${x - 12 + dx} ${y - 26} ${x - 13 + dx} ${y - 22} Q${x - 7 + dx} ${y - 21} ${x - 8 + dx} ${y - 17} Q${x - 2 + dx} ${y - 16} ${x - 2 + dx} ${y - 12} Q${x + 4 + dx} ${y - 12} ${x + 5 + dx} ${y - 8} Z" fill="${fill}"/><path d="M${x + 9 + dx} ${y - 12} Q${x + dx} ${y - 22} ${x - 11 + dx} ${y - 27}" fill="none" stroke-width=".9"/>`;
-    const wings = acc === "wings" && i === 2 ? `<g class="wings" stroke="#8fa3c4" stroke-width="1.2" stroke-linejoin="round">${wing(8, "#e6edfa")}${wing(0, "#fff")}</g>` : "";
+    const wings = has("wings") && i === 2 ? `<g class="wings" stroke="#8fa3c4" stroke-width="1.2" stroke-linejoin="round">${wing(8, "#e6edfa")}${wing(0, "#fff")}</g>` : "";
     if (i < len) g += wings + `<g>${body}</g>`;
     else if (i < len + falling) g += ghost + `<g class="fall">${body}</g>`;
     else g += ghost;
   }
-  const hx = segX(0) + 24, hy = 38, hc = sk.head || sk.col(-0.6);
+  const sk = skinAt("h"), hx = segX(0) + 24, hy = 38, hc = sk.head || sk.col(-0.6);
   let head = (sk.jitter ? `<rect x="${hx - 2.5}" y="${hy - 14}" width="34" height="28" rx="11" fill="#00e5ff" opacity=".8"/><rect x="${hx + 2.5}" y="${hy - 14}" width="34" height="28" rx="11" fill="#ff2bd6" opacity=".8"/>` : "")
     + `<rect x="${hx}" y="${hy - 14}" width="34" height="28" rx="${sk.headRx ?? 11}" fill="${hc}" stroke="${sk.headStroke || "rgba(0,0,0,.25)"}" stroke-width="${sk.headStroke ? 3 : 1.5}"/>`
     + (sk.headDeco ? sk.headDeco(hx, hy, acc) : "");
-  if (acc === "scarf") head = `<rect x="${hx - 7}" y="${hy + 1}" width="13" height="10" rx="3" fill="#e8483f"/><rect x="${hx - 4}" y="${hy + 8}" width="6" height="14" rx="2" fill="#e8483f" transform="rotate(14 ${hx - 1} ${hy + 8})"/><rect x="${hx - 7}" y="${hy + 4}" width="13" height="2.5" fill="#fff" opacity=".8"/>` + head;
+  if (has("scarf")) head = `<rect x="${hx - 7}" y="${hy + 1}" width="13" height="10" rx="3" fill="#e8483f"/><rect x="${hx - 4}" y="${hy + 8}" width="6" height="14" rx="2" fill="#e8483f" transform="rotate(14 ${hx - 1} ${hy + 8})"/><rect x="${hx - 7}" y="${hy + 4}" width="13" height="2.5" fill="#fff" opacity=".8"/>` + head;
   const eye = (ex) => `<circle cx="${ex}" cy="${hy - 4}" r="4.6" fill="#fff"/><circle cx="${ex + 1.3}" cy="${hy - 3.6}" r="2.3" fill="#1b1b1b"/>`;
   head += mood === "sad"
     ? `<path d="M${hx + 12} ${hy - 5} l6 -2.5 M${hx + 21} ${hy - 7.5} l6 2.5" stroke="#1b1b1b" stroke-width="1.6"/>` + `<circle cx="${hx + 15}" cy="${hy - 1}" r="1.8" fill="#1b1b1b"/><circle cx="${hx + 24}" cy="${hy - 1}" r="1.8" fill="#1b1b1b"/>`
@@ -378,37 +389,39 @@ function snakeSVG(o) {
   if (mood === "happy") head += `<path d="M${hx + 20} ${hy + 6} Q${hx + 25} ${hy + 11} ${hx + 30} ${hy + 5}" stroke="#1b1b1b" stroke-width="1.7" fill="none" stroke-linecap="round"/><circle cx="${hx + 10}" cy="${hy + 5}" r="2.6" fill="rgba(255,120,150,.55)"/>`;
   if (mood === "sad") head += `<path d="M${hx + 20} ${hy + 10} Q${hx + 25} ${hy + 5} ${hx + 30} ${hy + 10}" stroke="#1b1b1b" stroke-width="1.7" fill="none" stroke-linecap="round"/>`;
   if (mood === "wow") head += `<ellipse cx="${hx + 26}" cy="${hy + 7}" rx="2.6" ry="3.2" fill="#1b1b1b"/><path d="M${hx + 33} ${hy + 3} l6 1 l3 -3 M${hx + 39} ${hy + 4} l3 3" stroke="#e8483f" stroke-width="1.5" fill="none"/>`;
-  if (acc === "glasses") head += `<g stroke="#1b1b1b" stroke-width="1.8" fill="rgba(160,210,255,.25)"><circle cx="${hx + 15}" cy="${hy - 4}" r="5.6"/><circle cx="${hx + 27}" cy="${hy - 4}" r="5.6"/></g><path d="M${hx + 20.6} ${hy - 4} h0.8 M${hx + 9.4} ${hy - 5} l-6 -1" stroke="#1b1b1b" stroke-width="1.8"/>`;
-  if (acc === "cap") head += `<path d="M${hx + 3} ${hy - 11} Q${hx + 15} ${hy - 29} ${hx + 30} ${hy - 11} Z" fill="#2f5bd3"/><ellipse cx="${hx + 34}" cy="${hy - 11}" rx="10" ry="3" fill="#1d3f9e"/><circle cx="${hx + 16}" cy="${hy - 21}" r="2" fill="#f2c94c"/>`;
-  if (acc === "phones") head += `<path d="M${hx + 4} ${hy - 4} Q${hx + 10} ${hy - 26} ${hx + 30} ${hy - 13}" stroke="#2b2b2b" stroke-width="3.2" fill="none"/><rect x="${hx}" y="${hy - 8}" width="9" height="13" rx="3.5" fill="#2b2b2b"/><circle cx="${hx + 4.5}" cy="${hy - 1.5}" r="2" fill="#ff4f7b"/>`;
-  if (acc === "moustache") head += `<g fill="#3a2416"><ellipse cx="${hx + 22}" cy="${hy + 4}" rx="5" ry="2.2" transform="rotate(-18 ${hx + 22} ${hy + 4})"/><ellipse cx="${hx + 30}" cy="${hy + 4}" rx="5" ry="2.2" transform="rotate(18 ${hx + 30} ${hy + 4})"/></g>`;
-  if (acc === "catears") head += `<path d="M${hx + 5} ${hy - 11} L${hx + 8} ${hy - 25} L${hx + 16} ${hy - 13} Z M${hx + 20} ${hy - 13} L${hx + 28} ${hy - 25} L${hx + 31} ${hy - 11} Z" fill="${hc}" stroke="rgba(0,0,0,.25)" stroke-width="1.2"/><path d="M${hx + 8} ${hy - 13} L${hx + 9} ${hy - 20} L${hx + 13} ${hy - 14} Z M${hx + 23} ${hy - 14} L${hx + 27} ${hy - 20} L${hx + 28} ${hy - 13} Z" fill="#ff9fb8"/>`;
-  if (acc === "cowboy") head += `<path d="M${hx + 7} ${hy - 13} Q${hx + 7} ${hy - 28} ${hx + 17} ${hy - 23} Q${hx + 27} ${hy - 28} ${hx + 27} ${hy - 13} Z" fill="#a0693a"/><rect x="${hx + 7}" y="${hy - 17}" width="20" height="3" fill="#3a2416"/><ellipse cx="${hx + 17}" cy="${hy - 13}" rx="21" ry="3.6" fill="#8b5a2b"/>`;
-  if (acc === "propeller") head += `<path d="M${hx + 4} ${hy - 11} Q${hx + 17} ${hy - 29} ${hx + 30} ${hy - 11} Z" fill="#e8483f"/><path d="M${hx + 17} ${hy - 20} v-14" stroke="#555" stroke-width="1.6"/><g class="prop" style="transform-origin:${hx + 17}px ${hy - 33}px"><ellipse cx="${hx + 11}" cy="${hy - 33}" rx="6" ry="1.8" fill="#f2c94c"/><ellipse cx="${hx + 23}" cy="${hy - 33}" rx="6" ry="1.8" fill="#3d8bfd"/></g><path d="M${hx + 6} ${hy - 13} Q${hx + 17} ${hy - 18} ${hx + 28} ${hy - 13}" stroke="#f2c94c" stroke-width="2" fill="none"/>`;
-  if (acc === "duck") head += `<ellipse cx="${hx + 15}" cy="${hy - 18}" rx="8.5" ry="5.5" fill="#ffd43b" stroke="#d9a400" stroke-width="1"/><circle cx="${hx + 21}" cy="${hy - 24}" r="4.6" fill="#ffd43b" stroke="#d9a400" stroke-width="1"/><path d="M${hx + 25} ${hy - 24.5} l5 1 l-5 2 Z" fill="#ff8c1a"/><circle cx="${hx + 22.5}" cy="${hy - 25.5}" r="1" fill="#1b1b1b"/>`;
-  if (acc === "horn") head += `<path d="M${hx + 13} ${hy - 13} L${hx + 19} ${hy - 35} L${hx + 24} ${hy - 13} Z" fill="#ffd6f0" stroke="#c45bab" stroke-width="1.2"/><path d="M${hx + 15} ${hy - 19} l7 -2 M${hx + 16.5} ${hy - 25} l5 -1.5" stroke="#c45bab" stroke-width="1.2"/>`;
-  if (acc === "loafhat") head += `<g transform="rotate(-8 ${hx + 17} ${hy - 19})"><rect x="${hx + 1}" y="${hy - 25}" width="32" height="12" rx="6" fill="#d9a35b" stroke="#a8743a" stroke-width="1.3"/><path d="M${hx + 8} ${hy - 15} l4 -8 M${hx + 15} ${hy - 15} l4 -8 M${hx + 22} ${hy - 15} l4 -8" stroke="#f6d9a2" stroke-width="2" stroke-linecap="round"/></g>`;
-  if (acc === "devil") head += `<g fill="#d42a2a" stroke="#8a1010" stroke-width="1.2" stroke-linejoin="round"><path d="M${hx + 6} ${hy - 12} Q${hx + 1} ${hy - 21} ${hx + 6} ${hy - 29} Q${hx + 8} ${hy - 20} ${hx + 14} ${hy - 13} Z"/><path d="M${hx + 21} ${hy - 13} Q${hx + 27} ${hy - 20} ${hx + 29} ${hy - 29} Q${hx + 34} ${hy - 21} ${hx + 29} ${hy - 12} Z"/></g>`;
-  if (acc === "bow") head += `<path d="M${hx + 9} ${hy - 15} l-9 -6 v12 Z M${hx + 9} ${hy - 15} l9 -6 v12 Z" fill="#ff5fa2" stroke="#d6337a" stroke-width="1"/><circle cx="${hx + 9}" cy="${hy - 15}" r="2.6" fill="#d6337a"/>`;
-  if (acc === "flower") head += [0, 72, 144, 216, 288].map(a => `<circle cx="${hx + 27 + 4.6 * Math.cos(a * Math.PI / 180)}" cy="${hy - 15 + 4.6 * Math.sin(a * Math.PI / 180)}" r="3.4" fill="#fff" stroke="#f0a1c0" stroke-width="1"/>`).join("") + `<circle cx="${hx + 27}" cy="${hy - 15}" r="2.8" fill="#ffcf3d"/>`;
-  if (acc === "pirate") head += `<path d="M${hx + 3} ${hy - 12} L${hx + 33} ${hy + 1}" stroke="#1b1b1b" stroke-width="1.8"/><ellipse cx="${hx + 24}" cy="${hy - 4}" rx="5.6" ry="5" fill="#1b1b1b"/>`;
-  if (acc === "wizard") head += `<path d="M${hx + 5} ${hy - 12} L${hx + 19} ${hy - 37} L${hx + 30} ${hy - 12} Z" fill="#3b2f8f" stroke="#241a66" stroke-width="1.2"/><ellipse cx="${hx + 17}" cy="${hy - 12}" rx="17" ry="3.4" fill="#2c2275"/><path d="M${hx + 14} ${hy - 24} l1.2 2.6 2.8 .3 -2.1 1.9 .6 2.8 -2.5 -1.4 -2.5 1.4 .6 -2.8 -2.1 -1.9 2.8 -.3 Z" fill="#ffd43b"/><circle cx="${hx + 22}" cy="${hy - 17}" r="1.2" fill="#ffd43b"/>`;
-  if (acc === "halo") head += `<ellipse cx="${hx + 17}" cy="${hy - 22}" rx="12" ry="3.4" fill="none" stroke="#f2c230" stroke-width="2.6"/>`;
-  if (acc === "pot") head += `<rect x="${hx + 2}" y="${hy - 25}" width="30" height="15" rx="2" fill="#b8c0cc" stroke="#7d8794" stroke-width="1.2"/><rect x="${hx - 4}" y="${hy - 22}" width="7" height="3" rx="1.5" fill="#7d8794"/><rect x="${hx + 31}" y="${hy - 22}" width="7" height="3" rx="1.5" fill="#7d8794"/><path d="M${hx + 2} ${hy - 20} h30" stroke="#9aa3b0" stroke-width="1"/><rect x="${hx + 6}" y="${hy - 22}" width="5" height="9" rx="1.5" fill="rgba(255,255,255,.45)"/>`;
-  if (acc === "crown") head += `<path d="M${hx + 8} ${hy - 13} L${hx + 7} ${hy - 25} L${hx + 12.5} ${hy - 19} L${hx + 17} ${hy - 28} L${hx + 21.5} ${hy - 19} L${hx + 27} ${hy - 25} L${hx + 26} ${hy - 13} Z" fill="#f2c230" stroke="#b8860b" stroke-width="1.2"/><circle cx="${hx + 17}" cy="${hy - 17}" r="1.8" fill="#e8483f"/>`;
+  if (has("glasses")) head += `<g stroke="#1b1b1b" stroke-width="1.8" fill="rgba(160,210,255,.25)"><circle cx="${hx + 15}" cy="${hy - 4}" r="5.6"/><circle cx="${hx + 27}" cy="${hy - 4}" r="5.6"/></g><path d="M${hx + 20.6} ${hy - 4} h0.8 M${hx + 9.4} ${hy - 5} l-6 -1" stroke="#1b1b1b" stroke-width="1.8"/>`;
+  if (has("cap")) head += `<path d="M${hx + 3} ${hy - 11} Q${hx + 15} ${hy - 29} ${hx + 30} ${hy - 11} Z" fill="#2f5bd3"/><ellipse cx="${hx + 34}" cy="${hy - 11}" rx="10" ry="3" fill="#1d3f9e"/><circle cx="${hx + 16}" cy="${hy - 21}" r="2" fill="#f2c94c"/>`;
+  if (has("phones")) head += `<path d="M${hx + 4} ${hy - 4} Q${hx + 10} ${hy - 26} ${hx + 30} ${hy - 13}" stroke="#2b2b2b" stroke-width="3.2" fill="none"/><rect x="${hx}" y="${hy - 8}" width="9" height="13" rx="3.5" fill="#2b2b2b"/><circle cx="${hx + 4.5}" cy="${hy - 1.5}" r="2" fill="#ff4f7b"/>`;
+  if (has("moustache")) head += `<g fill="#3a2416"><ellipse cx="${hx + 22}" cy="${hy + 4}" rx="5" ry="2.2" transform="rotate(-18 ${hx + 22} ${hy + 4})"/><ellipse cx="${hx + 30}" cy="${hy + 4}" rx="5" ry="2.2" transform="rotate(18 ${hx + 30} ${hy + 4})"/></g>`;
+  if (has("catears")) head += `<path d="M${hx + 5} ${hy - 11} L${hx + 8} ${hy - 25} L${hx + 16} ${hy - 13} Z M${hx + 20} ${hy - 13} L${hx + 28} ${hy - 25} L${hx + 31} ${hy - 11} Z" fill="${hc}" stroke="rgba(0,0,0,.25)" stroke-width="1.2"/><path d="M${hx + 8} ${hy - 13} L${hx + 9} ${hy - 20} L${hx + 13} ${hy - 14} Z M${hx + 23} ${hy - 14} L${hx + 27} ${hy - 20} L${hx + 28} ${hy - 13} Z" fill="#ff9fb8"/>`;
+  if (has("cowboy")) head += `<path d="M${hx + 7} ${hy - 13} Q${hx + 7} ${hy - 28} ${hx + 17} ${hy - 23} Q${hx + 27} ${hy - 28} ${hx + 27} ${hy - 13} Z" fill="#a0693a"/><rect x="${hx + 7}" y="${hy - 17}" width="20" height="3" fill="#3a2416"/><ellipse cx="${hx + 17}" cy="${hy - 13}" rx="21" ry="3.6" fill="#8b5a2b"/>`;
+  if (has("propeller")) head += `<path d="M${hx + 4} ${hy - 11} Q${hx + 17} ${hy - 29} ${hx + 30} ${hy - 11} Z" fill="#e8483f"/><path d="M${hx + 17} ${hy - 20} v-14" stroke="#555" stroke-width="1.6"/><g class="prop" style="transform-origin:${hx + 17}px ${hy - 33}px"><ellipse cx="${hx + 11}" cy="${hy - 33}" rx="6" ry="1.8" fill="#f2c94c"/><ellipse cx="${hx + 23}" cy="${hy - 33}" rx="6" ry="1.8" fill="#3d8bfd"/></g><path d="M${hx + 6} ${hy - 13} Q${hx + 17} ${hy - 18} ${hx + 28} ${hy - 13}" stroke="#f2c94c" stroke-width="2" fill="none"/>`;
+  if (has("duck")) head += `<ellipse cx="${hx + 15}" cy="${hy - 18}" rx="8.5" ry="5.5" fill="#ffd43b" stroke="#d9a400" stroke-width="1"/><circle cx="${hx + 21}" cy="${hy - 24}" r="4.6" fill="#ffd43b" stroke="#d9a400" stroke-width="1"/><path d="M${hx + 25} ${hy - 24.5} l5 1 l-5 2 Z" fill="#ff8c1a"/><circle cx="${hx + 22.5}" cy="${hy - 25.5}" r="1" fill="#1b1b1b"/>`;
+  if (has("horn")) head += `<path d="M${hx + 13} ${hy - 13} L${hx + 19} ${hy - 35} L${hx + 24} ${hy - 13} Z" fill="#ffd6f0" stroke="#c45bab" stroke-width="1.2"/><path d="M${hx + 15} ${hy - 19} l7 -2 M${hx + 16.5} ${hy - 25} l5 -1.5" stroke="#c45bab" stroke-width="1.2"/>`;
+  if (has("loafhat")) head += `<g transform="rotate(-8 ${hx + 17} ${hy - 19})"><rect x="${hx + 1}" y="${hy - 25}" width="32" height="12" rx="6" fill="#d9a35b" stroke="#a8743a" stroke-width="1.3"/><path d="M${hx + 8} ${hy - 15} l4 -8 M${hx + 15} ${hy - 15} l4 -8 M${hx + 22} ${hy - 15} l4 -8" stroke="#f6d9a2" stroke-width="2" stroke-linecap="round"/></g>`;
+  if (has("devil")) head += `<g fill="#d42a2a" stroke="#8a1010" stroke-width="1.2" stroke-linejoin="round"><path d="M${hx + 6} ${hy - 12} Q${hx + 1} ${hy - 21} ${hx + 6} ${hy - 29} Q${hx + 8} ${hy - 20} ${hx + 14} ${hy - 13} Z"/><path d="M${hx + 21} ${hy - 13} Q${hx + 27} ${hy - 20} ${hx + 29} ${hy - 29} Q${hx + 34} ${hy - 21} ${hx + 29} ${hy - 12} Z"/></g>`;
+  if (has("bow")) head += `<path d="M${hx + 9} ${hy - 15} l-9 -6 v12 Z M${hx + 9} ${hy - 15} l9 -6 v12 Z" fill="#ff5fa2" stroke="#d6337a" stroke-width="1"/><circle cx="${hx + 9}" cy="${hy - 15}" r="2.6" fill="#d6337a"/>`;
+  if (has("flower")) head += [0, 72, 144, 216, 288].map(a => `<circle cx="${hx + 27 + 4.6 * Math.cos(a * Math.PI / 180)}" cy="${hy - 15 + 4.6 * Math.sin(a * Math.PI / 180)}" r="3.4" fill="#fff" stroke="#f0a1c0" stroke-width="1"/>`).join("") + `<circle cx="${hx + 27}" cy="${hy - 15}" r="2.8" fill="#ffcf3d"/>`;
+  if (has("pirate")) head += `<path d="M${hx + 3} ${hy - 12} L${hx + 33} ${hy + 1}" stroke="#1b1b1b" stroke-width="1.8"/><ellipse cx="${hx + 24}" cy="${hy - 4}" rx="5.6" ry="5" fill="#1b1b1b"/>`;
+  if (has("wizard")) head += `<path d="M${hx + 5} ${hy - 12} L${hx + 19} ${hy - 37} L${hx + 30} ${hy - 12} Z" fill="#3b2f8f" stroke="#241a66" stroke-width="1.2"/><ellipse cx="${hx + 17}" cy="${hy - 12}" rx="17" ry="3.4" fill="#2c2275"/><path d="M${hx + 14} ${hy - 24} l1.2 2.6 2.8 .3 -2.1 1.9 .6 2.8 -2.5 -1.4 -2.5 1.4 .6 -2.8 -2.1 -1.9 2.8 -.3 Z" fill="#ffd43b"/><circle cx="${hx + 22}" cy="${hy - 17}" r="1.2" fill="#ffd43b"/>`;
+  if (has("halo")) head += `<ellipse cx="${hx + 17}" cy="${hy - 22}" rx="12" ry="3.4" fill="none" stroke="#f2c230" stroke-width="2.6"/>`;
+  if (has("pot")) head += `<rect x="${hx + 2}" y="${hy - 25}" width="30" height="15" rx="2" fill="#b8c0cc" stroke="#7d8794" stroke-width="1.2"/><rect x="${hx - 4}" y="${hy - 22}" width="7" height="3" rx="1.5" fill="#7d8794"/><rect x="${hx + 31}" y="${hy - 22}" width="7" height="3" rx="1.5" fill="#7d8794"/><path d="M${hx + 2} ${hy - 20} h30" stroke="#9aa3b0" stroke-width="1"/><rect x="${hx + 6}" y="${hy - 22}" width="5" height="9" rx="1.5" fill="rgba(255,255,255,.45)"/>`;
+  if (has("crown")) head += `<path d="M${hx + 8} ${hy - 13} L${hx + 7} ${hy - 25} L${hx + 12.5} ${hy - 19} L${hx + 17} ${hy - 28} L${hx + 21.5} ${hy - 19} L${hx + 27} ${hy - 25} L${hx + 26} ${hy - 13} Z" fill="#f2c230" stroke="#b8860b" stroke-width="1.2"/><circle cx="${hx + 17}" cy="${hy - 17}" r="1.8" fill="#e8483f"/>`;
   const pop = falling ? `<text class="poptxt" x="${segX(len + falling - 1) - 2}" y="12">${esc(popName())}.pop()</text>` : "";
   return `<svg class="snake ${o.cls || ""}" viewBox="0 0 ${W} ${H}" role="img" aria-label="Змійка, сегментів: ${len} з ${N}">${g}<g class="head">${head}</g>${pop}</svg>`;
 }
 
 // ---------- гардероб (спільний для всіх ігор) ----------
 let pendingBuy = null; // перший клік по товару — «натисни ще раз», другий — купівля
+let paintTarget = "all"; // що фарбуємо: "all" — усю змійку, "h" — голову, 0..N-1 — блок
 function renderWardrobe(back, backLabel) {
   const total = totalStars(), maxAll = GAMES.reduce((s, g) => s + g.max, 0), p = store.profile, left = bytesLeft();
   const tile = (x, kind) => {
-    const open = isOpen(x), sel = open && p[kind] === x.id;
+    const curSkin = paintTarget === "all" ? (Object.keys(p.mix || {}).length ? null : p.skin) : ((p.mix || {})[paintTarget] || p.skin);
+    const open = isOpen(x), sel = open && (kind === "skin" ? curSkin === x.id : x.id === "none" ? !accList().length : hasAcc(x.id));
     const prev = snakeSVG(kind === "skin" ? { len: N, skin: x.id, acc: "none" } : { len: N, acc: x.id });
     const shop = x.price && !open, can = shop && left >= x.price;
-    const label = sel ? "Обрано" : open ? "Відкрито"
+    const label = sel ? (kind === "acc" && x.id !== "none" ? "Вдягнуто · зняти" : "Обрано") : open ? (kind === "acc" && SLOT[x.id] ? "Відкрито · " + SLOT_NAME[SLOT[x.id]] : "Відкрито")
       : shop ? (pendingBuy === x.id ? `Натисни ще раз, щоб купити за ${x.price}` : can ? `Купити за ${x.price} ${bytesWord(x.price)}` : `Коштує ${x.price} ${bytesWord(x.price)}`)
       : (x.secret ? "Секрет" : x.ach ? "Секрет: " + ACH[x.ach].toLowerCase() : `Потрібно ★ ${x.need}`);
     return `<button class="wtile ${sel ? "sel" : ""} ${shop ? "shop" : ""} ${pendingBuy === x.id ? "confirm" : ""}" data-kind="${kind}" data-id="${x.id}" ${open || can ? "" : "disabled"}>
@@ -425,8 +438,11 @@ function renderWardrobe(back, backLabel) {
       <div class="status">У тебе ★ ${total} з ${maxAll} в усіх іграх. Більше зірок — більше скінів.</div>
       <div class="status bytes">Байтів: <b>${left}</b>. Їх дають за правильні відповіді з першої спроби на рівнях, які ти проходиш уперше, і ще ${BYTES_PERFECT} за рівень без помилок.</div></div></div>
     <h3>Забарвлення</h3>
+    <p class="status">Змійку можна зібрати з різних блоків. Обери, що фарбуєш, а потім забарвлення.</p>
+    <div class="paint">${[["all", "Усю змійку"], ["h", "Голову"], ...Array.from({ length: N }, (_, i) => [String(i), "Блок " + i])].map(([k, t]) => `<button class="pchip ${String(paintTarget) === k ? "on" : ""}" data-t="${k}">${t}</button>`).join("")}</div>
     <div class="wgrid">${SKINS.filter(x => !x.price).map(x => tile(x, "skin")).join("")}</div>
     <h3>Аксесуари</h3>
+    <p class="status">Можна вдягти кілька речей одразу, але по одній на кожне місце: одну шапку, одні окуляри і так далі. Клік по вдягнутій речі знімає її.</p>
     <div class="wgrid">${ACCS.filter(x => !x.price).map(x => tile(x, "acc")).join("")}</div>
     <h3>Крамниця</h3>
     <div class="wgrid">${SKINS.filter(x => x.price).map(x => tile(x, "skin")).join("")}${ACCS.filter(x => x.price).map(x => tile(x, "acc")).join("")}</div>
@@ -441,8 +457,16 @@ function renderWardrobe(back, backLabel) {
       p.bought = [...(p.bought || []), x.id]; toast(`Куплено: ${x.name}!`);
     }
     pendingBuy = null;
-    p[b.dataset.kind] = b.dataset.id; save("profile"); renderWardrobe(back, backLabel);
+    const id = b.dataset.id;
+    if (b.dataset.kind === "skin") {
+      if (paintTarget === "all") { p.skin = id; p.mix = {}; }
+      else { p.mix = Object.assign({}, p.mix, { [paintTarget]: id }); }
+    } else if (id === "none") p.acc = "none";
+    else if (hasAcc(id)) { const l = accList().filter(a => a !== id); p.acc = l.length ? l.join(",") : "none"; }
+    else { const l = accList().filter(a => !SLOT[id] || SLOT[a] !== SLOT[id]); l.push(id); p.acc = l.join(","); }
+    save("profile"); renderWardrobe(back, backLabel);
   });
+  app().querySelectorAll(".paint .pchip").forEach(b => b.onclick = () => { paintTarget = b.dataset.t; renderWardrobe(back, backLabel); });
 }
 
 // ---------- вихід з гри під час рівня ----------
@@ -507,7 +531,7 @@ window.KV = {
   get session() { return session; }, get offline() { return offline; }, get access() { return access; },
   profile, gameData, totalStars, save, scheduleSync, syncLabel, boot, logout, whoami, bindWhoami,
   useGame: (id, summaryFn, levelIds) => { currentGame = id; gameSummary = summaryFn; const G = GAMES.find(g => g.id === id); if (G) G.levelIds = levelIds; },
-  N, SKINS, ACCS, isOpen, openIds, achieve, snakeSVG, renderWardrobe, bytesLeft, bytesWord, BYTES_PERFECT,
+  N, SKINS, ACCS, isOpen, openIds, achieve, snakeSVG, renderWardrobe, hasAcc, bytesLeft, bytesWord, BYTES_PERFECT,
   leave: { configure: cfg => { leaveCfg = Object.assign({ isActive: () => false, onPenalty: () => {} }, cfg); }, GRACE, AWAY_STEP },
   get guardOpen() { return guardOpen; }, showGuard, hideGuard, goFullscreen, leaveFullscreen, toast,
 };
