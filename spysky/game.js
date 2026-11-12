@@ -215,7 +215,7 @@ function renderMap() {
       ${snakeSVG({ len: N, cls: "big" })}
       <div class="petinfo">
         <div class="petname">${esc(pf().name)}</div>
-        <div class="score">${PLAIN ? "Зірок:" : "sum(stars) ="} <b>${total}</b> / ${n * 3}</div>
+        <div class="score">${PLAIN ? "Зірок:" : "sum(stars) ="} <b>${total}</b> / ${n * 3} · Байтів: <b>${KV.bytesLeft()}</b></div>
         <div class="mystats">Спроб рівнів: <b>${LEVELS.reduce((a, l) => a + ((gd().attempts || {})[l.id] || 0), 0)}</b> · Виходів з гри: <b class="${gd().leaves ? "bad" : ""}">${gd().leaves || 0}</b>${gd().awayMs ? ` · Поза грою: <b class="bad">${fmtTime(gd().awayMs)}</b>` : ""}</div>
         <button class="btn ghost small" id="wardrobe">Гардероб${(() => { const k = openIds().length - 2; return k > 0 ? ` · ${k} відкрито` : ""; })()}</button>
       </div>
@@ -236,7 +236,7 @@ function renderMap() {
   </div>
   <div class="listclose">${PLAIN ? "" : "]"}</div>
   <div class="version">версія ${KV.VERSION}</div>
-  <div class="legend"><span>★★★ — не більше однієї помилки на рівні</span><span>У змійки ${N} сегментів. Кожна помилка — ${PLAIN ? "мінус сегмент з хвоста" : "<code>pop()</code> з хвоста"}</span>${PLAIN ? "" : "<span>Задачі з кодом сегментів не забирають</span>"}<span>Зірки відкривають нові скіни</span><span>Вийшов(-ла) з гри на іншу вкладку чи в інший застосунок — мінус сегмент</span></div>
+  <div class="legend"><span>★★★ — не більше однієї помилки на рівні</span><span>У змійки ${N} сегментів. Кожна помилка — ${PLAIN ? "мінус сегмент з хвоста" : "<code>pop()</code> з хвоста"}</span>${PLAIN ? "" : "<span>Задачі з кодом сегментів не забирають</span>"}<span>Зірки відкривають нові скіни</span><span>Байти дають за правильні відповіді з першої спроби (тільки поки рівень ще не пройдено). За них купують речі в гардеробі</span><span>Вийшов(-ла) з гри на іншу вкладку чи в інший застосунок — мінус сегмент</span></div>
   `;
   app.querySelectorAll(".cell").forEach(b => b.onclick = () => renderIntro(+b.dataset.li));
   app.querySelector("#wardrobe").onclick = renderWardrobe;
@@ -291,6 +291,9 @@ function frame(it, body) {
 }
 const $ = s => app.querySelector(s);
 function feedback(good, title, text, extra) {
+  // байт — за правильну відповідь з першої спроби
+  if (!good) run.st.bad = true;
+  else if (!run.st.bad && !run.st.paid && run.mistakes === run.st.m0 && run.items[run.idx].t !== "lesson") { run.st.paid = true; run.clean = (run.clean || 0) + 1; }
   if (good && $("#snake")) { $("#snake").innerHTML = snakeSVG({ len: run.hearts, mood: "wow", cls: "hop" }); }
   $("#fb").innerHTML = `<div class="feedback ${good ? "good" : "bad"}"><div class="verdict">${title}</div>${extra || ""}${text ? `<p>${md(text)}</p>` : ""}</div>`;
 }
@@ -304,6 +307,7 @@ const praise = () => PRAISE[Math.floor(Math.random() * PRAISE.length)];
 
 function renderItem() {
   const it = run.items[run.idx];
+  if (run.st.m0 === undefined) run.st.m0 = run.mistakes;   // для байтів: чи були помилки в цьому завданні
   const base = { lesson: rLesson, quiz: rQuiz, output: rOutput, bug: rBug, order: rOrder, fill: rFill, code: rCode };
   if (base[it.t]) return base[it.t](it);
   (window.GAME_TYPES || {})[it.t](it, API); // тренажери з core/sims.js
@@ -550,8 +554,12 @@ function renderDone() {
   const prev = gd().stars[lv.id] || 0;
   const before = openIds();
   if (s > prev) { gd().stars[lv.id] = s; }
+  // байти дають лише за перше успішне проходження рівня (коли зірок ще не було)
+  const earned = prev ? 0 : (run.clean || 0) + (run.mistakes === 0 ? KV.BYTES_PERFECT : 0);
+  if (earned) gd().bytes = (gd().bytes || 0) + earned;
   save(); KV.scheduleSync(true);
   if (run.mistakes === 0) achieve("perfect");
+  if (run.mistakes === 0 && pf().acc === "devil") achieve("angel");
   if (lv.id === "slices" && pf().skin === "loaf" && pf().acc === "pot") achieve("loafhat");
   const fresh = [...SKINS, ...ACCS].filter(x => isOpen(x) && !before.includes(x.id));
   const hasNext = run.li + 1 < LEVELS.length;
@@ -562,6 +570,7 @@ function renderDone() {
     ${snakeSVG({ len: run.hearts, mood: s === 3 ? "wow" : "happy", cls: "big" })}
     ${starStr(s, "bigstars")}
     ${fresh.length ? `<div class="unlock">Відкрито в гардеробі: ${fresh.map(x => `<b>${esc(x.name)}</b>`).join(", ")}</div>` : ""}
+    <div class="bytesgot">${earned ? `+${earned} ${KV.bytesWord(earned)}${run.mistakes === 0 ? ` (з них ${KV.BYTES_PERFECT} — бонус за рівень без помилок)` : ""}. Усього: ${KV.bytesLeft()}` : prev ? `За повторне проходження байтів не дають. У тебе ${KV.bytesLeft()} ${KV.bytesWord(KV.bytesLeft())}` : ""}</div>
     <p>Помилок: ${run.mistakes}. ${s < 3 ? "Три зірки дають, якщо помилок не більше однієї." : run.mistakes === 0 ? "Чистий рівень!" : "Майже ідеально!"}${s > prev && prev ? " Новий рекорд!" : ""}${run.leaves ? ` Виходів з гри: ${run.leaves}${run.awayMs >= GRACE ? `, поза грою ${fmtTime(run.awayMs)}` : ""}.` : ""} Це твоя ${gd().attempts[lv.id] || 1}-а спроба цього рівня.</p>
     <div class="syncbox">${KV.syncLabel()}</div>
     <div class="row">${hasNext ? `<button class="btn" id="nx">Наступний рівень →</button>` : ""}<button class="btn ghost" id="map">На карту</button><button class="link" id="again">Пройти ще раз</button>${fresh.length ? `<button class="link" id="ward">Приміряти</button>` : ""}</div>

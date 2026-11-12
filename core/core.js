@@ -2,7 +2,7 @@
    змійка з гардеробом, заслона при виході з гри. Кожна гра підключає цей файл і додає свої рівні. */
 (function () {
 "use strict";
-const VERSION = "2026.11.12-8";
+const VERSION = "2026.11.12-9";
 const API = "https://script.google.com/macros/s/AKfycbzPtRGlYI4osS-xL-J_pAZ2A2HxTWUeuecjy9-13MgAdFIzkDnYuCr1qmLHqZvqWkQMWQ/exec";
 
 // Усі ігри порталу. sheet — назва аркуша з прогресом у таблиці вчительки.
@@ -33,7 +33,7 @@ const lsDel = k => { try { localStorage.removeItem(k); } catch (e) {} };
 
 // ---------- сховище: профіль (змійка, спільна для всіх ігор) + прогрес кожної гри ----------
 const SKEY = "kv-session", DKEY = "kv-store";
-const PROFILE_KEYS = ["name", "skin", "acc", "ach"];
+const PROFILE_KEYS = ["name", "skin", "acc", "ach", "bought"];
 // поля старого формату «Спискового квесту», які тепер живуть у профілі
 const splitLegacy = old => {
   const profile = {}, game = {};
@@ -53,7 +53,7 @@ const blankStore = () => ({ owner: null, profile: {}, games: {} });
 if (!store) store = blankStore();
 function fixStore() {
   store.profile = store.profile || {}; store.games = store.games || {};
-  const p = store.profile; p.skin = p.skin || "classic"; p.acc = p.acc || "none"; p.name = p.name || "Пітоша"; p.ach = p.ach || {};
+  const p = store.profile; p.skin = p.skin || "classic"; p.acc = p.acc || "none"; p.name = p.name || "Пітоша"; p.ach = p.ach || {}; p.bought = Array.isArray(p.bought) ? p.bought : [];
 }
 fixStore();
 const gameData = id => { const g = store.games[id] = store.games[id] || {}; g.stars = g.stars || {}; return g; };
@@ -146,6 +146,7 @@ function mergeProfile(local, remote) {
   const newer = (local.updatedAt || 0) > (remote.updatedAt || 0) ? local : remote;
   const m = Object.assign({}, newer);
   m.ach = Object.assign({}, remote.ach || {}, local.ach || {});
+  m.bought = [...new Set([...(remote.bought || []), ...(local.bought || [])])];   // куплене не зникає
   return m;
 }
 // r — відповідь сервера на вхід (новий скрипт: profile + games; старий: data + levels + bytes)
@@ -289,6 +290,14 @@ const SKINS = [
       + (i === N - 1 ? `<path d="M${x + 2} ${y - 11} L${x - 6} ${y - 19} L${x + 10} ${y - 11} Z M${x + 2} ${y + 11} L${x - 6} ${y + 19} L${x + 10} ${y + 11} Z" fill="#e8483f"/><g class="flame"><path d="M${x} ${y - 6} Q${x - 14} ${y} ${x} ${y + 6} Z" fill="#ffb02e"/><path d="M${x} ${y - 3} Q${x - 8} ${y} ${x} ${y + 3} Z" fill="#fff3b0"/></g>` : ""),
     head: "#e9eef6", headRx: 8,
     headDeco: (hx, hy) => `<path d="M${hx + 30} ${hy - 13} Q${hx + 46} ${hy - 6} ${hx + 48} ${hy} Q${hx + 46} ${hy + 6} ${hx + 30} ${hy + 13} Z" fill="#e8483f" stroke="rgba(0,0,0,.25)" stroke-width="1.2"/><rect x="${hx}" y="${hy + 7}" width="30" height="3" fill="#e8483f"/>` },
+  // за байти
+  { id: "neon", name: "Неон", price: 40, col: () => "#141826", idx: "#39ff14", head: "#141826", headStroke: "#39ff14",
+    seg: (x, y) => `<rect x="${x + 2.5}" y="${y - 8.5}" width="17" height="17" rx="5" fill="none" stroke="#39ff14" stroke-width="1.6"/>` },
+  { id: "zebra", name: "Зебра", price: 60, col: () => "#fafafa", idx: "#1b1b1b",
+    seg: (x, y) => `<path d="M${x + 5} ${y - 11} q3 11 -1 22 M${x + 12} ${y - 11} q-3 11 1 22 M${x + 18} ${y - 11} q3 11 -1 22" stroke="#1b1b1b" stroke-width="2.4" fill="none"/>` },
+  { id: "galaxy", name: "Галактика", price: 100, col: i => mix("#2a1b5c", "#7b2ff7", i / N), idx: "rgba(255,255,255,.8)", head: "#22164d",
+    seg: (x, y) => `<circle cx="${x + 5}" cy="${y - 6}" r="1.1" fill="#fff"/><circle cx="${x + 17}" cy="${y - 2}" r="1.4" fill="#ffe27a"/><circle cx="${x + 8}" cy="${y + 7}" r="0.9" fill="#fff"/>`,
+    headDeco: (hx, hy) => `<circle cx="${hx + 7}" cy="${hy + 8}" r="1.3" fill="#fff"/><circle cx="${hx + 30}" cy="${hy - 9}" r="1.1" fill="#ffe27a"/>` },
   { id: "rainbow", name: "Веселка", need: 33, col: i => `hsl(${(i * 62 + 330) % 360} 72% 55%)` },
   { id: "glitch", name: "Глітч", ach: "fail", col: () => "#1a1a1a", idx: "#39ff14", jitter: true,
     seg: () => "", head: "#1a1a1a",
@@ -310,10 +319,22 @@ const ACCS = [
   { id: "halo", name: "Німб", ach: "perfect" },
   { id: "pot", name: "Каструля", ach: "peek" },
   { id: "devil", name: "Роги диявола", ach: "lastdeath", secret: true },
+  { id: "wings", name: "Крила янгола", ach: "angel", secret: true },
+  // за байти
+  { id: "bow", name: "Бантик", price: 15 },
+  { id: "flower", name: "Квітка", price: 25 },
+  { id: "pirate", name: "Пов'язка пірата", price: 35 },
+  { id: "wizard", name: "Капелюх чарівника", price: 60 },
   { id: "loafhat", name: "Батон на голові", ach: "loafhat", secret: true },
 ];
-const ACH = { fail: "Лишитися без хвоста", perfect: "Пройти рівень без жодної помилки", peek: "Підглянути розв'язок задачі", lastdeath: "", loafhat: "" };
-const isOpen = x => x.ach ? !!(store.profile.ach && store.profile.ach[x.ach]) : x.need <= totalStars();
+const ACH = { fail: "Лишитися без хвоста", perfect: "Пройти рівень без жодної помилки", peek: "Підглянути розв'язок задачі", lastdeath: "", loafhat: "", angel: "" };
+// ---------- байти ----------
+const BYTES_PERFECT = 5;
+const bytesEarned = () => Object.values(store.games).reduce((s, g) => s + ((g && g.bytes) || 0), 0);
+const bytesSpent = () => (store.profile.bought || []).reduce((s, id) => { const x = [...SKINS, ...ACCS].find(y => y.id === id); return s + (x && x.price || 0); }, 0);
+const bytesLeft = () => Math.max(0, bytesEarned() - bytesSpent());
+const bytesWord = n => { n = Math.abs(n) % 100; const d = n % 10; return n > 10 && n < 20 ? "байтів" : d === 1 ? "байт" : d >= 2 && d <= 4 ? "байти" : "байтів"; };
+const isOpen = x => x.price ? (store.profile.bought || []).includes(x.id) : x.ach ? !!(store.profile.ach && store.profile.ach[x.ach]) : x.need <= totalStars();
 const openIds = () => [...SKINS, ...ACCS].filter(isOpen).map(x => x.id);
 function achieve(key) {
   const p = store.profile; p.ach = p.ach || {};
@@ -339,7 +360,9 @@ function snakeSVG(o) {
     const body = (sk.jitter ? rect("#00e5ff", -2.5, .8) + rect("#ff2bd6", 2.5, .8) : "") + rect(sk.col(i), 0)
       + (sk.seg ? `<g transform="translate(${jx} ${jy})">${sk.seg(x, y, i)}</g>` : "")
       + `<text x="${x + jx + 11}" y="${y + jy + 3.5}" class="segidx"${sk.idx ? ` style="fill:${sk.idx}"` : ""}>${i}</text>`;
-    if (i < len) g += `<g>${body}</g>`;
+    const wing = (dx, fill) => `<path d="M${x + 12 + dx} ${y - 8} C${x + 7 + dx} ${y - 26} ${x - 5 + dx} ${y - 32} ${x - 16 + dx} ${y - 30} Q${x - 12 + dx} ${y - 26} ${x - 13 + dx} ${y - 22} Q${x - 7 + dx} ${y - 21} ${x - 8 + dx} ${y - 17} Q${x - 2 + dx} ${y - 16} ${x - 2 + dx} ${y - 12} Q${x + 4 + dx} ${y - 12} ${x + 5 + dx} ${y - 8} Z" fill="${fill}"/><path d="M${x + 9 + dx} ${y - 12} Q${x + dx} ${y - 22} ${x - 11 + dx} ${y - 27}" fill="none" stroke-width=".9"/>`;
+    const wings = acc === "wings" && i === 2 ? `<g class="wings" stroke="#8fa3c4" stroke-width="1.2" stroke-linejoin="round">${wing(8, "#e6edfa")}${wing(0, "#fff")}</g>` : "";
+    if (i < len) g += wings + `<g>${body}</g>`;
     else if (i < len + falling) g += ghost + `<g class="fall">${body}</g>`;
     else g += ghost;
   }
@@ -366,6 +389,10 @@ function snakeSVG(o) {
   if (acc === "horn") head += `<path d="M${hx + 13} ${hy - 13} L${hx + 19} ${hy - 35} L${hx + 24} ${hy - 13} Z" fill="#ffd6f0" stroke="#c45bab" stroke-width="1.2"/><path d="M${hx + 15} ${hy - 19} l7 -2 M${hx + 16.5} ${hy - 25} l5 -1.5" stroke="#c45bab" stroke-width="1.2"/>`;
   if (acc === "loafhat") head += `<g transform="rotate(-8 ${hx + 17} ${hy - 19})"><rect x="${hx + 1}" y="${hy - 25}" width="32" height="12" rx="6" fill="#d9a35b" stroke="#a8743a" stroke-width="1.3"/><path d="M${hx + 8} ${hy - 15} l4 -8 M${hx + 15} ${hy - 15} l4 -8 M${hx + 22} ${hy - 15} l4 -8" stroke="#f6d9a2" stroke-width="2" stroke-linecap="round"/></g>`;
   if (acc === "devil") head += `<g fill="#d42a2a" stroke="#8a1010" stroke-width="1.2" stroke-linejoin="round"><path d="M${hx + 6} ${hy - 12} Q${hx + 1} ${hy - 21} ${hx + 6} ${hy - 29} Q${hx + 8} ${hy - 20} ${hx + 14} ${hy - 13} Z"/><path d="M${hx + 21} ${hy - 13} Q${hx + 27} ${hy - 20} ${hx + 29} ${hy - 29} Q${hx + 34} ${hy - 21} ${hx + 29} ${hy - 12} Z"/></g>`;
+  if (acc === "bow") head += `<path d="M${hx + 9} ${hy - 15} l-9 -6 v12 Z M${hx + 9} ${hy - 15} l9 -6 v12 Z" fill="#ff5fa2" stroke="#d6337a" stroke-width="1"/><circle cx="${hx + 9}" cy="${hy - 15}" r="2.6" fill="#d6337a"/>`;
+  if (acc === "flower") head += [0, 72, 144, 216, 288].map(a => `<circle cx="${hx + 27 + 4.6 * Math.cos(a * Math.PI / 180)}" cy="${hy - 15 + 4.6 * Math.sin(a * Math.PI / 180)}" r="3.4" fill="#fff" stroke="#f0a1c0" stroke-width="1"/>`).join("") + `<circle cx="${hx + 27}" cy="${hy - 15}" r="2.8" fill="#ffcf3d"/>`;
+  if (acc === "pirate") head += `<path d="M${hx + 3} ${hy - 12} L${hx + 33} ${hy + 1}" stroke="#1b1b1b" stroke-width="1.8"/><ellipse cx="${hx + 24}" cy="${hy - 4}" rx="5.6" ry="5" fill="#1b1b1b"/>`;
+  if (acc === "wizard") head += `<path d="M${hx + 5} ${hy - 12} L${hx + 19} ${hy - 37} L${hx + 30} ${hy - 12} Z" fill="#3b2f8f" stroke="#241a66" stroke-width="1.2"/><ellipse cx="${hx + 17}" cy="${hy - 12}" rx="17" ry="3.4" fill="#2c2275"/><path d="M${hx + 14} ${hy - 24} l1.2 2.6 2.8 .3 -2.1 1.9 .6 2.8 -2.5 -1.4 -2.5 1.4 .6 -2.8 -2.1 -1.9 2.8 -.3 Z" fill="#ffd43b"/><circle cx="${hx + 22}" cy="${hy - 17}" r="1.2" fill="#ffd43b"/>`;
   if (acc === "halo") head += `<ellipse cx="${hx + 17}" cy="${hy - 22}" rx="12" ry="3.4" fill="none" stroke="#f2c230" stroke-width="2.6"/>`;
   if (acc === "pot") head += `<rect x="${hx + 2}" y="${hy - 25}" width="30" height="15" rx="2" fill="#b8c0cc" stroke="#7d8794" stroke-width="1.2"/><rect x="${hx - 4}" y="${hy - 22}" width="7" height="3" rx="1.5" fill="#7d8794"/><rect x="${hx + 31}" y="${hy - 22}" width="7" height="3" rx="1.5" fill="#7d8794"/><path d="M${hx + 2} ${hy - 20} h30" stroke="#9aa3b0" stroke-width="1"/><rect x="${hx + 6}" y="${hy - 22}" width="5" height="9" rx="1.5" fill="rgba(255,255,255,.45)"/>`;
   if (acc === "crown") head += `<path d="M${hx + 8} ${hy - 13} L${hx + 7} ${hy - 25} L${hx + 12.5} ${hy - 19} L${hx + 17} ${hy - 28} L${hx + 21.5} ${hy - 19} L${hx + 27} ${hy - 25} L${hx + 26} ${hy - 13} Z" fill="#f2c230" stroke="#b8860b" stroke-width="1.2"/><circle cx="${hx + 17}" cy="${hy - 17}" r="1.8" fill="#e8483f"/>`;
@@ -374,30 +401,48 @@ function snakeSVG(o) {
 }
 
 // ---------- гардероб (спільний для всіх ігор) ----------
+let pendingBuy = null; // перший клік по товару — «натисни ще раз», другий — купівля
 function renderWardrobe(back, backLabel) {
-  const total = totalStars(), maxAll = GAMES.reduce((s, g) => s + g.max, 0), p = store.profile;
+  const total = totalStars(), maxAll = GAMES.reduce((s, g) => s + g.max, 0), p = store.profile, left = bytesLeft();
   const tile = (x, kind) => {
     const open = isOpen(x), sel = open && p[kind] === x.id;
     const prev = snakeSVG(kind === "skin" ? { len: N, skin: x.id, acc: "none" } : { len: N, acc: x.id });
-    return `<button class="wtile ${sel ? "sel" : ""}" data-kind="${kind}" data-id="${x.id}" ${open ? "" : "disabled"}>
+    const shop = x.price && !open, can = shop && left >= x.price;
+    const label = sel ? "Обрано" : open ? "Відкрито"
+      : shop ? (pendingBuy === x.id ? `Натисни ще раз, щоб купити за ${x.price}` : can ? `Купити за ${x.price} ${bytesWord(x.price)}` : `Коштує ${x.price} ${bytesWord(x.price)}`)
+      : (x.secret ? "Секрет" : x.ach ? "Секрет: " + ACH[x.ach].toLowerCase() : `Потрібно ★ ${x.need}`);
+    return `<button class="wtile ${sel ? "sel" : ""} ${shop ? "shop" : ""} ${pendingBuy === x.id ? "confirm" : ""}" data-kind="${kind}" data-id="${x.id}" ${open || can ? "" : "disabled"}>
       ${prev}<span class="wname">${esc(x.name)}</span>
-      <span class="wlock">${sel ? "Обрано" : open ? "Відкрито" : (x.secret ? "Секрет" : x.ach ? "Секрет: " + ACH[x.ach].toLowerCase() : `Потрібно ★ ${x.need}`)}</span></button>`;
+      <span class="wlock">${label}</span></button>`;
   };
+  const items = kind => (kind === "skin" ? SKINS : ACCS);
   app().innerHTML = `<div class="center wardrobe">
     <button class="link" id="back">← ${esc(backLabel || "Назад")}</button>
     <h2>Гардероб</h2>
     <div class="pet">${snakeSVG({ len: N, cls: "big" })}
       <div class="petinfo"><label class="answer-label" for="petname">Ім'я змійки</label>
       <input type="text" id="petname" maxlength="16" value="${esc(p.name)}" autocomplete="off">
-      <div class="status">У тебе ★ ${total} з ${maxAll} в усіх іграх. Більше зірок — більше скінів.</div></div></div>
+      <div class="status">У тебе ★ ${total} з ${maxAll} в усіх іграх. Більше зірок — більше скінів.</div>
+      <div class="status bytes">Байтів: <b>${left}</b>. Їх дають за правильні відповіді з першої спроби на рівнях, які ти проходиш уперше, і ще ${BYTES_PERFECT} за рівень без помилок.</div></div></div>
     <h3>Забарвлення</h3>
-    <div class="wgrid">${SKINS.map(x => tile(x, "skin")).join("")}</div>
+    <div class="wgrid">${SKINS.filter(x => !x.price).map(x => tile(x, "skin")).join("")}</div>
     <h3>Аксесуари</h3>
-    <div class="wgrid">${ACCS.map(x => tile(x, "acc")).join("")}</div>
+    <div class="wgrid">${ACCS.filter(x => !x.price).map(x => tile(x, "acc")).join("")}</div>
+    <h3>Крамниця</h3>
+    <div class="wgrid">${SKINS.filter(x => x.price).map(x => tile(x, "skin")).join("")}${ACCS.filter(x => x.price).map(x => tile(x, "acc")).join("")}</div>
   </div>`;
   $("#back").onclick = back;
   $("#petname").addEventListener("change", e => { p.name = e.target.value.trim().slice(0, 16) || "Пітоша"; save("profile"); renderWardrobe(back, backLabel); });
-  app().querySelectorAll(".wtile").forEach(b => b.onclick = () => { p[b.dataset.kind] = b.dataset.id; save("profile"); renderWardrobe(back, backLabel); });
+  app().querySelectorAll(".wtile").forEach(b => b.onclick = () => {
+    const x = [...SKINS, ...ACCS].find(y => y.id === b.dataset.id);
+    if (x.price && !isOpen(x)) {
+      if (pendingBuy !== x.id) { pendingBuy = x.id; renderWardrobe(back, backLabel); return; }
+      if (bytesLeft() < x.price) return;
+      p.bought = [...(p.bought || []), x.id]; toast(`Куплено: ${x.name}!`);
+    }
+    pendingBuy = null;
+    p[b.dataset.kind] = b.dataset.id; save("profile"); renderWardrobe(back, backLabel);
+  });
 }
 
 // ---------- вихід з гри під час рівня ----------
@@ -462,7 +507,7 @@ window.KV = {
   get session() { return session; }, get offline() { return offline; }, get access() { return access; },
   profile, gameData, totalStars, save, scheduleSync, syncLabel, boot, logout, whoami, bindWhoami,
   useGame: (id, summaryFn, levelIds) => { currentGame = id; gameSummary = summaryFn; const G = GAMES.find(g => g.id === id); if (G) G.levelIds = levelIds; },
-  N, SKINS, ACCS, isOpen, openIds, achieve, snakeSVG, renderWardrobe,
+  N, SKINS, ACCS, isOpen, openIds, achieve, snakeSVG, renderWardrobe, bytesLeft, bytesWord, BYTES_PERFECT,
   leave: { configure: cfg => { leaveCfg = Object.assign({ isActive: () => false, onPenalty: () => {} }, cfg); }, GRACE, AWAY_STEP },
   get guardOpen() { return guardOpen; }, showGuard, hideGuard, goFullscreen, leaveFullscreen, toast,
 };

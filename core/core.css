@@ -252,3 +252,9 @@ textarea { resize: vertical; line-height: 1.6; }
 .game .gbar > div { height: 100%; background: var(--gold); }
 .game .gstat { font-size: .9rem; color: var(--muted); }
 .empty-games { color: var(--muted); }
+
+.wtile.shop:not([disabled]) { border-style: dashed; }
+.wtile.confirm { border-color: var(--ink); border-style: solid; background: #fff6d6; }
+.wtile.shop[disabled] .snake { filter: none; opacity: .55; }
+.status.bytes { margin-top: 4px; }
+.bytesgot { font-weight: 700; margin: 6px 0; }
