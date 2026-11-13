@@ -2,7 +2,7 @@
    змійка з гардеробом, заслона при виході з гри. Кожна гра підключає цей файл і додає свої рівні. */
 (function () {
 "use strict";
-const VERSION = "2026.11.14-27";
+const VERSION = "2026.11.14-28";
 const API = "https://script.google.com/macros/s/AKfycbzPtRGlYI4osS-xL-J_pAZ2A2HxTWUeuecjy9-13MgAdFIzkDnYuCr1qmLHqZvqWkQMWQ/exec";
 
 // Усі ігри порталу. sheet — назва аркуша з прогресом у таблиці вчительки.
@@ -392,7 +392,9 @@ function streakTouch() {   // викликається, коли рівень п
 }
 const daysWord = n => { n = Math.abs(n) % 100; const d = n % 10; return n > 10 && n < 20 ? "днів" : d === 1 ? "день" : d >= 2 && d <= 4 ? "дні" : "днів"; };
 const streakBadge = () => { const n = streakNow(), today = streakDoneToday();
-  return `<span class="streak ${n ? "on" : ""} ${today ? "today" : ""}" title="Дні поспіль, коли ти проходиш хоча б один рівень">🔥 ${n} ${daysWord(n)}${n && !today ? " · пройди рівень сьогодні, щоб не згасла" : ""}</span>`; };
+  // як у TikTok: вогник сірий, поки сьогодні не пройдено жодного рівня, і кольоровий після
+  const tip = today ? "Серію сьогодні вже продовжено!" : n ? "Пройди сьогодні хоча б один рівень, щоб серія не згасла" : "Пройди рівень, щоб почати серію";
+  return `<span class="streak ${today ? "today" : ""}" title="${tip}"><span class="flame">🔥</span><b>${n}</b> ${daysWord(n)} поспіль</span>`; };
 // анімації змійки (видно на великій змійці: головна сторінка, гардероб)
 // форма блоків змійки (голова лишається з обличчям)
 const SHAPES = [
