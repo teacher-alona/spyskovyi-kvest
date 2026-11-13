@@ -2,7 +2,7 @@
    змійка з гардеробом, заслона при виході з гри. Кожна гра підключає цей файл і додає свої рівні. */
 (function () {
 "use strict";
-const VERSION = "2026.11.13-14";
+const VERSION = "2026.11.13-15";
 const API = "https://script.google.com/macros/s/AKfycbzPtRGlYI4osS-xL-J_pAZ2A2HxTWUeuecjy9-13MgAdFIzkDnYuCr1qmLHqZvqWkQMWQ/exec";
 
 // Усі ігри порталу. sheet — назва аркуша з прогресом у таблиці вчительки.
@@ -332,10 +332,11 @@ const ACCS = [
   { id: "wizard", name: "Капелюх чарівника", price: 60 },
   { id: "bearhood", name: "Капюшон-ведмедик", price: 45 },
   { id: "gasmask", name: "Протигаз", price: 50 },
+  { id: "sunhood", name: "Соняшниковий капюшон", price: 10 },
   { id: "loafhat", name: "Батон на голові", ach: "loafhat", secret: true },
 ];
 // місце аксесуара: з одного місця можна вдягти лише одну річ, з різних — скільки завгодно
-const SLOT = { cap: "hat", cowboy: "hat", propeller: "hat", crown: "hat", horn: "hat", halo: "hat", pot: "hat", loafhat: "hat", devil: "hat", wizard: "hat", duck: "hat", catears: "hat", bearhood: "hat",
+const SLOT = { cap: "hat", cowboy: "hat", propeller: "hat", crown: "hat", horn: "hat", halo: "hat", pot: "hat", loafhat: "hat", devil: "hat", wizard: "hat", duck: "hat", catears: "hat", bearhood: "hat", sunhood: "hat",
   glasses: "eyes", pirate: "eyes", moustache: "face", gasmask: "face", scarf: "neck", phones: "ears", bow: "decor", flower: "decor", wings: "back" };
 const SLOT_NAME = { hat: "на голову", eyes: "на очі", face: "на обличчя", neck: "на шию", ears: "навушники", decor: "прикраса", back: "на спину" };
 const accList = () => String(store.profile.acc || "").split(",").map(x => x.trim()).filter(x => x && x !== "none");
@@ -432,7 +433,9 @@ function snakeSVG(o) {
   if (has("wizard")) head += `<path d="M${hx + 5} ${hy - 12} L${hx + 19} ${hy - 37} L${hx + 30} ${hy - 12} Z" fill="#3b2f8f" stroke="#241a66" stroke-width="1.2"/><ellipse cx="${hx + 17}" cy="${hy - 12}" rx="17" ry="3.4" fill="#2c2275"/><path d="M${hx + 14} ${hy - 24} l1.2 2.6 2.8 .3 -2.1 1.9 .6 2.8 -2.5 -1.4 -2.5 1.4 .6 -2.8 -2.1 -1.9 2.8 -.3 Z" fill="#ffd43b"/><circle cx="${hx + 22}" cy="${hy - 17}" r="1.2" fill="#ffd43b"/>`;
   if (has("halo")) head += `<ellipse cx="${hx + 17}" cy="${hy - 22}" rx="12" ry="3.4" fill="none" stroke="#f2c230" stroke-width="2.6"/>`;
   if (has("pot")) head += `<rect x="${hx + 2}" y="${hy - 25}" width="30" height="15" rx="2" fill="#b8c0cc" stroke="#7d8794" stroke-width="1.2"/><rect x="${hx - 4}" y="${hy - 22}" width="7" height="3" rx="1.5" fill="#7d8794"/><rect x="${hx + 31}" y="${hy - 22}" width="7" height="3" rx="1.5" fill="#7d8794"/><path d="M${hx + 2} ${hy - 20} h30" stroke="#9aa3b0" stroke-width="1"/><rect x="${hx + 6}" y="${hy - 22}" width="5" height="9" rx="1.5" fill="rgba(255,255,255,.45)"/>`;
+  const hoodShape = (fill, stroke) => `<path fill-rule="evenodd" fill="${fill}" stroke="${stroke}" stroke-width="1.2" d="M${hx - 4} ${hy - 4} Q${hx - 4} ${hy - 20} ${hx + 17} ${hy - 20} Q${hx + 38} ${hy - 20} ${hx + 38} ${hy - 4} L${hx + 38} ${hy + 12} Q${hx + 38} ${hy + 17} ${hx + 33} ${hy + 17} L${hx + 1} ${hy + 17} Q${hx - 4} ${hy + 17} ${hx - 4} ${hy + 12} Z M${hx + 4} ${hy - 6} Q${hx + 4} ${hy - 13} ${hx + 12} ${hy - 13} L${hx + 30} ${hy - 13} Q${hx + 35} ${hy - 13} ${hx + 35} ${hy - 7} L${hx + 35} ${hy + 9} Q${hx + 35} ${hy + 14} ${hx + 30} ${hy + 14} L${hx + 9} ${hy + 14} Q${hx + 4} ${hy + 14} ${hx + 4} ${hy + 9} Z"/>`;
   if (has("bearhood")) head += `<g stroke="#4f7fa6" stroke-width="1.2"><circle cx="${hx + 5}" cy="${hy - 17}" r="5.5" fill="#7fb3d9"/><circle cx="${hx + 29}" cy="${hy - 17}" r="5.5" fill="#7fb3d9"/><circle cx="${hx + 5}" cy="${hy - 17}" r="2.6" fill="#f6c6d4" stroke="none"/><circle cx="${hx + 29}" cy="${hy - 17}" r="2.6" fill="#f6c6d4" stroke="none"/><path fill-rule="evenodd" fill="#7fb3d9" d="M${hx - 4} ${hy - 4} Q${hx - 4} ${hy - 20} ${hx + 17} ${hy - 20} Q${hx + 38} ${hy - 20} ${hx + 38} ${hy - 4} L${hx + 38} ${hy + 12} Q${hx + 38} ${hy + 17} ${hx + 33} ${hy + 17} L${hx + 1} ${hy + 17} Q${hx - 4} ${hy + 17} ${hx - 4} ${hy + 12} Z M${hx + 4} ${hy - 6} Q${hx + 4} ${hy - 13} ${hx + 12} ${hy - 13} L${hx + 30} ${hy - 13} Q${hx + 35} ${hy - 13} ${hx + 35} ${hy - 7} L${hx + 35} ${hy + 9} Q${hx + 35} ${hy + 14} ${hx + 30} ${hy + 14} L${hx + 9} ${hy + 14} Q${hx + 4} ${hy + 14} ${hx + 4} ${hy + 9} Z"/></g>`;
+  if (has("sunhood")) head += hoodShape("#f7cc1e", "#b8930a");
   if (has("gasmask")) head += `<path d="M${hx + 9} ${hy - 7} L${hx + 1} ${hy - 11}" stroke="#2b2b2b" stroke-width="2.2"/><ellipse cx="${hx + 21}" cy="${hy + 1}" rx="13" ry="11.5" fill="#56664a" stroke="#2f3a28" stroke-width="1.2"/><circle cx="${hx + 15}" cy="${hy - 4}" r="4.3" fill="#a8dcea" stroke="#1f1f1f" stroke-width="1.6"/><circle cx="${hx + 25}" cy="${hy - 4}" r="4.3" fill="#a8dcea" stroke="#1f1f1f" stroke-width="1.6"/><rect x="${hx + 25}" y="${hy + 3}" width="11" height="11" rx="3.5" fill="#2e2e2e"/><path d="M${hx + 28} ${hy + 5} v7 M${hx + 31} ${hy + 5} v7 M${hx + 34} ${hy + 5} v7" stroke="#6b6b6b" stroke-width="1"/>`;
   if (has("crown")) head += `<path d="M${hx + 8} ${hy - 13} L${hx + 7} ${hy - 25} L${hx + 12.5} ${hy - 19} L${hx + 17} ${hy - 28} L${hx + 21.5} ${hy - 19} L${hx + 27} ${hy - 25} L${hx + 26} ${hy - 13} Z" fill="#f2c230" stroke="#b8860b" stroke-width="1.2"/><circle cx="${hx + 17}" cy="${hy - 17}" r="1.8" fill="#e8483f"/>`;
   const pop = falling ? `<text class="poptxt" x="${segX(len + falling - 1) - 2}" y="12">${esc(popName())}.pop()</text>` : "";
