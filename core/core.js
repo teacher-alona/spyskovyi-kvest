@@ -2,7 +2,7 @@
    змійка з гардеробом, заслона при виході з гри. Кожна гра підключає цей файл і додає свої рівні. */
 (function () {
 "use strict";
-const VERSION = "2026.11.13-20";
+const VERSION = "2026.11.13-21";
 const API = "https://script.google.com/macros/s/AKfycbzPtRGlYI4osS-xL-J_pAZ2A2HxTWUeuecjy9-13MgAdFIzkDnYuCr1qmLHqZvqWkQMWQ/exec";
 
 // Усі ігри порталу. sheet — назва аркуша з прогресом у таблиці вчительки.
@@ -305,6 +305,11 @@ const SKINS = [
     seg: (x, y) => `<path d="M${x + 1} ${y + 7} h20" stroke="#c8102e" stroke-width="3"/>` },
   { id: "tartan", name: "Шотландка А+", need: 0, col: () => "#b3122a", idx: "#fff", head: "#b3122a",
     seg: (x, y) => `<g opacity=".85"><path d="M${x + 1} ${y - 4} h20 M${x + 1} ${y + 5} h20" stroke="#1f5a3a" stroke-width="3.2"/><path d="M${x + 7} ${y - 10} v20 M${x + 15} ${y - 10} v20" stroke="#1f5a3a" stroke-width="3.2" opacity=".75"/><path d="M${x + 1} ${y + .5} h20 M${x + 11} ${y - 10} v20" stroke="#1d2a5c" stroke-width="1"/><path d="M${x + 1} ${y + 8.5} h20" stroke="#f0d04a" stroke-width=".8"/></g>` },
+  { id: "palianytsia", name: "Паляниця", price: 20, col: () => "#c98a42", idx: "#4a2a0c", head: "#c98a42", rx: 10,
+    seg: (x, y) => `<path d="M${x + 2} ${y - 1} Q${x + 11} ${y - 13} ${x + 20} ${y - 1} Q${x + 11} ${y - 5} ${x + 2} ${y - 1} Z" fill="#f2d79e" stroke="#9c6226" stroke-width=".8"/><path d="M${x + 2} ${y + 8} q9 3 18 0" stroke="#9c6226" stroke-width="1" fill="none" opacity=".6"/>`,
+    headDeco: (hx, hy) => `<path d="M${hx + 5} ${hy - 8} Q${hx + 17} ${hy - 19} ${hx + 29} ${hy - 8} Q${hx + 17} ${hy - 12} ${hx + 5} ${hy - 8} Z" fill="#f2d79e" stroke="#9c6226" stroke-width=".8"/>` },
+  { id: "battery", name: "Батарейка", price: 25, col: () => "#2b2f36", idx: "#fff", head: "#2b2f36", rx: 4,
+    seg: (x, y, i) => `<rect x="${x + 15}" y="${y - 11}" width="7" height="22" rx="2" fill="#e0a526"/><rect x="${x + 22}" y="${y - 3.5}" width="2.5" height="7" rx="1" fill="#c48d17"/><text x="${x + 18.5}" y="${y + 3}" text-anchor="middle" font-size="7" font-weight="900" fill="#2b2f36">+</text><rect x="${x + 2.5}" y="${y + 6}" width="11" height="2.6" rx="1" fill="${["#3ddc6a", "#3ddc6a", "#ffd24d", "#ffd24d", "#ff5a4d"][i] || "#3ddc6a"}"/>` },
   { id: "tiger67", name: "Тигр 67", price: 35, col: () => "#f39a1e", idx: "#7a3d00", head: "#f39a1e",
     seg: (x, y) => `<g font-family="Arial Black, Arial, sans-serif" font-weight="900" font-size="10" fill="#3a1f05" opacity=".55"><text x="${x + 2}" y="${y - 2}" transform="rotate(-14 ${x + 5} ${y - 5})">6</text><text x="${x + 14}" y="${y + 10}" transform="rotate(-14 ${x + 17} ${y + 7})">7</text></g>`,
     headDeco: (hx, hy) => `<g font-family="Arial Black, Arial, sans-serif" font-weight="900" font-size="8" fill="#3a1f05"><text x="${hx + 3}" y="${hy + 12}" transform="rotate(-14 ${hx + 6} ${hy + 9})">6</text><text x="${hx + 27}" y="${hy + 12}" transform="rotate(-14 ${hx + 30} ${hy + 9})">7</text></g>` },
