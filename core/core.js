@@ -2,7 +2,7 @@
    змійка з гардеробом, заслона при виході з гри. Кожна гра підключає цей файл і додає свої рівні. */
 (function () {
 "use strict";
-const VERSION = "2026.11.13-18";
+const VERSION = "2026.11.13-19";
 const API = "https://script.google.com/macros/s/AKfycbzPtRGlYI4osS-xL-J_pAZ2A2HxTWUeuecjy9-13MgAdFIzkDnYuCr1qmLHqZvqWkQMWQ/exec";
 
 // Усі ігри порталу. sheet — назва аркуша з прогресом у таблиці вчительки.
@@ -391,6 +391,11 @@ function shapeEl(kind, x, y, rx, attrs) {
   if (kind === "heart") return `<path d="M${cx} ${cy + 11} C${cx - 16} ${cy + 1} ${cx - 12} ${cy - 15} ${cx} ${cy - 6} C${cx + 12} ${cy - 15} ${cx + 16} ${cy + 1} ${cx} ${cy + 11} Z" stroke-linejoin="round" ${attrs}/>`;
   return `<rect x="${x}" y="${y}" width="22" height="22" rx="${rx}" ${attrs}/>`;
 }
+// яка голова в змійки
+const HEADS = [
+  { id: "snake", name: "Голова змійки", need: 0 },
+  { id: "unicorn", name: "Голова єдинорога", price: 40 },
+];
 const ANIMS = [
   { id: "none", name: "Без анімації", need: 0 },
   { id: "jump", name: "Підстрибує", price: 15 },
@@ -399,7 +404,7 @@ const ANIMS = [
 ];
 // комплекти: усе разом дешевше
 const SETS = [{ id: "set67", name: "Комплект 67", price: 67, items: ["tiger67", "glasses67", "hat67", "six7"] }];
-const ALLITEMS = () => [...SKINS, ...ACCS, ...ANIMS, ...SHAPES, ...SETS];
+const ALLITEMS = () => [...SKINS, ...ACCS, ...ANIMS, ...SHAPES, ...HEADS, ...SETS];
 const setCost = st => Math.max(0, st.price - st.items.reduce((s, id) => { const x = ALLITEMS().find(y => y.id === id); return s + (x && isOpen(x) ? x.price : 0); }, 0));
 // витрачене: тепер ведемо рахунок (spent); для старих покупок рахуємо за списком
 const bytesSpent = () => Math.max(store.profile.spent || 0, (store.profile.bought || []).reduce((s, id) => { const x = [...SKINS, ...ACCS].find(y => y.id === id); return s + (x && x.price || 0); }, 0));
@@ -416,6 +421,15 @@ function achieve(key) {
 const skinOf = id => SKINS.find(s => s.id === id) || SKINS[0];
 const popName = () => (store.profile.name || "змійка").trim().toLowerCase().replace(/[^\wЀ-ӿ]+/g, "_") || "змійка";
 // len — скільки сегментів лишилось; falling — скільки щойно відвалилось
+// голова єдинорога: біла, з веселковою гривою, вушком і золотим рогом; очі й усмішка малюються як у змійки
+const unicornHead = (hx, hy) => {
+  const mane = ["#ff8fc7", "#ffd24d", "#7ee0b5", "#7fb6ff", "#c39bff"].map((c, k) => `<circle cx="${hx + 1 - k * 1.2}" cy="${hy - 13 + k * 6.5}" r="6" fill="${c}"/>`).join("");
+  return mane
+    + `<path d="M${hx + 3} ${hy - 6} Q${hx + 3} ${hy - 15} ${hx + 14} ${hy - 15} L${hx + 26} ${hy - 15} Q${hx + 33} ${hy - 15} ${hx + 34} ${hy - 7} L${hx + 35} ${hy - 2} Q${hx + 44} ${hy - 1} ${hx + 44} ${hy + 6} Q${hx + 44} ${hy + 14} ${hx + 35} ${hy + 14} L${hx + 10} ${hy + 14} Q${hx + 3} ${hy + 14} ${hx + 3} ${hy + 6} Z" fill="#fdfbff" stroke="#b9a5d6" stroke-width="1.5"/>`
+    + `<path d="M${hx + 7} ${hy - 13} L${hx + 9} ${hy - 24} L${hx + 15} ${hy - 14} Z" fill="#fdfbff" stroke="#b9a5d6" stroke-width="1.3"/><path d="M${hx + 9} ${hy - 15} L${hx + 9.8} ${hy - 20} L${hx + 12.5} ${hy - 15} Z" fill="#ffc6df"/>`
+    + `<path d="M${hx + 18} ${hy - 14} L${hx + 23} ${hy - 36} L${hx + 27} ${hy - 14} Z" fill="#ffd54a" stroke="#c79a12" stroke-width="1.2" stroke-linejoin="round"/><path d="M${hx + 19.5} ${hy - 19} l7 -2.2 M${hx + 20.8} ${hy - 25} l5 -1.6 M${hx + 22} ${hy - 30.5} l2.8 -.9" stroke="#c79a12" stroke-width="1.1"/>`
+    + `<circle cx="${hx + 40}" cy="${hy + 3}" r="1.4" fill="#e58bb3"/>`;
+};
 function snakeSVG(o) {
   const p = store.profile;
   // аксесуари: o.acc — для попереднього перегляду, інакше вдягнуте (лише відкрите)
@@ -428,6 +442,8 @@ function snakeSVG(o) {
   // анімація: o.anim — для попереднього перегляду; інакше обрана, але лише на великій змійці
   const shIt = SHAPES.find(x => x.id === (o.shape || p.shape));
   const shape = shIt && (o.shape || isOpen(shIt)) ? shIt.id : "square";
+  const hdIt = HEADS.find(x => x.id === (o.headType || p.head));
+  const headType = hdIt && (o.headType || isOpen(hdIt)) ? hdIt.id : "snake";
   const uid = "s" + Math.random().toString(36).slice(2, 8);   // для clipPath, щоб візерунок скіна не вилазив за фігуру
   const animIt = ANIMS.find(a => a.id === (o.anim || (String(o.cls || "").includes("big") ? p.anim : "")));
   const anim = animIt && animIt.id !== "none" && (o.anim || isOpen(animIt)) ? animIt.id : "";
@@ -450,8 +466,9 @@ function snakeSVG(o) {
   }
   const sk = skinAt("h"), hx = segX(0) + 24, hy = 38, hc = sk.head || sk.col(-0.6);
   let head = (sk.jitter ? `<rect x="${hx - 2.5}" y="${hy - 14}" width="34" height="28" rx="11" fill="#00e5ff" opacity=".8"/><rect x="${hx + 2.5}" y="${hy - 14}" width="34" height="28" rx="11" fill="#ff2bd6" opacity=".8"/>` : "")
-    + `<rect x="${hx}" y="${hy - 14}" width="34" height="28" rx="${sk.headRx ?? 11}" fill="${hc}" stroke="${sk.headStroke || "rgba(0,0,0,.25)"}" stroke-width="${sk.headStroke ? 3 : 1.5}"/>`
-    + (sk.headDeco ? sk.headDeco(hx, hy, acc) : "");
+    + (headType === "unicorn" ? unicornHead(hx, hy)
+      : `<rect x="${hx}" y="${hy - 14}" width="34" height="28" rx="${sk.headRx ?? 11}" fill="${hc}" stroke="${sk.headStroke || "rgba(0,0,0,.25)"}" stroke-width="${sk.headStroke ? 3 : 1.5}"/>`
+        + (sk.headDeco ? sk.headDeco(hx, hy, acc) : ""));
   if (has("scarf")) head = `<rect x="${hx - 7}" y="${hy + 1}" width="13" height="10" rx="3" fill="#e8483f"/><rect x="${hx - 4}" y="${hy + 8}" width="6" height="14" rx="2" fill="#e8483f" transform="rotate(14 ${hx - 1} ${hy + 8})"/><rect x="${hx - 7}" y="${hy + 4}" width="13" height="2.5" fill="#fff" opacity=".8"/>` + head;
   const eye = (ex) => `<circle cx="${ex}" cy="${hy - 4}" r="4.6" fill="#fff"/><circle cx="${ex + 1.3}" cy="${hy - 3.6}" r="2.3" fill="#1b1b1b"/>`;
   head += mood === "sad"
@@ -497,10 +514,11 @@ function renderWardrobe(back, backLabel) {
   const tile = (x, kind) => {
     const curSkin = paintTarget === "all" ? (Object.keys(p.mix || {}).length ? null : p.skin) : ((p.mix || {})[paintTarget] || p.skin);
     const curAnim = p.anim && p.anim !== "none" ? p.anim : "none", curShape = p.shape || "square";
-    const open = isOpen(x), sel = open && (kind === "set" ? false : kind === "anim" ? curAnim === x.id : kind === "shape" ? curShape === x.id : kind === "skin" ? curSkin === x.id : x.id === "none" ? !accList().length : hasAcc(x.id));
+    const open = isOpen(x), sel = open && (kind === "set" ? false : kind === "anim" ? curAnim === x.id : kind === "shape" ? curShape === x.id : kind === "headtype" ? (p.head || "snake") === x.id : kind === "skin" ? curSkin === x.id : x.id === "none" ? !accList().length : hasAcc(x.id));
     const prev = kind === "set" ? snakeSVG({ len: N, skin: x.items[0], acc: x.items.slice(1, 3).join(","), anim: x.items[3] })
       : kind === "anim" ? snakeSVG({ len: N, anim: x.id, acc: "none" })
       : kind === "shape" ? snakeSVG({ len: N, shape: x.id, acc: "none" })
+      : kind === "headtype" ? snakeSVG({ len: N, headType: x.id, acc: "none" })
       : snakeSVG(kind === "skin" ? { len: N, skin: x.id, acc: "none" } : { len: N, acc: x.id });
     const cost = kind === "set" ? setCost(x) : x.price;
     const shop = x.price && !open, can = shop && left >= cost;
@@ -529,6 +547,8 @@ function renderWardrobe(back, backLabel) {
     <h3>Аксесуари</h3>
     <p class="status">Можна вдягти кілька речей одразу, але по одній на кожне місце: одну шапку, одні окуляри і так далі. Клік по вдягнутій речі знімає її.</p>
     <div class="wgrid">${ACCS.filter(x => !x.price).map(x => tile(x, "acc")).join("")}</div>
+    <h3>Голова</h3>
+    <div class="wgrid">${HEADS.map(x => tile(x, "headtype")).join("")}</div>
     <h3>Форма блоків</h3>
     <div class="wgrid">${SHAPES.map(x => tile(x, "shape")).join("")}</div>
     <h3>Анімації</h3>
@@ -555,6 +575,7 @@ function renderWardrobe(back, backLabel) {
         else { const l = accList().filter(a => !SLOT[it] || SLOT[a] !== SLOT[it]); l.push(it); p.acc = l.join(","); } });
     } else if (kind === "anim") p.anim = id;
     else if (kind === "shape") p.shape = id;
+    else if (kind === "headtype") p.head = id;
     else if (kind === "skin") {
       if (paintTarget === "all") { p.skin = id; p.mix = {}; }
       else { p.mix = Object.assign({}, p.mix, { [paintTarget]: id }); }
