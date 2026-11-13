@@ -2,7 +2,7 @@
    змійка з гардеробом, заслона при виході з гри. Кожна гра підключає цей файл і додає свої рівні. */
 (function () {
 "use strict";
-const VERSION = "2026.11.13-23";
+const VERSION = "2026.11.13-24";
 const API = "https://script.google.com/macros/s/AKfycbzPtRGlYI4osS-xL-J_pAZ2A2HxTWUeuecjy9-13MgAdFIzkDnYuCr1qmLHqZvqWkQMWQ/exec";
 
 // Усі ігри порталу. sheet — назва аркуша з прогресом у таблиці вчительки.
@@ -357,7 +357,7 @@ const ACCS = [
 // місце аксесуара: з одного місця можна вдягти лише одну річ, з різних — скільки завгодно
 const SLOT = { cap: "hat", cowboy: "hat", propeller: "hat", crown: "hat", horn: "hat", halo: "hat", pot: "hat", loafhat: "hat", devil: "hat", wizard: "hat", duck: "hat", catears: "hat", bearhood: "hat", sunhood: "hat", hat67: "hat", glasses67: "eyes",
   glasses: "eyes", pirate: "eyes", moustache: "face", gasmask: "face", scarf: "neck", polo: "neck", badgeaplus: "decor", iron: "tool", phones: "ears", bow: "decor", flower: "decor", wings: "back" };
-const SLOT_NAME = { hat: "на голову", eyes: "на очі", face: "на обличчя", neck: "на шию", ears: "навушники", decor: "прикраса", tool: "паяє блок", back: "на спину" };
+const SLOT_NAME = { hat: "на голову", eyes: "на очі", face: "на обличчя", neck: "на шию", ears: "навушники", decor: "прикраса", tool: "паяє хвіст", back: "на спину" };
 const accList = () => String(store.profile.acc || "").split(",").map(x => x.trim()).filter(x => x && x !== "none");
 const hasAcc = id => accList().includes(id);
 const ACH = { fail: "Лишитися без хвоста", perfect: "Пройти рівень без жодної помилки", peek: "Підглянути розв'язок задачі", lastdeath: "", loafhat: "", angel: "" };
@@ -473,12 +473,12 @@ function snakeSVG(o) {
       + `<text x="${x + jx + 11}" y="${y + jy + 3.5}" class="segidx"${sk.idx ? ` style="fill:${sk.idx}"` : ""}>${i}</text>`;
     const wing = (dx, fill) => `<path d="M${x + 12 + dx} ${y - 8} C${x + 7 + dx} ${y - 26} ${x - 5 + dx} ${y - 32} ${x - 16 + dx} ${y - 30} Q${x - 12 + dx} ${y - 26} ${x - 13 + dx} ${y - 22} Q${x - 7 + dx} ${y - 21} ${x - 8 + dx} ${y - 17} Q${x - 2 + dx} ${y - 16} ${x - 2 + dx} ${y - 12} Q${x + 4 + dx} ${y - 12} ${x + 5 + dx} ${y - 8} Z" fill="${fill}"/><path d="M${x + 9 + dx} ${y - 12} Q${x + dx} ${y - 22} ${x - 11 + dx} ${y - 27}" fill="none" stroke-width=".9"/>`;
     const wings = has("wings") && i === 2 ? `<g class="wings" stroke="#8fa3c4" stroke-width="1.2" stroke-linejoin="round">${wing(8, "#e6edfa")}${wing(0, "#fff")}</g>` : "";
-    // паяльник: висить над блоком 1 і паяє його (іскорки на жалі), далеко від рота
-    const iron = has("iron") && i === 1 ? `<g stroke-linecap="round"><path d="M${x - 9} ${y - 33} L${x + 1} ${y - 23}" stroke="#2b5fc7" stroke-width="5.2"/><path d="M${x - 7} ${y - 32} L${x} ${y - 25}" stroke="#4d82e8" stroke-width="1.4"/><path d="M${x + 1} ${y - 23} L${x + 4} ${y - 20}" stroke="#d4d7dc" stroke-width="3.4"/><path d="M${x + 4} ${y - 20} L${x + 9} ${y - 15}" stroke="#9aa1ad" stroke-width="2.2"/><path d="M${x + 9} ${y - 15} l2 2" stroke="#e07b2a" stroke-width="1.8"/><path d="M${x + 14} ${y - 14} l3 -2 M${x + 13} ${y - 17} l1 -3.5 M${x + 15} ${y - 11} l3.5 0" stroke="#ffc83d" stroke-width="1.3"/></g>` : "";
-    if (i < len) g += `<g class="seg ${i % 2 ? "o" : "e"}" style="--i:${i}">${wings}${body}${iron}</g>`;
+    if (i < len) g += `<g class="seg ${i % 2 ? "o" : "e"}" style="--i:${i}">${wings}${body}</g>`;
     else if (i < len + falling) g += ghost + `<g class="fall">${body}</g>`;
     else g += ghost;
   }
+  // паяльник стоїть за хвостом і з кожним втраченим блоком переїжджає ближче до голови
+  if (has("iron") && len > 0) { const x = segX(len - 1) - 12, y = segY(len - 1); g += `<g stroke-linecap="round"><path d="M${x - 9} ${y - 33} L${x + 1} ${y - 23}" stroke="#2b5fc7" stroke-width="5.2"/><path d="M${x - 7} ${y - 32} L${x} ${y - 25}" stroke="#4d82e8" stroke-width="1.4"/><path d="M${x + 1} ${y - 23} L${x + 4} ${y - 20}" stroke="#d4d7dc" stroke-width="3.4"/><path d="M${x + 4} ${y - 20} L${x + 9} ${y - 15}" stroke="#9aa1ad" stroke-width="2.2"/><path d="M${x + 9} ${y - 15} l2 2" stroke="#e07b2a" stroke-width="1.8"/><path d="M${x + 14} ${y - 14} l3 -2 M${x + 13} ${y - 17} l1 -3.5 M${x + 15} ${y - 11} l3.5 0" stroke="#ffc83d" stroke-width="1.3"/></g>`; }
   const sk = skinAt("h"), hx = segX(0) + 24, hy = 38, hc = sk.head || sk.col(-0.6);
   let head = (sk.jitter ? `<rect x="${hx - 2.5}" y="${hy - 14}" width="34" height="28" rx="11" fill="#00e5ff" opacity=".8"/><rect x="${hx + 2.5}" y="${hy - 14}" width="34" height="28" rx="11" fill="#ff2bd6" opacity=".8"/>` : "")
     + (headType === "unicorn" ? unicornHead(hx, hy)
