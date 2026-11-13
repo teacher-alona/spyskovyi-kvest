@@ -2,7 +2,7 @@
    змійка з гардеробом, заслона при виході з гри. Кожна гра підключає цей файл і додає свої рівні. */
 (function () {
 "use strict";
-const VERSION = "2026.11.13-24";
+const VERSION = "2026.11.13-25";
 const API = "https://script.google.com/macros/s/AKfycbzPtRGlYI4osS-xL-J_pAZ2A2HxTWUeuecjy9-13MgAdFIzkDnYuCr1qmLHqZvqWkQMWQ/exec";
 
 // Усі ігри порталу. sheet — назва аркуша з прогресом у таблиці вчительки.
@@ -17,6 +17,8 @@ const GAMES = [
     levelIds: ["copy","edit","files","windows","train","test"] },
   { id: "trenazhery", title: "Тренажери", sub: "Розширення, Провідник і гарячі клавіші · відкриті завжди", path: "trenazhery/", sheet: "Прогрес: Тренажери", max: 42,
     levelIds: ["ext_media", "ext_docs", "ext_exe", "ext_all", "xp_nav", "xp_make", "xp_copy", "xp_bin", "xp_tidy", "k_copy", "k_text", "k_files", "k_win", "k_all"] },
+  { id: "robo", title: "Робототехніка", sub: "Arduino Uno R3 · основи, відкриті завжди", path: "robototekhnika/", sheet: "Прогрес: Робототехніка", max: 24,
+    levelIds: ["board", "led", "button", "buzzer", "pot", "ldr", "servo", "sonar"] },
 ];
 
 // ---------- утиліти ----------

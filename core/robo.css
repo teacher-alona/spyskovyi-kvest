@@ -1,0 +1,57 @@
+/* ---------- Робототехніка: плата, дроти, блоки ---------- */
+.scene { margin: 10px 0 4px; overflow-x: auto; }
+.robo { width: 100%; max-width: 760px; min-width: 520px; height: auto; display: block; user-select: none; -webkit-tap-highlight-color: transparent; }
+.robo .brand { font: 900 40px var(--f-body, sans-serif); fill: rgba(255,255,255,.88); letter-spacing: .04em; }
+.robo .brand2 { font: 700 10px var(--f-body, sans-serif); fill: rgba(255,255,255,.75); letter-spacing: .18em; }
+.robo .hdr { font: 700 7.5px var(--f-code, monospace); fill: #e9f3f3; text-anchor: middle; letter-spacing: .06em; }
+.robo .plbl { font: 700 7px var(--f-code, monospace); fill: #fff; }
+.robo .tiny { font: 700 7px var(--f-code, monospace); fill: #fff; }
+.robo .tiny.d { fill: #2b2d31; font-size: 9px; }
+.robo .chiptxt { font: 700 9px var(--f-code, monospace); fill: #b8bec9; text-anchor: middle; letter-spacing: .1em; }
+.robo .pin { cursor: pointer; }
+.robo .pin .hit { fill: transparent; }
+.robo .pin .hole { fill: #0d0e10; stroke: #5a5f68; stroke-width: 1; }
+.robo .pin:hover .hole { fill: #f2c230; }
+.robo .pin.used .hole { fill: #9aa1ad; }
+.robo .pin.hl .hole { fill: #ffd23d; stroke: #fff; stroke-width: 1.6; }
+.robo .part { cursor: pointer; }
+.robo .part:hover > *:first-child { filter: brightness(1.12); }
+.robo .part.hl > *:first-child { stroke: #ffd23d; stroke-width: 3.5; }
+.robo .part.hl { filter: drop-shadow(0 0 5px #ffd23d); }
+.robo .glow13 { fill: #ffd23d; opacity: .5; animation: rb-pulse 1s ease-in-out infinite; }
+.robo .elname { font: 800 12px var(--f-body, sans-serif); fill: var(--fg, #1b1b1b); }
+.robo .ellbl { font: 800 11px var(--f-body, sans-serif); fill: #1a8a4c; }
+.robo .ellbl.w { fill: #fff; font-size: 10px; }
+.robo .term { cursor: pointer; }
+.robo .term .hit { fill: transparent; }
+.robo .term circle { fill: #fff; stroke: #5a5f68; stroke-width: 2; }
+.robo .term text { font: 700 11.5px var(--f-body, sans-serif); fill: var(--fg, #1b1b1b); }
+.robo .term:hover circle, .robo .term.on circle { fill: #ffd23d; stroke: #b8860b; }
+.robo .term.on text { fill: #b8860b; }
+.robo .term.done circle { fill: #9aa1ad; }
+.robo .wire { fill: none; stroke-width: 3.6; stroke-linecap: round; cursor: pointer; opacity: .92; }
+.robo .wire:hover { stroke-width: 5.5; }
+.robo .glowled { fill: #ff3b30; opacity: .35; animation: rb-pulse 1.1s ease-in-out infinite; }
+.robo .notes text { font: 900 20px sans-serif; fill: #2b6cd4; animation: rb-float 1.2s ease-in-out infinite; }
+.robo .notes text:nth-child(2) { animation-delay: -.4s; } .robo .notes text:nth-child(3) { animation-delay: -.8s; }
+.robo .knob { animation: rb-turn 2.4s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
+.robo .arm { animation: rb-arm 2.4s ease-in-out infinite; }
+.robo .waves path { fill: none; stroke: #2b9bd6; stroke-width: 2.5; animation: rb-pulse 1s ease-in-out infinite; }
+.robo .waves path:nth-child(2) { animation-delay: -.33s; } .robo .waves path:nth-child(3) { animation-delay: -.66s; }
+.robo .sun { animation: rb-pulse 1.4s ease-in-out infinite; }
+@keyframes rb-pulse { 0%, 100% { opacity: .25; } 50% { opacity: .9; } }
+@keyframes rb-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+@keyframes rb-turn { 0%, 100% { transform: rotate(-120deg); } 50% { transform: rotate(120deg); } }
+@keyframes rb-arm { 0%, 100% { transform: rotate(-80deg); } 50% { transform: rotate(80deg); } }
+
+.bprog { display: grid; gap: 10px; margin: 10px 0; }
+.bsec { border: 2px dashed var(--line); border-radius: 12px; padding: 8px 10px 10px; display: flex; flex-direction: column; align-items: flex-start; gap: 6px; cursor: pointer; background: var(--card); }
+.bsec.on { border-style: solid; border-color: var(--ink); background: var(--ink-soft); }
+.bhead { font-weight: 800; font-size: .85rem; color: var(--muted, #5a6170); }
+.bempty { color: var(--muted, #8a919c); font-size: .85rem; font-style: italic; }
+.bpool { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0; }
+.blk { font: 700 .9rem var(--f-body, sans-serif); color: #fff; border: 0; border-radius: 8px 8px 8px 2px; padding: 8px 12px; cursor: pointer; box-shadow: 0 2px 0 rgba(0,0,0,.18); text-align: left; }
+.blk:hover { filter: brightness(1.08); }
+.b-set { background: #2b6cd4; } .b-act { background: #1f9d55; } .b-wait { background: #e0a526; color: #3a2a00; }
+.b-read { background: #8a4fc4; } .b-print { background: #d1357a; }
+@media (prefers-reduced-motion: reduce) { .robo * { animation: none !important; } }
