@@ -433,3 +433,5 @@ kbd { display: inline-block; min-width: 2.2em; padding: 3px 8px; border: 2px sol
 .ctx button:disabled { opacity: .4; }
 @media (max-width: 520px) { .xp-main { grid-template-columns: 1fr; } .xp-side { display: flex; flex-wrap: wrap; border-right: 0; border-bottom: 1px solid var(--line); } .xk { display: none; } }
 .bin-in .fchip { max-width: 100%; } .bin-in .fchip > span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* у сортуванні колір типу файлу не підказує: нерозкладені файли сірі, колір з'являється в правильному кошику */
+.pool .fchip .fi:not(.dir) { background: #8a93a5; }
