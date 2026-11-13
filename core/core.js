@@ -2,7 +2,7 @@
    змійка з гардеробом, заслона при виході з гри. Кожна гра підключає цей файл і додає свої рівні. */
 (function () {
 "use strict";
-const VERSION = "2026.11.12-10";
+const VERSION = "2026.11.13-11";
 const API = "https://script.google.com/macros/s/AKfycbzPtRGlYI4osS-xL-J_pAZ2A2HxTWUeuecjy9-13MgAdFIzkDnYuCr1qmLHqZvqWkQMWQ/exec";
 
 // Усі ігри порталу. sheet — назва аркуша з прогресом у таблиці вчительки.
@@ -15,8 +15,8 @@ const GAMES = [
     levelIds: ["basics","names","extlearn","ext","path","shortcuts","actions","explorer","final","hardware"] },
   { id: "klavishi", title: "Гарячі клавіші", sub: "Цифрова грамотність · 5 клас", path: "klavishi/", sheet: "Прогрес: Клавіші", max: 18,
     levelIds: ["copy","edit","files","windows","train","test"] },
-  { id: "trenazhery", title: "Тренажери", sub: "Розширення файлів і Провідник · відкриті завжди", path: "trenazhery/", sheet: "Прогрес: Тренажери", max: 27,
-    levelIds: ["ext_media", "ext_docs", "ext_exe", "ext_all", "xp_nav", "xp_make", "xp_copy", "xp_bin", "xp_tidy"] },
+  { id: "trenazhery", title: "Тренажери", sub: "Розширення, Провідник і гарячі клавіші · відкриті завжди", path: "trenazhery/", sheet: "Прогрес: Тренажери", max: 42,
+    levelIds: ["ext_media", "ext_docs", "ext_exe", "ext_all", "xp_nav", "xp_make", "xp_copy", "xp_bin", "xp_tidy", "k_copy", "k_text", "k_files", "k_win", "k_all"] },
 ];
 
 // ---------- утиліти ----------

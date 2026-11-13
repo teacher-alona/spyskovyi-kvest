@@ -1,7 +1,7 @@
 // ---- «Тренажери» — розширення файлів і Провідник; усі рівні відкриті одразу ----
 window.GAME_INFO = {
   id: "trenazhery", title: "Тренажери", eyebrow: "Цифрова грамотність · 5 клас", plain: true, openAll: true,
-  intro: "Тут можна тренуватися скільки завгодно і в будь-якому порядку: усі рівні відкриті одразу. Щоразу файли й завдання трохи інші.",
+  intro: "Розширення файлів, Провідник і гарячі клавіші. Тут можна тренуватися скільки завгодно і в будь-якому порядку: усі рівні відкриті одразу. Щоразу файли й завдання трохи інші.",
   types: { output: "Напиши відповідь" },
 };
 
@@ -9,7 +9,6 @@ const L = (title, text) => ({ t: "lesson", title, text });
 const Q = (q, options, a, why) => ({ t: "quiz", q, options, a, why });
 const T = (q, a, why, accept) => ({ t: "output", q, a, why, code: "", accept: accept || [] });
 const opts = (right, pool, n = 4) => [right].concat(shuf(pool.filter(x => x !== right)).slice(0, n - 1));
-const P = (...xs) => xs[Math.floor(Math.random() * xs.length)];
 
 // питання «якою програмою відкриється» і «яке розширення» — з випадковим файлом
 const appQ = list => G(() => { const x = rnd.pick(EXT.filter(e => list.includes(e.e))); return Q(`Що це за файл: \`${fileOf(x)}\`?`, opts(x.what, EXT.map(e => e.what)), 0, `\`${x.e}\` — ${x.what}. Відкривається: ${x.app}.`); });
@@ -124,5 +123,57 @@ LEVELS.push({
     X("Створи папку `D:\\Школа\\5 клас\\Інформатика`, перемісти туди `домашка.docx` і перейменуй його на `дз.docx`.", h => h.file("D:\\Школа\\5 клас\\Інформатика\\дз.docx") && !h.has("D:\\Школа\\домашка.docx"), "Створити → перемістити → F2."),
     X("Збери всі картинки (`jpg` і `png`) з папки Фото в нову папку `D:\\Фото\\Картинки`.", h => ["котик.jpg", "море.png", "ліс.jpg"].every(n => h.file("D:\\Фото\\Картинки\\" + n) && !h.has("D:\\Фото\\" + n)), "Картинок три: котик.jpg, море.png, ліс.jpg."),
     X("Віднови з Кошика `проєкт.pptx` і перемісти його в папку Школа.", h => h.file("D:\\Школа\\проєкт.pptx") && !h.inBin("проєкт.pptx"), "Відновлений файл з'явиться на диску D:, звідти його й переміщуй.", { binItems: [{ n: "проєкт.pptx", k: "file" }] }),
+  ],
+});
+
+// ===================== гарячі клавіші =====================
+const KEYS_TIP = "Можна натискати справжні клавіші або клацати їх на екранній клавіатурі. Комбінації з Win, Alt + Tab, Alt + F4 і Ctrl + Shift + N клацай тільки на екрані.";
+LEVELS.push({
+  id: "k_copy", kind: "practice", title: "Клавіші: копіювати й вставити",
+  about: "Ctrl + C, Ctrl + V, Ctrl + X.",
+  items: [
+    lessonOf("Пригадаймо", ["copy", "paste", "cut"], KEYS_TIP),
+    P("copy", true), P("cut", true), P("paste", true),
+    mix(["copy", "paste", "cut"], false), mix(["copy", "paste", "cut"], false), mix(["copy", "paste", "cut"], false),
+    does("cut"),
+  ],
+});
+LEVELS.push({
+  id: "k_text", kind: "practice", title: "Клавіші: текст і документи",
+  about: "Ctrl + Z, Ctrl + Y, Ctrl + A, Ctrl + S, Ctrl + P, Ctrl + F.",
+  items: [
+    lessonOf("Пригадаймо", ["undo", "redo", "all", "save", "print", "find"]),
+    P("undo", true), P("all", true), P("save", true),
+    mix(["undo", "redo", "all", "save", "print", "find"], false), mix(["undo", "redo", "all", "save", "print", "find"], false), mix(["undo", "redo", "all", "save", "print", "find"], false),
+    G(() => which(rnd.pick(["undo", "redo", "all", "save", "print", "find"])).gen()),
+  ],
+});
+LEVELS.push({
+  id: "k_files", kind: "practice", title: "Клавіші: файли",
+  about: "F2, Delete, Shift + Delete, Enter, Ctrl + Shift + N.",
+  items: [
+    lessonOf("Пригадаймо", ["rename", "del", "hard", "open", "newdir"], "На ноутбуці F2 інколи треба натискати разом із Fn."),
+    P("rename", true), P("hard", true), P("newdir", true),
+    mix(["rename", "del", "hard", "open", "newdir"], false), mix(["rename", "del", "hard", "open", "newdir"], false), mix(["rename", "del", "hard", "open", "newdir"], false),
+    G(() => does(rnd.pick(["rename", "del", "hard", "open", "newdir"])).gen()),
+  ],
+});
+LEVELS.push({
+  id: "k_win", kind: "practice", title: "Клавіші: вікна і Windows",
+  about: "Win + E, Win + D, Alt + Tab, Alt + F4, Win + L, Win + Shift + S, Ctrl + Shift + Esc.",
+  items: [
+    lessonOf("Пригадаймо", ["explorer", "desktop", "switchw", "close", "lock", "shot", "task"], "Ці комбінації клацай на екранній клавіатурі: справжні виведуть тебе з гри."),
+    P("explorer", true), P("switchw", true), P("task", true),
+    mix(["explorer", "desktop", "switchw", "close", "lock", "shot", "task"], false), mix(["explorer", "desktop", "switchw", "close", "lock", "shot", "task"], false), mix(["explorer", "desktop", "switchw", "close", "lock", "shot", "task"], false),
+    G(() => which(rnd.pick(["explorer", "desktop", "switchw", "close", "lock", "shot", "task"])).gen()),
+  ],
+});
+LEVELS.push({
+  id: "k_all", kind: "boss", title: "Клавіші впереміш",
+  about: "Усі комбінації без підказок.",
+  items: [
+    mix(ALL, false), mix(ALL, false), mix(ALL, false), mix(ALL, false), mix(ALL, false),
+    G(() => does(rnd.pick(ALL)).gen()), G(() => which(rnd.pick(ALL)).gen()),
+    mix(ALL, false), mix(ALL, false), mix(ALL, false),
   ],
 });
