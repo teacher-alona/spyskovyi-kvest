@@ -2,7 +2,7 @@
    змійка з гардеробом, заслона при виході з гри. Кожна гра підключає цей файл і додає свої рівні. */
 (function () {
 "use strict";
-const VERSION = "2026.11.13-21";
+const VERSION = "2026.11.13-22";
 const API = "https://script.google.com/macros/s/AKfycbzPtRGlYI4osS-xL-J_pAZ2A2HxTWUeuecjy9-13MgAdFIzkDnYuCr1qmLHqZvqWkQMWQ/exec";
 
 // Усі ігри порталу. sheet — назва аркуша з прогресом у таблиці вчительки.
@@ -54,6 +54,8 @@ if (!store) store = blankStore();
 function fixStore() {
   store.profile = store.profile || {}; store.games = store.games || {};
   const p = store.profile; p.skin = p.skin || "classic"; p.acc = p.acc || "none"; p.name = p.name || "Пітоша"; p.ach = p.ach || {}; p.bought = Array.isArray(p.bought) ? p.bought : []; p.mix = p.mix && typeof p.mix === "object" ? p.mix : {};
+  // прибрана з крамниці паляниця: повертаємо байти, якщо хтось устиг купити
+  if (p.bought.includes("palianytsia")) { p.bought = p.bought.filter(x => x !== "palianytsia"); p.spent = Math.max(0, (p.spent || 0) - 20); }
 }
 fixStore();
 const gameData = id => { const g = store.games[id] = store.games[id] || {}; g.stars = g.stars || {}; return g; };
@@ -301,13 +303,8 @@ const SKINS = [
   { id: "aplus", name: "Форма А+", need: 0, col: () => "#c8102e", idx: "#fff", head: "#c8102e",
     seg: (x, y) => `<circle cx="${x + 11}" cy="${y - 6.5}" r="1.3" fill="#d9dbe0"/><circle cx="${x + 11}" cy="${y + 7}" r="1.3" fill="#d9dbe0"/>`,
     headDeco: (hx, hy) => `<text x="${hx + 6}" y="${hy + 12}" font-family="Georgia, 'Times New Roman', serif" font-size="9" fill="#fff" opacity=".9">A<tspan font-size="6" dy="-3.5">+</tspan></text>` },
-  { id: "aplusgrey", name: "Сірий рукав А+", need: 0, col: () => "#a6a9b0", idx: "#3a3d44", head: "#a6a9b0",
-    seg: (x, y) => `<path d="M${x + 1} ${y + 7} h20" stroke="#c8102e" stroke-width="3"/>` },
   { id: "tartan", name: "Шотландка А+", need: 0, col: () => "#b3122a", idx: "#fff", head: "#b3122a",
     seg: (x, y) => `<g opacity=".85"><path d="M${x + 1} ${y - 4} h20 M${x + 1} ${y + 5} h20" stroke="#1f5a3a" stroke-width="3.2"/><path d="M${x + 7} ${y - 10} v20 M${x + 15} ${y - 10} v20" stroke="#1f5a3a" stroke-width="3.2" opacity=".75"/><path d="M${x + 1} ${y + .5} h20 M${x + 11} ${y - 10} v20" stroke="#1d2a5c" stroke-width="1"/><path d="M${x + 1} ${y + 8.5} h20" stroke="#f0d04a" stroke-width=".8"/></g>` },
-  { id: "palianytsia", name: "Паляниця", price: 20, col: () => "#c98a42", idx: "#4a2a0c", head: "#c98a42", rx: 10,
-    seg: (x, y) => `<path d="M${x + 2} ${y - 1} Q${x + 11} ${y - 13} ${x + 20} ${y - 1} Q${x + 11} ${y - 5} ${x + 2} ${y - 1} Z" fill="#f2d79e" stroke="#9c6226" stroke-width=".8"/><path d="M${x + 2} ${y + 8} q9 3 18 0" stroke="#9c6226" stroke-width="1" fill="none" opacity=".6"/>`,
-    headDeco: (hx, hy) => `<path d="M${hx + 5} ${hy - 8} Q${hx + 17} ${hy - 19} ${hx + 29} ${hy - 8} Q${hx + 17} ${hy - 12} ${hx + 5} ${hy - 8} Z" fill="#f2d79e" stroke="#9c6226" stroke-width=".8"/>` },
   { id: "battery", name: "Батарейка", price: 25, col: () => "#2b2f36", idx: "#fff", head: "#2b2f36", rx: 4,
     seg: (x, y, i) => `<rect x="${x + 15}" y="${y - 11}" width="7" height="22" rx="2" fill="#e0a526"/><rect x="${x + 22}" y="${y - 3.5}" width="2.5" height="7" rx="1" fill="#c48d17"/><text x="${x + 18.5}" y="${y + 3}" text-anchor="middle" font-size="7" font-weight="900" fill="#2b2f36">+</text><rect x="${x + 2.5}" y="${y + 6}" width="11" height="2.6" rx="1" fill="${["#3ddc6a", "#3ddc6a", "#ffd24d", "#ffd24d", "#ff5a4d"][i] || "#3ddc6a"}"/>` },
   { id: "tiger67", name: "Тигр 67", price: 35, col: () => "#f39a1e", idx: "#7a3d00", head: "#f39a1e",
@@ -353,13 +350,14 @@ const ACCS = [
   { id: "glasses67", name: "Очі 6 і 7", price: 25 },
   { id: "badgeaplus", name: "Значок А+", need: 0 },
   { id: "polo", name: "Комірець поло", need: 0 },
+  { id: "iron", name: "Паяльник", price: 25 },
   { id: "hat67", name: "Шапка 67", price: 20 },
   { id: "loafhat", name: "Батон на голові", ach: "loafhat", secret: true },
 ];
 // місце аксесуара: з одного місця можна вдягти лише одну річ, з різних — скільки завгодно
 const SLOT = { cap: "hat", cowboy: "hat", propeller: "hat", crown: "hat", horn: "hat", halo: "hat", pot: "hat", loafhat: "hat", devil: "hat", wizard: "hat", duck: "hat", catears: "hat", bearhood: "hat", sunhood: "hat", hat67: "hat", glasses67: "eyes",
-  glasses: "eyes", pirate: "eyes", moustache: "face", gasmask: "face", scarf: "neck", polo: "neck", badgeaplus: "decor", phones: "ears", bow: "decor", flower: "decor", wings: "back" };
-const SLOT_NAME = { hat: "на голову", eyes: "на очі", face: "на обличчя", neck: "на шию", ears: "навушники", decor: "прикраса", back: "на спину" };
+  glasses: "eyes", pirate: "eyes", moustache: "face", gasmask: "face", scarf: "neck", polo: "neck", badgeaplus: "decor", iron: "tool", phones: "ears", bow: "decor", flower: "decor", wings: "back" };
+const SLOT_NAME = { hat: "на голову", eyes: "на очі", face: "на обличчя", neck: "на шию", ears: "навушники", decor: "прикраса", tool: "в зубах", back: "на спину" };
 const accList = () => String(store.profile.acc || "").split(",").map(x => x.trim()).filter(x => x && x !== "none");
 const hasAcc = id => accList().includes(id);
 const ACH = { fail: "Лишитися без хвоста", perfect: "Пройти рівень без жодної помилки", peek: "Підглянути розв'язок задачі", lastdeath: "", loafhat: "", angel: "" };
@@ -515,6 +513,7 @@ function snakeSVG(o) {
   if (has("gasmask")) head += `<path d="M${hx + 9} ${hy - 7} L${hx + 1} ${hy - 11}" stroke="#2b2b2b" stroke-width="2.2"/><ellipse cx="${hx + 21}" cy="${hy + 1}" rx="13" ry="11.5" fill="#56664a" stroke="#2f3a28" stroke-width="1.2"/><circle cx="${hx + 15}" cy="${hy - 4}" r="4.3" fill="#a8dcea" stroke="#1f1f1f" stroke-width="1.6"/><circle cx="${hx + 25}" cy="${hy - 4}" r="4.3" fill="#a8dcea" stroke="#1f1f1f" stroke-width="1.6"/><rect x="${hx + 25}" y="${hy + 3}" width="11" height="11" rx="3.5" fill="#2e2e2e"/><path d="M${hx + 28} ${hy + 5} v7 M${hx + 31} ${hy + 5} v7 M${hx + 34} ${hy + 5} v7" stroke="#6b6b6b" stroke-width="1"/>`;
   if (has("polo")) head = `<path d="M${hx - 6} ${hy + 4} L${hx + 4} ${hy + 1} L${hx + 2} ${hy + 13} Z" fill="#c8102e" stroke="#8a0b20" stroke-width="1.1" stroke-linejoin="round"/><path d="M${hx - 6} ${hy + 15} L${hx + 4} ${hy + 1} L${hx + 6} ${hy + 15} Z" fill="#a50d26" stroke="#8a0b20" stroke-width="1.1" stroke-linejoin="round"/>` + head;
   if (has("badgeaplus")) head += `<circle cx="${hx + 6}" cy="${hy - 13}" r="6.2" fill="#5c1229" stroke="#f4a7b9" stroke-width="1"/><text x="${hx + 5.3}" y="${hy - 9.5}" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="9" fill="#f4a7b9">A<tspan font-size="6" dy="-3.5">+</tspan></text>`;
+  if (has("iron")) head += `<g stroke-linecap="round"><path d="M${hx + 46} ${hy + 6} q-3 -5 0 -9 q3 -4 0 -8" stroke="#b8bec9" stroke-width="1.2" fill="none" opacity=".8"/><path d="M${hx + 41} ${hy + 12} L${hx + 49} ${hy + 15}" stroke="#9aa1ad" stroke-width="2.2"/><path d="M${hx + 49} ${hy + 15} l3.5 1.3" stroke="#e07b2a" stroke-width="1.8"/><path d="M${hx + 37} ${hy + 10.5} L${hx + 42} ${hy + 12.3}" stroke="#d4d7dc" stroke-width="3.4"/><path d="M${hx + 25} ${hy + 6} L${hx + 38} ${hy + 10.8}" stroke="#2b5fc7" stroke-width="5.2"/><path d="M${hx + 27} ${hy + 6.7} L${hx + 36} ${hy + 10}" stroke="#4d82e8" stroke-width="1.4"/><path d="M${hx + 22} ${hy + 4.8} L${hx + 26} ${hy + 6.3}" stroke="#1b1b1b" stroke-width="2"/></g>`;
   if (has("hat67")) head += `<path d="M${hx + 3} ${hy - 12} Q${hx + 17} ${hy - 36} ${hx + 31} ${hy - 12} Z" fill="#e8483f" stroke="#a8261f" stroke-width="1.2"/><rect x="${hx + 1}" y="${hy - 15}" width="32" height="6" rx="3" fill="#b8302a"/><circle cx="${hx + 17}" cy="${hy - 31}" r="3.6" fill="#fff" stroke="#ddd"/><text x="${hx + 17}" y="${hy - 17.5}" text-anchor="middle" font-family="Arial Black, Arial, sans-serif" font-weight="900" font-size="8" fill="#fff">67</text>`;
   if (has("glasses67")) head += `<g font-family="Arial Black, Arial, sans-serif" font-weight="900" font-size="7.5" text-anchor="middle"><circle cx="${hx + 14.5}" cy="${hy - 4}" r="5" fill="#fff" stroke="#1b1b1b" stroke-width="1.5"/><circle cx="${hx + 25.5}" cy="${hy - 4}" r="5" fill="#fff" stroke="#1b1b1b" stroke-width="1.5"/><path d="M${hx + 19.5} ${hy - 4} h1" stroke="#1b1b1b" stroke-width="1.5"/><text x="${hx + 14.5}" y="${hy - 1.2}" fill="#1b1b1b">6</text><text x="${hx + 25.5}" y="${hy - 1.2}" fill="#1b1b1b">7</text></g>`;
   if (has("crown")) head += `<path d="M${hx + 8} ${hy - 13} L${hx + 7} ${hy - 25} L${hx + 12.5} ${hy - 19} L${hx + 17} ${hy - 28} L${hx + 21.5} ${hy - 19} L${hx + 27} ${hy - 25} L${hx + 26} ${hy - 13} Z" fill="#f2c230" stroke="#b8860b" stroke-width="1.2"/><circle cx="${hx + 17}" cy="${hy - 17}" r="1.8" fill="#e8483f"/>`;
