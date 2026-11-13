@@ -46,6 +46,8 @@ function renderHome() {
 }
 // ---------- лідерборд ----------
 let lbTab = null;
+// «11 ІТ», «5IT» → «11», «5»: так вкладки займають менше місця
+const shortCls = c => String(c).replace(/\s*(ІТ|IT|ИТ)\s*/gi, " ").trim() || String(c);
 async function fillBoard() {
   const box = $("#lb"); if (!box) return;
   const r = await KV.leaders();
@@ -56,7 +58,7 @@ async function fillBoard() {
     return;
   }
   const teacher = !!r.all;
-  const tabs = teacher ? [["school", "Уся школа"], ...r.classes.map(c => ["c:" + c, c])] : [["cls", "Мій клас"], ["school", "Уся школа"]];
+  const tabs = teacher ? [["school", "Усі"], ...r.classes.slice().sort((a, b) => (parseInt(a) || 99) - (parseInt(b) || 99) || a.localeCompare(b, "uk")).map(c => ["c:" + c, shortCls(c)])] : [["cls", "Мій клас"], ["school", "Усі"]];
   if (!lbTab || !tabs.some(t => t[0] === lbTab)) lbTab = tabs[0][0];
   const list = lbTab === "cls" ? r.cls : lbTab === "school" ? (teacher ? r.all : r.school) : r.all.filter(x => x.cls === lbTab.slice(2));
   const medal = i => ["🥇", "🥈", "🥉"][i] || `<span class="lnum">${i + 1}</span>`;
@@ -65,7 +67,7 @@ async function fillBoard() {
     ${list.length ? `<ol class="lrows">${list.map((x, i) => `<li class="${x.me ? "me" : ""}">
       <span class="lrank">${medal(i)}</span>
       ${KV.snakeSVG({ len: 2, skin: x.look.skin || "classic", acc: x.look.acc || "none", shape: x.look.shape || undefined, headType: x.look.head || undefined, cls: "lsn", crop: true })}
-      <span class="lwho"><b>${esc(x.name)}${x.me ? " (ти)" : ""}</b>${x.snake ? `<small>${esc(x.snake)}${lbTab === "school" ? " · " + esc(x.cls) : ""}</small>` : lbTab === "school" ? `<small>${esc(x.cls)}</small>` : ""}</span>
+      <span class="lwho"><b>${esc(x.name)}${x.me ? " (ти)" : ""}</b>${x.snake ? `<small>${esc(x.snake)}${lbTab === "school" ? " · " + esc(shortCls(x.cls)) : ""}</small>` : lbTab === "school" ? `<small>${esc(shortCls(x.cls))}</small>` : ""}</span>
       <span class="lstars">★ ${x.stars}${x.streak ? `<small>🔥 ${x.streak}</small>` : ""}</span></li>`).join("")}</ol>` : `<p class="status">Тут поки нікого немає.</p>`}`;
   body.querySelectorAll(".ltab").forEach(b => b.onclick = () => { lbTab = b.dataset.k; fillBoard(); });
 }

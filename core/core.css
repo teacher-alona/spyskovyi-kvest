@@ -287,8 +287,10 @@ textarea { resize: vertical; line-height: 1.6; }
 
 /* ---------- лідерборд на головній ---------- */
 .hero.hasboard { grid-template-columns: minmax(0, 1fr); }
-.hero .heromain { display: grid; gap: 10px; align-content: start; }
-@media (min-width: 820px) {
+.hero .heromain { display: grid; gap: 10px; align-content: start; min-width: 0; }
+.hero .heromain > * { min-width: 0; max-width: 100%; }
+.hero .heromain .streak { white-space: normal; }
+@media (min-width: 1000px) {
   .hero.hasboard { grid-template-columns: minmax(0, 1fr) minmax(280px, 340px); column-gap: 28px; }
   .hero.hasboard > :first-child { grid-column: 1 / -1; }
   .hero .lboard { align-self: start; }
