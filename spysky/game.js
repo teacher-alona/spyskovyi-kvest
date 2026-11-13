@@ -215,7 +215,7 @@ function renderMap() {
       ${snakeSVG({ len: N, cls: "big" })}
       <div class="petinfo">
         <div class="petname">${esc(pf().name)}</div>
-        <div class="score">${PLAIN ? "Зірок:" : "sum(stars) ="} <b>${total}</b> / ${n * 3} · Байтів: <b>${KV.bytesLeft()}</b></div>
+        <div class="score">${PLAIN ? "Зірок:" : "sum(stars) ="} <b>${total}</b> / ${n * 3} · Байтів: <b>${KV.bytesLeft()}</b> · ${KV.streakBadge()}</div>
         <div class="mystats">Спроб рівнів: <b>${LEVELS.reduce((a, l) => a + ((gd().attempts || {})[l.id] || 0), 0)}</b> · Виходів з гри: <b class="${gd().leaves ? "bad" : ""}">${gd().leaves || 0}</b>${gd().awayMs ? ` · Поза грою: <b class="bad">${fmtTime(gd().awayMs)}</b>` : ""}</div>
         <button class="btn ghost small" id="wardrobe">Гардероб${(() => { const k = openIds().length - 2; return k > 0 ? ` · ${k} відкрито` : ""; })()}</button>
       </div>
@@ -554,6 +554,7 @@ function renderDone() {
   const prev = gd().stars[lv.id] || 0;
   const before = openIds();
   if (s > prev) { gd().stars[lv.id] = s; }
+  const sk = KV.streakTouch();
   // байти дають лише за перше успішне проходження рівня (коли зірок ще не було)
   const earned = prev ? 0 : (run.clean || 0) + (run.mistakes === 0 ? KV.BYTES_PERFECT : 0);
   if (earned) gd().bytes = (gd().bytes || 0) + earned;
@@ -570,6 +571,7 @@ function renderDone() {
     ${snakeSVG({ len: run.hearts, mood: s === 3 ? "wow" : "happy", cls: "big" })}
     ${starStr(s, "bigstars")}
     ${fresh.length ? `<div class="unlock">Відкрито в гардеробі: ${fresh.map(x => `<b>${esc(x.name)}</b>`).join(", ")}</div>` : ""}
+    ${sk.grew ? `<div class="streakgot">🔥 Серія: ${sk.n} ${KV.daysWord(sk.n)} поспіль!${sk.bonus ? ` +${sk.bonus} байтів за ${sk.n} ${KV.daysWord(sk.n)}` : ""}</div>` : ""}
     <div class="bytesgot">${earned ? `+${earned} ${KV.bytesWord(earned)}${run.mistakes === 0 ? ` (з них ${KV.BYTES_PERFECT} — бонус за рівень без помилок)` : ""}. Усього: ${KV.bytesLeft()}` : prev ? `За повторне проходження байтів не дають. У тебе ${KV.bytesLeft()} ${KV.bytesWord(KV.bytesLeft())}` : ""}</div>
     <p>Помилок: ${run.mistakes}. ${s < 3 ? "Три зірки дають, якщо помилок не більше однієї." : run.mistakes === 0 ? "Чистий рівень!" : "Майже ідеально!"}${s > prev && prev ? " Новий рекорд!" : ""}${run.leaves ? ` Виходів з гри: ${run.leaves}${run.awayMs >= GRACE ? `, поза грою ${fmtTime(run.awayMs)}` : ""}.` : ""} Це твоя ${gd().attempts[lv.id] || 1}-а спроба цього рівня.</p>
     <div class="syncbox">${KV.syncLabel()}</div>

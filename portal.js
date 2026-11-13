@@ -20,6 +20,7 @@ function renderHome() {
       <div class="petinfo">
         <div class="petname">${esc(p.name)}</div>
         <div class="score">★ <b>${total}</b> / ${maxAll} в усіх іграх</div>
+        <div class="score">${KV.streakBadge()}</div>
         <button class="btn ghost small" id="wardrobe">Гардероб${(() => { const k = KV.openIds().length - 2; return k > 0 ? ` · ${k} відкрито` : ""; })()}</button>
       </div>
     </div>

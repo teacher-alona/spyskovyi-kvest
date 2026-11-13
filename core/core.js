@@ -2,7 +2,7 @@
    змійка з гардеробом, заслона при виході з гри. Кожна гра підключає цей файл і додає свої рівні. */
 (function () {
 "use strict";
-const VERSION = "2026.11.13-11";
+const VERSION = "2026.11.13-13";
 const API = "https://script.google.com/macros/s/AKfycbzPtRGlYI4osS-xL-J_pAZ2A2HxTWUeuecjy9-13MgAdFIzkDnYuCr1qmLHqZvqWkQMWQ/exec";
 
 // Усі ігри порталу. sheet — назва аркуша з прогресом у таблиці вчительки.
@@ -147,6 +147,11 @@ function mergeProfile(local, remote) {
   const m = Object.assign({}, newer);
   m.ach = Object.assign({}, remote.ach || {}, local.ach || {});
   m.bought = [...new Set([...(remote.bought || []), ...(local.bought || [])])];   // куплене не зникає
+  // серія: беремо ту, де останній день пізніший (або довша, якщо день той самий)
+  const a = remote.streak || {}, b = local.streak || {};
+  m.streak = (a.last || "") > (b.last || "") ? a : (b.last || "") > (a.last || "") ? b : ((a.n || 0) >= (b.n || 0) ? a : b);
+  m.streak = Object.assign({}, m.streak, { best: Math.max(a.best || 0, b.best || 0, m.streak.n || 0) });
+  m.bonus = Math.max(remote.bonus || 0, local.bonus || 0);
   return m;
 }
 // r — відповідь сервера на вхід (новий скрипт: profile + games; старий: data + levels + bytes)
@@ -325,18 +330,39 @@ const ACCS = [
   { id: "flower", name: "Квітка", price: 25 },
   { id: "pirate", name: "Пов'язка пірата", price: 35 },
   { id: "wizard", name: "Капелюх чарівника", price: 60 },
+  { id: "bearhood", name: "Капюшон-ведмедик", price: 45 },
+  { id: "gasmask", name: "Протигаз", price: 50 },
   { id: "loafhat", name: "Батон на голові", ach: "loafhat", secret: true },
 ];
 // місце аксесуара: з одного місця можна вдягти лише одну річ, з різних — скільки завгодно
-const SLOT = { cap: "hat", cowboy: "hat", propeller: "hat", crown: "hat", horn: "hat", halo: "hat", pot: "hat", loafhat: "hat", devil: "hat", wizard: "hat", duck: "hat", catears: "hat",
-  glasses: "eyes", pirate: "eyes", moustache: "face", scarf: "neck", phones: "ears", bow: "decor", flower: "decor", wings: "back" };
+const SLOT = { cap: "hat", cowboy: "hat", propeller: "hat", crown: "hat", horn: "hat", halo: "hat", pot: "hat", loafhat: "hat", devil: "hat", wizard: "hat", duck: "hat", catears: "hat", bearhood: "hat",
+  glasses: "eyes", pirate: "eyes", moustache: "face", gasmask: "face", scarf: "neck", phones: "ears", bow: "decor", flower: "decor", wings: "back" };
 const SLOT_NAME = { hat: "на голову", eyes: "на очі", face: "на обличчя", neck: "на шию", ears: "навушники", decor: "прикраса", back: "на спину" };
 const accList = () => String(store.profile.acc || "").split(",").map(x => x.trim()).filter(x => x && x !== "none");
 const hasAcc = id => accList().includes(id);
 const ACH = { fail: "Лишитися без хвоста", perfect: "Пройти рівень без жодної помилки", peek: "Підглянути розв'язок задачі", lastdeath: "", loafhat: "", angel: "" };
 // ---------- байти ----------
 const BYTES_PERFECT = 5;
-const bytesEarned = () => Object.values(store.games).reduce((s, g) => s + ((g && g.bytes) || 0), 0);
+const bytesEarned = () => Object.values(store.games).reduce((s, g) => s + ((g && g.bytes) || 0), 0) + (store.profile.bonus || 0);
+// ---------- щоденна серія: дні поспіль, коли пройдено хоча б один рівень ----------
+const STREAK_EVERY = 7, STREAK_BONUS = 10;   // кожен 7-й день серії — +10 байтів
+const dayStr = (d = new Date()) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+const yesterday = () => { const d = new Date(); d.setDate(d.getDate() - 1); return dayStr(d); };
+const streakNow = () => { const st = store.profile.streak || {}; return st.last === dayStr() || st.last === yesterday() ? (st.n || 0) : 0; };
+const streakDoneToday = () => (store.profile.streak || {}).last === dayStr();
+function streakTouch() {   // викликається, коли рівень пройдено; повертає {n, grew, bonus}
+  const p = store.profile, st = p.streak || {}, today = dayStr();
+  if (st.last === today) return { n: st.n, grew: false, bonus: 0 };
+  const n = st.last === yesterday() ? (st.n || 0) + 1 : 1;
+  const bonus = n % STREAK_EVERY === 0 ? STREAK_BONUS : 0;
+  p.streak = { last: today, n, best: Math.max(st.best || 0, n) };
+  if (bonus) p.bonus = (p.bonus || 0) + bonus;
+  save("profile");
+  return { n, grew: true, bonus };
+}
+const daysWord = n => { n = Math.abs(n) % 100; const d = n % 10; return n > 10 && n < 20 ? "днів" : d === 1 ? "день" : d >= 2 && d <= 4 ? "дні" : "днів"; };
+const streakBadge = () => { const n = streakNow(), today = streakDoneToday();
+  return `<span class="streak ${n ? "on" : ""} ${today ? "today" : ""}" title="Дні поспіль, коли ти проходиш хоча б один рівень">🔥 ${n} ${daysWord(n)}${n && !today ? " · пройди рівень сьогодні, щоб не згасла" : ""}</span>`; };
 const bytesSpent = () => (store.profile.bought || []).reduce((s, id) => { const x = [...SKINS, ...ACCS].find(y => y.id === id); return s + (x && x.price || 0); }, 0);
 const bytesLeft = () => Math.max(0, bytesEarned() - bytesSpent());
 const bytesWord = n => { n = Math.abs(n) % 100; const d = n % 10; return n > 10 && n < 20 ? "байтів" : d === 1 ? "байт" : d >= 2 && d <= 4 ? "байти" : "байтів"; };
@@ -406,6 +432,8 @@ function snakeSVG(o) {
   if (has("wizard")) head += `<path d="M${hx + 5} ${hy - 12} L${hx + 19} ${hy - 37} L${hx + 30} ${hy - 12} Z" fill="#3b2f8f" stroke="#241a66" stroke-width="1.2"/><ellipse cx="${hx + 17}" cy="${hy - 12}" rx="17" ry="3.4" fill="#2c2275"/><path d="M${hx + 14} ${hy - 24} l1.2 2.6 2.8 .3 -2.1 1.9 .6 2.8 -2.5 -1.4 -2.5 1.4 .6 -2.8 -2.1 -1.9 2.8 -.3 Z" fill="#ffd43b"/><circle cx="${hx + 22}" cy="${hy - 17}" r="1.2" fill="#ffd43b"/>`;
   if (has("halo")) head += `<ellipse cx="${hx + 17}" cy="${hy - 22}" rx="12" ry="3.4" fill="none" stroke="#f2c230" stroke-width="2.6"/>`;
   if (has("pot")) head += `<rect x="${hx + 2}" y="${hy - 25}" width="30" height="15" rx="2" fill="#b8c0cc" stroke="#7d8794" stroke-width="1.2"/><rect x="${hx - 4}" y="${hy - 22}" width="7" height="3" rx="1.5" fill="#7d8794"/><rect x="${hx + 31}" y="${hy - 22}" width="7" height="3" rx="1.5" fill="#7d8794"/><path d="M${hx + 2} ${hy - 20} h30" stroke="#9aa3b0" stroke-width="1"/><rect x="${hx + 6}" y="${hy - 22}" width="5" height="9" rx="1.5" fill="rgba(255,255,255,.45)"/>`;
+  if (has("bearhood")) head += `<g stroke="#4f7fa6" stroke-width="1.2"><circle cx="${hx + 5}" cy="${hy - 17}" r="5.5" fill="#7fb3d9"/><circle cx="${hx + 29}" cy="${hy - 17}" r="5.5" fill="#7fb3d9"/><circle cx="${hx + 5}" cy="${hy - 17}" r="2.6" fill="#f6c6d4" stroke="none"/><circle cx="${hx + 29}" cy="${hy - 17}" r="2.6" fill="#f6c6d4" stroke="none"/><path fill-rule="evenodd" fill="#7fb3d9" d="M${hx - 4} ${hy - 4} Q${hx - 4} ${hy - 20} ${hx + 17} ${hy - 20} Q${hx + 38} ${hy - 20} ${hx + 38} ${hy - 4} L${hx + 38} ${hy + 12} Q${hx + 38} ${hy + 17} ${hx + 33} ${hy + 17} L${hx + 1} ${hy + 17} Q${hx - 4} ${hy + 17} ${hx - 4} ${hy + 12} Z M${hx + 4} ${hy - 6} Q${hx + 4} ${hy - 13} ${hx + 12} ${hy - 13} L${hx + 30} ${hy - 13} Q${hx + 35} ${hy - 13} ${hx + 35} ${hy - 7} L${hx + 35} ${hy + 9} Q${hx + 35} ${hy + 14} ${hx + 30} ${hy + 14} L${hx + 9} ${hy + 14} Q${hx + 4} ${hy + 14} ${hx + 4} ${hy + 9} Z"/></g>`;
+  if (has("gasmask")) head += `<path d="M${hx + 9} ${hy - 7} L${hx + 1} ${hy - 11}" stroke="#2b2b2b" stroke-width="2.2"/><ellipse cx="${hx + 21}" cy="${hy + 1}" rx="13" ry="11.5" fill="#56664a" stroke="#2f3a28" stroke-width="1.2"/><circle cx="${hx + 15}" cy="${hy - 4}" r="4.3" fill="#a8dcea" stroke="#1f1f1f" stroke-width="1.6"/><circle cx="${hx + 25}" cy="${hy - 4}" r="4.3" fill="#a8dcea" stroke="#1f1f1f" stroke-width="1.6"/><rect x="${hx + 25}" y="${hy + 3}" width="11" height="11" rx="3.5" fill="#2e2e2e"/><path d="M${hx + 28} ${hy + 5} v7 M${hx + 31} ${hy + 5} v7 M${hx + 34} ${hy + 5} v7" stroke="#6b6b6b" stroke-width="1"/>`;
   if (has("crown")) head += `<path d="M${hx + 8} ${hy - 13} L${hx + 7} ${hy - 25} L${hx + 12.5} ${hy - 19} L${hx + 17} ${hy - 28} L${hx + 21.5} ${hy - 19} L${hx + 27} ${hy - 25} L${hx + 26} ${hy - 13} Z" fill="#f2c230" stroke="#b8860b" stroke-width="1.2"/><circle cx="${hx + 17}" cy="${hy - 17}" r="1.8" fill="#e8483f"/>`;
   const pop = falling ? `<text class="poptxt" x="${segX(len + falling - 1) - 2}" y="12">${esc(popName())}.pop()</text>` : "";
   return `<svg class="snake ${o.cls || ""}" viewBox="0 0 ${W} ${H}" role="img" aria-label="Змійка, сегментів: ${len} з ${N}">${g}<g class="head">${head}</g>${pop}</svg>`;
@@ -436,6 +464,7 @@ function renderWardrobe(back, backLabel) {
       <div class="petinfo"><label class="answer-label" for="petname">Ім'я змійки</label>
       <input type="text" id="petname" maxlength="16" value="${esc(p.name)}" autocomplete="off">
       <div class="status">У тебе ★ ${total} з ${maxAll} в усіх іграх. Більше зірок — більше скінів.</div>
+      <div class="status">${streakBadge()} Найдовша серія: ${(p.streak || {}).best || 0} ${daysWord((p.streak || {}).best || 0)}.</div>
       <div class="status bytes">Байтів: <b>${left}</b>. Їх дають за правильні відповіді з першої спроби на рівнях, які ти проходиш уперше, і ще ${BYTES_PERFECT} за рівень без помилок.</div></div></div>
     <h3>Забарвлення</h3>
     <p class="status">Змійку можна зібрати з різних блоків. Обери, що фарбуєш, а потім забарвлення.</p>
@@ -531,7 +560,7 @@ window.KV = {
   get session() { return session; }, get offline() { return offline; }, get access() { return access; },
   profile, gameData, totalStars, save, scheduleSync, syncLabel, boot, logout, whoami, bindWhoami,
   useGame: (id, summaryFn, levelIds) => { currentGame = id; gameSummary = summaryFn; const G = GAMES.find(g => g.id === id); if (G) G.levelIds = levelIds; },
-  N, SKINS, ACCS, isOpen, openIds, achieve, snakeSVG, renderWardrobe, hasAcc, bytesLeft, bytesWord, BYTES_PERFECT,
+  N, SKINS, ACCS, isOpen, openIds, achieve, snakeSVG, renderWardrobe, hasAcc, bytesLeft, bytesWord, BYTES_PERFECT, streakTouch, streakNow, streakBadge, daysWord, STREAK_EVERY,
   leave: { configure: cfg => { leaveCfg = Object.assign({ isActive: () => false, onPenalty: () => {} }, cfg); }, GRACE, AWAY_STEP },
   get guardOpen() { return guardOpen; }, showGuard, hideGuard, goFullscreen, leaveFullscreen, toast,
 };
