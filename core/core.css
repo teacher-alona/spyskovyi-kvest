@@ -266,3 +266,21 @@ textarea { resize: vertical; line-height: 1.6; }
 .streak.today { background: #ff9d2e; color: #fff; }
 .streakgot { font-weight: 800; color: #b4560b; margin: 4px 0; }
 @media (max-width: 520px) { .streak { white-space: normal; } }
+
+/* ---------- анімації змійки ---------- */
+.snake { overflow: visible; }
+.snake .seg, .snake .head { transform-box: view-box; }
+.snake.anim-jump .seg, .snake.anim-jump .head { animation: kv-jump .9s ease-in-out infinite; animation-delay: calc(var(--i, -1) * .08s); }
+@keyframes kv-jump { 0%, 60%, 100% { transform: translateY(0); } 30% { transform: translateY(-7px); } }
+.snake.anim-crawl { animation: kv-slide 2.4s ease-in-out infinite; }
+.snake.anim-crawl .seg, .snake.anim-crawl .head { animation: kv-wave 1.2s ease-in-out infinite; animation-delay: calc(var(--i, -1) * .2s); }
+@keyframes kv-wave { 0%, 100% { transform: translateY(-3px); } 50% { transform: translateY(3px); } }
+@keyframes kv-slide { 0%, 100% { transform: translateX(-4px); } 50% { transform: translateX(4px); } }
+.snake.anim-six7 .seg.e, .snake.anim-six7 .head { animation: kv-67 .7s ease-in-out infinite; }
+.snake.anim-six7 .seg.o { animation: kv-67 .7s ease-in-out infinite; animation-delay: -.35s; }
+@keyframes kv-67 { 0%, 100% { transform: translateY(-5px); } 50% { transform: translateY(5px); } }
+.snake .t67 { font: 900 14px "Arial Black", Arial, sans-serif; fill: #f39a1e; stroke: #3a1f05; stroke-width: .8px; animation: kv-blink .7s steps(1) infinite; }
+.snake .t67.b { animation-delay: -.35s; }
+@keyframes kv-blink { 0% { opacity: 1; } 50% { opacity: 0; } }
+
+@media (prefers-reduced-motion: reduce) { .snake, .snake .seg, .snake .head, .snake .t67 { animation: none !important; } }

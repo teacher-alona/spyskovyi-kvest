@@ -2,7 +2,7 @@
    змійка з гардеробом, заслона при виході з гри. Кожна гра підключає цей файл і додає свої рівні. */
 (function () {
 "use strict";
-const VERSION = "2026.11.13-16";
+const VERSION = "2026.11.13-17";
 const API = "https://script.google.com/macros/s/AKfycbzPtRGlYI4osS-xL-J_pAZ2A2HxTWUeuecjy9-13MgAdFIzkDnYuCr1qmLHqZvqWkQMWQ/exec";
 
 // Усі ігри порталу. sheet — назва аркуша з прогресом у таблиці вчительки.
@@ -152,6 +152,7 @@ function mergeProfile(local, remote) {
   m.streak = (a.last || "") > (b.last || "") ? a : (b.last || "") > (a.last || "") ? b : ((a.n || 0) >= (b.n || 0) ? a : b);
   m.streak = Object.assign({}, m.streak, { best: Math.max(a.best || 0, b.best || 0, m.streak.n || 0) });
   m.bonus = Math.max(remote.bonus || 0, local.bonus || 0);
+  m.spent = Math.max(remote.spent || 0, local.spent || 0);
   return m;
 }
 // r — відповідь сервера на вхід (новий скрипт: profile + games; старий: data + levels + bytes)
@@ -296,6 +297,9 @@ const SKINS = [
     head: "#e9eef6", headRx: 8,
     headDeco: (hx, hy) => `<path d="M${hx + 30} ${hy - 13} Q${hx + 46} ${hy - 6} ${hx + 48} ${hy} Q${hx + 46} ${hy + 6} ${hx + 30} ${hy + 13} Z" fill="#e8483f" stroke="rgba(0,0,0,.25)" stroke-width="1.2"/><rect x="${hx}" y="${hy + 7}" width="30" height="3" fill="#e8483f"/>` },
   // за байти
+  { id: "tiger67", name: "Тигр 67", price: 35, col: () => "#f39a1e", idx: "#7a3d00", head: "#f39a1e",
+    seg: (x, y) => `<g font-family="Arial Black, Arial, sans-serif" font-weight="900" font-size="10" fill="#3a1f05" opacity=".55"><text x="${x + 2}" y="${y - 2}" transform="rotate(-14 ${x + 5} ${y - 5})">6</text><text x="${x + 14}" y="${y + 10}" transform="rotate(-14 ${x + 17} ${y + 7})">7</text></g>`,
+    headDeco: (hx, hy) => `<g font-family="Arial Black, Arial, sans-serif" font-weight="900" font-size="8" fill="#3a1f05"><text x="${hx + 3}" y="${hy + 12}" transform="rotate(-14 ${hx + 6} ${hy + 9})">6</text><text x="${hx + 27}" y="${hy + 12}" transform="rotate(-14 ${hx + 30} ${hy + 9})">7</text></g>` },
   { id: "neon", name: "Неон", price: 40, col: () => "#141826", idx: "#39ff14", head: "#141826", headStroke: "#39ff14",
     seg: (x, y) => `<rect x="${x + 2.5}" y="${y - 8.5}" width="17" height="17" rx="5" fill="none" stroke="#39ff14" stroke-width="1.6"/>` },
   { id: "zebra", name: "Зебра", price: 60, col: () => "#fafafa", idx: "#1b1b1b",
@@ -333,10 +337,12 @@ const ACCS = [
   { id: "bearhood", name: "Капюшон-ведмедик", price: 45 },
   { id: "gasmask", name: "Протигаз", price: 50 },
   { id: "sunhood", name: "Соняшниковий капюшон", price: 10 },
+  { id: "glasses67", name: "Очі 6 і 7", price: 25 },
+  { id: "hat67", name: "Шапка 67", price: 20 },
   { id: "loafhat", name: "Батон на голові", ach: "loafhat", secret: true },
 ];
 // місце аксесуара: з одного місця можна вдягти лише одну річ, з різних — скільки завгодно
-const SLOT = { cap: "hat", cowboy: "hat", propeller: "hat", crown: "hat", horn: "hat", halo: "hat", pot: "hat", loafhat: "hat", devil: "hat", wizard: "hat", duck: "hat", catears: "hat", bearhood: "hat", sunhood: "hat",
+const SLOT = { cap: "hat", cowboy: "hat", propeller: "hat", crown: "hat", horn: "hat", halo: "hat", pot: "hat", loafhat: "hat", devil: "hat", wizard: "hat", duck: "hat", catears: "hat", bearhood: "hat", sunhood: "hat", hat67: "hat", glasses67: "eyes",
   glasses: "eyes", pirate: "eyes", moustache: "face", gasmask: "face", scarf: "neck", phones: "ears", bow: "decor", flower: "decor", wings: "back" };
 const SLOT_NAME = { hat: "на голову", eyes: "на очі", face: "на обличчя", neck: "на шию", ears: "навушники", decor: "прикраса", back: "на спину" };
 const accList = () => String(store.profile.acc || "").split(",").map(x => x.trim()).filter(x => x && x !== "none");
@@ -364,10 +370,22 @@ function streakTouch() {   // викликається, коли рівень п
 const daysWord = n => { n = Math.abs(n) % 100; const d = n % 10; return n > 10 && n < 20 ? "днів" : d === 1 ? "день" : d >= 2 && d <= 4 ? "дні" : "днів"; };
 const streakBadge = () => { const n = streakNow(), today = streakDoneToday();
   return `<span class="streak ${n ? "on" : ""} ${today ? "today" : ""}" title="Дні поспіль, коли ти проходиш хоча б один рівень">🔥 ${n} ${daysWord(n)}${n && !today ? " · пройди рівень сьогодні, щоб не згасла" : ""}</span>`; };
-const bytesSpent = () => (store.profile.bought || []).reduce((s, id) => { const x = [...SKINS, ...ACCS].find(y => y.id === id); return s + (x && x.price || 0); }, 0);
+// анімації змійки (видно на великій змійці: головна сторінка, гардероб)
+const ANIMS = [
+  { id: "none", name: "Без анімації", need: 0 },
+  { id: "jump", name: "Підстрибує", price: 15 },
+  { id: "crawl", name: "Повзе", price: 20 },
+  { id: "six7", name: "Танець 67", price: 30 },
+];
+// комплекти: усе разом дешевше
+const SETS = [{ id: "set67", name: "Комплект 67", price: 67, items: ["tiger67", "glasses67", "hat67", "six7"] }];
+const ALLITEMS = () => [...SKINS, ...ACCS, ...ANIMS, ...SETS];
+const setCost = st => Math.max(0, st.price - st.items.reduce((s, id) => { const x = ALLITEMS().find(y => y.id === id); return s + (x && isOpen(x) ? x.price : 0); }, 0));
+// витрачене: тепер ведемо рахунок (spent); для старих покупок рахуємо за списком
+const bytesSpent = () => Math.max(store.profile.spent || 0, (store.profile.bought || []).reduce((s, id) => { const x = [...SKINS, ...ACCS].find(y => y.id === id); return s + (x && x.price || 0); }, 0));
 const bytesLeft = () => Math.max(0, bytesEarned() - bytesSpent());
 const bytesWord = n => { n = Math.abs(n) % 100; const d = n % 10; return n > 10 && n < 20 ? "байтів" : d === 1 ? "байт" : d >= 2 && d <= 4 ? "байти" : "байтів"; };
-const isOpen = x => x.price ? (store.profile.bought || []).includes(x.id) : x.ach ? !!(store.profile.ach && store.profile.ach[x.ach]) : x.need <= totalStars();
+const isOpen = x => x.price ? ((store.profile.bought || []).includes(x.id) || SETS.some(st => st.items.includes(x.id) && (store.profile.bought || []).includes(st.id))) : x.ach ? !!(store.profile.ach && store.profile.ach[x.ach]) : x.need <= totalStars();
 const openIds = () => [...SKINS, ...ACCS].filter(isOpen).map(x => x.id);
 function achieve(key) {
   const p = store.profile; p.ach = p.ach || {};
@@ -387,6 +405,9 @@ function snakeSVG(o) {
   const mix = o.skin ? {} : (p.mix || {});
   const skinAt = k => { const id = mix[k]; const it = id && SKINS.find(x => x.id === id); return it && isOpen(it) ? it : skinOf(o.skin || p.skin); };
   const len = o.len, falling = o.falling || 0, mood = o.mood || "happy";
+  // анімація: o.anim — для попереднього перегляду; інакше обрана, але лише на великій змійці
+  const animIt = ANIMS.find(a => a.id === (o.anim || (String(o.cls || "").includes("big") ? p.anim : "")));
+  const anim = animIt && animIt.id !== "none" && (o.anim || isOpen(animIt)) ? animIt.id : "";
   const W = 18 + N * 26 + 58, H = 66;
   const segX = i => 18 + (N - 1 - i) * 26, segY = i => 40 + Math.sin((N - i) * 1.15) * 5;
   let g = "";
@@ -400,7 +421,7 @@ function snakeSVG(o) {
       + `<text x="${x + jx + 11}" y="${y + jy + 3.5}" class="segidx"${sk.idx ? ` style="fill:${sk.idx}"` : ""}>${i}</text>`;
     const wing = (dx, fill) => `<path d="M${x + 12 + dx} ${y - 8} C${x + 7 + dx} ${y - 26} ${x - 5 + dx} ${y - 32} ${x - 16 + dx} ${y - 30} Q${x - 12 + dx} ${y - 26} ${x - 13 + dx} ${y - 22} Q${x - 7 + dx} ${y - 21} ${x - 8 + dx} ${y - 17} Q${x - 2 + dx} ${y - 16} ${x - 2 + dx} ${y - 12} Q${x + 4 + dx} ${y - 12} ${x + 5 + dx} ${y - 8} Z" fill="${fill}"/><path d="M${x + 9 + dx} ${y - 12} Q${x + dx} ${y - 22} ${x - 11 + dx} ${y - 27}" fill="none" stroke-width=".9"/>`;
     const wings = has("wings") && i === 2 ? `<g class="wings" stroke="#8fa3c4" stroke-width="1.2" stroke-linejoin="round">${wing(8, "#e6edfa")}${wing(0, "#fff")}</g>` : "";
-    if (i < len) g += wings + `<g>${body}</g>`;
+    if (i < len) g += `<g class="seg ${i % 2 ? "o" : "e"}" style="--i:${i}">${wings}${body}</g>`;
     else if (i < len + falling) g += ghost + `<g class="fall">${body}</g>`;
     else g += ghost;
   }
@@ -437,9 +458,12 @@ function snakeSVG(o) {
   if (has("bearhood")) head += `<g stroke="#4f7fa6" stroke-width="1.2"><circle cx="${hx + 5}" cy="${hy - 17}" r="5.5" fill="#7fb3d9"/><circle cx="${hx + 29}" cy="${hy - 17}" r="5.5" fill="#7fb3d9"/><circle cx="${hx + 5}" cy="${hy - 17}" r="2.6" fill="#f6c6d4" stroke="none"/><circle cx="${hx + 29}" cy="${hy - 17}" r="2.6" fill="#f6c6d4" stroke="none"/><path fill-rule="evenodd" fill="#7fb3d9" d="M${hx - 4} ${hy - 4} Q${hx - 4} ${hy - 20} ${hx + 17} ${hy - 20} Q${hx + 38} ${hy - 20} ${hx + 38} ${hy - 4} L${hx + 38} ${hy + 12} Q${hx + 38} ${hy + 17} ${hx + 33} ${hy + 17} L${hx + 1} ${hy + 17} Q${hx - 4} ${hy + 17} ${hx - 4} ${hy + 12} Z M${hx + 4} ${hy - 6} Q${hx + 4} ${hy - 13} ${hx + 12} ${hy - 13} L${hx + 30} ${hy - 13} Q${hx + 35} ${hy - 13} ${hx + 35} ${hy - 7} L${hx + 35} ${hy + 9} Q${hx + 35} ${hy + 14} ${hx + 30} ${hy + 14} L${hx + 9} ${hy + 14} Q${hx + 4} ${hy + 14} ${hx + 4} ${hy + 9} Z"/></g>`;
   if (has("sunhood")) head += hoodShape("#f7cc1e", "#b8930a");
   if (has("gasmask")) head += `<path d="M${hx + 9} ${hy - 7} L${hx + 1} ${hy - 11}" stroke="#2b2b2b" stroke-width="2.2"/><ellipse cx="${hx + 21}" cy="${hy + 1}" rx="13" ry="11.5" fill="#56664a" stroke="#2f3a28" stroke-width="1.2"/><circle cx="${hx + 15}" cy="${hy - 4}" r="4.3" fill="#a8dcea" stroke="#1f1f1f" stroke-width="1.6"/><circle cx="${hx + 25}" cy="${hy - 4}" r="4.3" fill="#a8dcea" stroke="#1f1f1f" stroke-width="1.6"/><rect x="${hx + 25}" y="${hy + 3}" width="11" height="11" rx="3.5" fill="#2e2e2e"/><path d="M${hx + 28} ${hy + 5} v7 M${hx + 31} ${hy + 5} v7 M${hx + 34} ${hy + 5} v7" stroke="#6b6b6b" stroke-width="1"/>`;
+  if (has("hat67")) head += `<path d="M${hx + 3} ${hy - 12} Q${hx + 17} ${hy - 36} ${hx + 31} ${hy - 12} Z" fill="#e8483f" stroke="#a8261f" stroke-width="1.2"/><rect x="${hx + 1}" y="${hy - 15}" width="32" height="6" rx="3" fill="#b8302a"/><circle cx="${hx + 17}" cy="${hy - 31}" r="3.6" fill="#fff" stroke="#ddd"/><text x="${hx + 17}" y="${hy - 17.5}" text-anchor="middle" font-family="Arial Black, Arial, sans-serif" font-weight="900" font-size="8" fill="#fff">67</text>`;
+  if (has("glasses67")) head += `<g font-family="Arial Black, Arial, sans-serif" font-weight="900" font-size="7.5" text-anchor="middle"><circle cx="${hx + 14.5}" cy="${hy - 4}" r="5" fill="#fff" stroke="#1b1b1b" stroke-width="1.5"/><circle cx="${hx + 25.5}" cy="${hy - 4}" r="5" fill="#fff" stroke="#1b1b1b" stroke-width="1.5"/><path d="M${hx + 19.5} ${hy - 4} h1" stroke="#1b1b1b" stroke-width="1.5"/><text x="${hx + 14.5}" y="${hy - 1.2}" fill="#1b1b1b">6</text><text x="${hx + 25.5}" y="${hy - 1.2}" fill="#1b1b1b">7</text></g>`;
   if (has("crown")) head += `<path d="M${hx + 8} ${hy - 13} L${hx + 7} ${hy - 25} L${hx + 12.5} ${hy - 19} L${hx + 17} ${hy - 28} L${hx + 21.5} ${hy - 19} L${hx + 27} ${hy - 25} L${hx + 26} ${hy - 13} Z" fill="#f2c230" stroke="#b8860b" stroke-width="1.2"/><circle cx="${hx + 17}" cy="${hy - 17}" r="1.8" fill="#e8483f"/>`;
   const pop = falling ? `<text class="poptxt" x="${segX(len + falling - 1) - 2}" y="12">${esc(popName())}.pop()</text>` : "";
-  return `<svg class="snake ${o.cls || ""}" viewBox="0 0 ${W} ${H}" role="img" aria-label="Змійка, сегментів: ${len} з ${N}">${g}<g class="head">${head}</g>${pop}</svg>`;
+  const t67 = anim === "six7" ? `<text class="t67 a" x="${segX(N - 1) + 4}" y="14">6</text><text class="t67 b" x="${segX(0) + 30}" y="14">7</text>` : "";
+  return `<svg class="snake ${o.cls || ""} ${anim ? "anim-" + anim : ""}" viewBox="0 0 ${W} ${H}" role="img" aria-label="Змійка, сегментів: ${len} з ${N}">${g}<g class="head">${head}</g>${pop}${t67}</svg>`;
 }
 
 // ---------- гардероб (спільний для всіх ігор) ----------
@@ -449,11 +473,16 @@ function renderWardrobe(back, backLabel) {
   const total = totalStars(), maxAll = GAMES.reduce((s, g) => s + g.max, 0), p = store.profile, left = bytesLeft();
   const tile = (x, kind) => {
     const curSkin = paintTarget === "all" ? (Object.keys(p.mix || {}).length ? null : p.skin) : ((p.mix || {})[paintTarget] || p.skin);
-    const open = isOpen(x), sel = open && (kind === "skin" ? curSkin === x.id : x.id === "none" ? !accList().length : hasAcc(x.id));
-    const prev = snakeSVG(kind === "skin" ? { len: N, skin: x.id, acc: "none" } : { len: N, acc: x.id });
-    const shop = x.price && !open, can = shop && left >= x.price;
+    const curAnim = p.anim && p.anim !== "none" ? p.anim : "none";
+    const open = isOpen(x), sel = open && (kind === "set" ? false : kind === "anim" ? curAnim === x.id : kind === "skin" ? curSkin === x.id : x.id === "none" ? !accList().length : hasAcc(x.id));
+    const prev = kind === "set" ? snakeSVG({ len: N, skin: x.items[0], acc: x.items.slice(1, 3).join(","), anim: x.items[3] })
+      : kind === "anim" ? snakeSVG({ len: N, anim: x.id, acc: "none" })
+      : snakeSVG(kind === "skin" ? { len: N, skin: x.id, acc: "none" } : { len: N, acc: x.id });
+    const cost = kind === "set" ? setCost(x) : x.price;
+    const shop = x.price && !open, can = shop && left >= cost;
+    if (kind === "set" && open) return `<div class="wtile set" data-id="${x.id}">${prev}<span class="wname">${esc(x.name)}</span><span class="wlock">Куплено</span></div>`;
     const label = sel ? (kind === "acc" && x.id !== "none" ? "Вдягнуто · зняти" : "Обрано") : open ? (kind === "acc" && SLOT[x.id] ? "Відкрито · " + SLOT_NAME[SLOT[x.id]] : "Відкрито")
-      : shop ? (pendingBuy === x.id ? `Натисни ще раз, щоб купити за ${x.price}` : can ? `Купити за ${x.price} ${bytesWord(x.price)}` : `Коштує ${x.price} ${bytesWord(x.price)}`)
+      : shop ? (pendingBuy === x.id ? `Натисни ще раз, щоб купити за ${cost}` : can ? `Купити за ${cost} ${bytesWord(cost)}` : `Коштує ${cost} ${bytesWord(cost)}`)
       : (x.secret ? "Секрет" : x.ach ? "Секрет: " + ACH[x.ach].toLowerCase() : `Потрібно ★ ${x.need}`);
     return `<button class="wtile ${sel ? "sel" : ""} ${shop ? "shop" : ""} ${pendingBuy === x.id ? "confirm" : ""}" data-kind="${kind}" data-id="${x.id}" ${open || can ? "" : "disabled"}>
       ${prev}<span class="wname">${esc(x.name)}</span>
@@ -476,21 +505,30 @@ function renderWardrobe(back, backLabel) {
     <h3>Аксесуари</h3>
     <p class="status">Можна вдягти кілька речей одразу, але по одній на кожне місце: одну шапку, одні окуляри і так далі. Клік по вдягнутій речі знімає її.</p>
     <div class="wgrid">${ACCS.filter(x => !x.price).map(x => tile(x, "acc")).join("")}</div>
+    <h3>Анімації</h3>
+    <p class="status">Анімацію видно на великій змійці: на головній сторінці й тут, у гардеробі.</p>
+    <div class="wgrid">${ANIMS.map(x => tile(x, "anim")).join("")}</div>
     <h3>Крамниця</h3>
-    <div class="wgrid">${SKINS.filter(x => x.price).map(x => tile(x, "skin")).join("")}${ACCS.filter(x => x.price).map(x => tile(x, "acc")).join("")}</div>
+    <div class="wgrid">${SETS.map(x => tile(x, "set")).join("")}${SKINS.filter(x => x.price).map(x => tile(x, "skin")).join("")}${ACCS.filter(x => x.price).map(x => tile(x, "acc")).join("")}</div>
   </div>`;
   $("#back").onclick = back;
   $("#petname").addEventListener("change", e => { p.name = e.target.value.trim().slice(0, 16) || "Пітоша"; save("profile"); renderWardrobe(back, backLabel); });
   app().querySelectorAll(".wtile").forEach(b => b.onclick = () => {
-    const x = [...SKINS, ...ACCS].find(y => y.id === b.dataset.id);
+    const kind = b.dataset.kind, x = ALLITEMS().find(y => y.id === b.dataset.id);
     if (x.price && !isOpen(x)) {
       if (pendingBuy !== x.id) { pendingBuy = x.id; renderWardrobe(back, backLabel); return; }
-      if (bytesLeft() < x.price) return;
+      const cost = kind === "set" ? setCost(x) : x.price;
+      if (bytesLeft() < cost) return;
+      p.spent = bytesSpent() + cost;
       p.bought = [...(p.bought || []), x.id]; toast(`Куплено: ${x.name}!`);
     }
     pendingBuy = null;
     const id = b.dataset.id;
-    if (b.dataset.kind === "skin") {
+    if (kind === "set") {   // одразу вдягаємо весь комплект
+      x.items.forEach(it => { if (SKINS.some(y => y.id === it)) { p.skin = it; p.mix = {}; } else if (ANIMS.some(y => y.id === it)) p.anim = it;
+        else { const l = accList().filter(a => !SLOT[it] || SLOT[a] !== SLOT[it]); l.push(it); p.acc = l.join(","); } });
+    } else if (kind === "anim") p.anim = id;
+    else if (kind === "skin") {
       if (paintTarget === "all") { p.skin = id; p.mix = {}; }
       else { p.mix = Object.assign({}, p.mix, { [paintTarget]: id }); }
     } else if (id === "none") p.acc = "none";
