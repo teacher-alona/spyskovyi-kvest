@@ -2,7 +2,7 @@
    змійка з гардеробом, заслона при виході з гри. Кожна гра підключає цей файл і додає свої рівні. */
 (function () {
 "use strict";
-const VERSION = "2026.11.13-22";
+const VERSION = "2026.11.13-23";
 const API = "https://script.google.com/macros/s/AKfycbzPtRGlYI4osS-xL-J_pAZ2A2HxTWUeuecjy9-13MgAdFIzkDnYuCr1qmLHqZvqWkQMWQ/exec";
 
 // Усі ігри порталу. sheet — назва аркуша з прогресом у таблиці вчительки.
@@ -357,7 +357,7 @@ const ACCS = [
 // місце аксесуара: з одного місця можна вдягти лише одну річ, з різних — скільки завгодно
 const SLOT = { cap: "hat", cowboy: "hat", propeller: "hat", crown: "hat", horn: "hat", halo: "hat", pot: "hat", loafhat: "hat", devil: "hat", wizard: "hat", duck: "hat", catears: "hat", bearhood: "hat", sunhood: "hat", hat67: "hat", glasses67: "eyes",
   glasses: "eyes", pirate: "eyes", moustache: "face", gasmask: "face", scarf: "neck", polo: "neck", badgeaplus: "decor", iron: "tool", phones: "ears", bow: "decor", flower: "decor", wings: "back" };
-const SLOT_NAME = { hat: "на голову", eyes: "на очі", face: "на обличчя", neck: "на шию", ears: "навушники", decor: "прикраса", tool: "в зубах", back: "на спину" };
+const SLOT_NAME = { hat: "на голову", eyes: "на очі", face: "на обличчя", neck: "на шию", ears: "навушники", decor: "прикраса", tool: "паяє блок", back: "на спину" };
 const accList = () => String(store.profile.acc || "").split(",").map(x => x.trim()).filter(x => x && x !== "none");
 const hasAcc = id => accList().includes(id);
 const ACH = { fail: "Лишитися без хвоста", perfect: "Пройти рівень без жодної помилки", peek: "Підглянути розв'язок задачі", lastdeath: "", loafhat: "", angel: "" };
@@ -473,7 +473,9 @@ function snakeSVG(o) {
       + `<text x="${x + jx + 11}" y="${y + jy + 3.5}" class="segidx"${sk.idx ? ` style="fill:${sk.idx}"` : ""}>${i}</text>`;
     const wing = (dx, fill) => `<path d="M${x + 12 + dx} ${y - 8} C${x + 7 + dx} ${y - 26} ${x - 5 + dx} ${y - 32} ${x - 16 + dx} ${y - 30} Q${x - 12 + dx} ${y - 26} ${x - 13 + dx} ${y - 22} Q${x - 7 + dx} ${y - 21} ${x - 8 + dx} ${y - 17} Q${x - 2 + dx} ${y - 16} ${x - 2 + dx} ${y - 12} Q${x + 4 + dx} ${y - 12} ${x + 5 + dx} ${y - 8} Z" fill="${fill}"/><path d="M${x + 9 + dx} ${y - 12} Q${x + dx} ${y - 22} ${x - 11 + dx} ${y - 27}" fill="none" stroke-width=".9"/>`;
     const wings = has("wings") && i === 2 ? `<g class="wings" stroke="#8fa3c4" stroke-width="1.2" stroke-linejoin="round">${wing(8, "#e6edfa")}${wing(0, "#fff")}</g>` : "";
-    if (i < len) g += `<g class="seg ${i % 2 ? "o" : "e"}" style="--i:${i}">${wings}${body}</g>`;
+    // паяльник: висить над блоком 1 і паяє його (іскорки на жалі), далеко від рота
+    const iron = has("iron") && i === 1 ? `<g stroke-linecap="round"><path d="M${x - 9} ${y - 33} L${x + 1} ${y - 23}" stroke="#2b5fc7" stroke-width="5.2"/><path d="M${x - 7} ${y - 32} L${x} ${y - 25}" stroke="#4d82e8" stroke-width="1.4"/><path d="M${x + 1} ${y - 23} L${x + 4} ${y - 20}" stroke="#d4d7dc" stroke-width="3.4"/><path d="M${x + 4} ${y - 20} L${x + 9} ${y - 15}" stroke="#9aa1ad" stroke-width="2.2"/><path d="M${x + 9} ${y - 15} l2 2" stroke="#e07b2a" stroke-width="1.8"/><path d="M${x + 14} ${y - 14} l3 -2 M${x + 13} ${y - 17} l1 -3.5 M${x + 15} ${y - 11} l3.5 0" stroke="#ffc83d" stroke-width="1.3"/></g>` : "";
+    if (i < len) g += `<g class="seg ${i % 2 ? "o" : "e"}" style="--i:${i}">${wings}${body}${iron}</g>`;
     else if (i < len + falling) g += ghost + `<g class="fall">${body}</g>`;
     else g += ghost;
   }
@@ -513,7 +515,6 @@ function snakeSVG(o) {
   if (has("gasmask")) head += `<path d="M${hx + 9} ${hy - 7} L${hx + 1} ${hy - 11}" stroke="#2b2b2b" stroke-width="2.2"/><ellipse cx="${hx + 21}" cy="${hy + 1}" rx="13" ry="11.5" fill="#56664a" stroke="#2f3a28" stroke-width="1.2"/><circle cx="${hx + 15}" cy="${hy - 4}" r="4.3" fill="#a8dcea" stroke="#1f1f1f" stroke-width="1.6"/><circle cx="${hx + 25}" cy="${hy - 4}" r="4.3" fill="#a8dcea" stroke="#1f1f1f" stroke-width="1.6"/><rect x="${hx + 25}" y="${hy + 3}" width="11" height="11" rx="3.5" fill="#2e2e2e"/><path d="M${hx + 28} ${hy + 5} v7 M${hx + 31} ${hy + 5} v7 M${hx + 34} ${hy + 5} v7" stroke="#6b6b6b" stroke-width="1"/>`;
   if (has("polo")) head = `<path d="M${hx - 6} ${hy + 4} L${hx + 4} ${hy + 1} L${hx + 2} ${hy + 13} Z" fill="#c8102e" stroke="#8a0b20" stroke-width="1.1" stroke-linejoin="round"/><path d="M${hx - 6} ${hy + 15} L${hx + 4} ${hy + 1} L${hx + 6} ${hy + 15} Z" fill="#a50d26" stroke="#8a0b20" stroke-width="1.1" stroke-linejoin="round"/>` + head;
   if (has("badgeaplus")) head += `<circle cx="${hx + 6}" cy="${hy - 13}" r="6.2" fill="#5c1229" stroke="#f4a7b9" stroke-width="1"/><text x="${hx + 5.3}" y="${hy - 9.5}" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="9" fill="#f4a7b9">A<tspan font-size="6" dy="-3.5">+</tspan></text>`;
-  if (has("iron")) head += `<g stroke-linecap="round"><path d="M${hx + 46} ${hy + 6} q-3 -5 0 -9 q3 -4 0 -8" stroke="#b8bec9" stroke-width="1.2" fill="none" opacity=".8"/><path d="M${hx + 41} ${hy + 12} L${hx + 49} ${hy + 15}" stroke="#9aa1ad" stroke-width="2.2"/><path d="M${hx + 49} ${hy + 15} l3.5 1.3" stroke="#e07b2a" stroke-width="1.8"/><path d="M${hx + 37} ${hy + 10.5} L${hx + 42} ${hy + 12.3}" stroke="#d4d7dc" stroke-width="3.4"/><path d="M${hx + 25} ${hy + 6} L${hx + 38} ${hy + 10.8}" stroke="#2b5fc7" stroke-width="5.2"/><path d="M${hx + 27} ${hy + 6.7} L${hx + 36} ${hy + 10}" stroke="#4d82e8" stroke-width="1.4"/><path d="M${hx + 22} ${hy + 4.8} L${hx + 26} ${hy + 6.3}" stroke="#1b1b1b" stroke-width="2"/></g>`;
   if (has("hat67")) head += `<path d="M${hx + 3} ${hy - 12} Q${hx + 17} ${hy - 36} ${hx + 31} ${hy - 12} Z" fill="#e8483f" stroke="#a8261f" stroke-width="1.2"/><rect x="${hx + 1}" y="${hy - 15}" width="32" height="6" rx="3" fill="#b8302a"/><circle cx="${hx + 17}" cy="${hy - 31}" r="3.6" fill="#fff" stroke="#ddd"/><text x="${hx + 17}" y="${hy - 17.5}" text-anchor="middle" font-family="Arial Black, Arial, sans-serif" font-weight="900" font-size="8" fill="#fff">67</text>`;
   if (has("glasses67")) head += `<g font-family="Arial Black, Arial, sans-serif" font-weight="900" font-size="7.5" text-anchor="middle"><circle cx="${hx + 14.5}" cy="${hy - 4}" r="5" fill="#fff" stroke="#1b1b1b" stroke-width="1.5"/><circle cx="${hx + 25.5}" cy="${hy - 4}" r="5" fill="#fff" stroke="#1b1b1b" stroke-width="1.5"/><path d="M${hx + 19.5} ${hy - 4} h1" stroke="#1b1b1b" stroke-width="1.5"/><text x="${hx + 14.5}" y="${hy - 1.2}" fill="#1b1b1b">6</text><text x="${hx + 25.5}" y="${hy - 1.2}" fill="#1b1b1b">7</text></g>`;
   if (has("crown")) head += `<path d="M${hx + 8} ${hy - 13} L${hx + 7} ${hy - 25} L${hx + 12.5} ${hy - 19} L${hx + 17} ${hy - 28} L${hx + 21.5} ${hy - 19} L${hx + 27} ${hy - 25} L${hx + 26} ${hy - 13} Z" fill="#f2c230" stroke="#b8860b" stroke-width="1.2"/><circle cx="${hx + 17}" cy="${hy - 17}" r="1.8" fill="#e8483f"/>`;
