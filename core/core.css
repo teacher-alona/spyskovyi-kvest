@@ -284,3 +284,27 @@ textarea { resize: vertical; line-height: 1.6; }
 @keyframes kv-blink { 0% { opacity: 1; } 50% { opacity: 0; } }
 
 @media (prefers-reduced-motion: reduce) { .snake, .snake .seg, .snake .head, .snake .t67 { animation: none !important; } }
+
+/* ---------- лідерборд на головній ---------- */
+.hero.hasboard { grid-template-columns: minmax(0, 1fr); }
+.hero .heromain { display: grid; gap: 10px; align-content: start; }
+@media (min-width: 820px) {
+  .hero.hasboard { grid-template-columns: minmax(0, 1fr) minmax(280px, 340px); column-gap: 28px; }
+  .hero.hasboard > :first-child { grid-column: 1 / -1; }
+  .hero .lboard { align-self: start; }
+}
+.lboard { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 14px 14px 10px; min-width: 0; }
+.lboard h2 { font-size: 1.05rem; margin: 0 0 8px; color: var(--ink); }
+.ltabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.ltab { font: inherit; font-size: .8rem; font-weight: 700; padding: 4px 10px; border-radius: 999px; border: 1.5px solid var(--line); background: transparent; color: var(--muted); cursor: pointer; }
+.ltab.on { border-color: var(--ink); color: var(--ink); background: var(--ink-soft); }
+.lrows { list-style: none; margin: 0; padding: 0; max-height: 300px; overflow-y: auto; }
+.lrows li { display: grid; grid-template-columns: 26px 74px minmax(0, 1fr) auto; align-items: center; gap: 6px; padding: 4px 4px; border-radius: 10px; }
+.lrows li.me { background: var(--ink-soft); }
+.lrank { text-align: center; font-size: 1.05rem; }
+.lnum { font-size: .85rem; font-weight: 800; color: var(--muted); }
+.lrows .snake.lsn { width: 74px; height: auto; overflow: hidden; }
+.lwho { display: grid; min-width: 0; line-height: 1.2; }
+.lwho b, .lwho small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lwho small, .lstars small { color: var(--muted); font-size: .75rem; }
+.lstars { display: grid; justify-items: end; font-weight: 800; color: var(--gold, #f2b33d); line-height: 1.2; white-space: nowrap; }

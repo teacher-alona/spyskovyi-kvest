@@ -6,7 +6,7 @@
  * Аркуші «Прогрес: <гра>»: прогрес у кожній грі — заповнюються самі.
  * Старий аркуш «Прогрес» сам перейменовується на «Прогрес: Списки».
  */
-const VERSION = "2026.11.12-2";
+const VERSION = "2026.11.14-3";
 const SPYSKY_SHEET = "Прогрес: Списки";
 const DATA_HEADER = "Дані гри (не змінювати)";
 
@@ -39,6 +39,7 @@ function doPost(e) {
       else if (!req.v && req.data) writeGame(st, SPYSKY_SHEET, req.data, req.summary || {});   // стара версія гри
       return out({ ok: true });
     }
+    if (req.action === "leaders") return out(Object.assign({ ok: true }, leaders(st)));
     return out({ ok: false, error: "unknown_action" });
   } catch (err) {
     return out({ ok: false, error: "помилка таблиці: " + (err && err.message ? err.message : err) });
@@ -171,4 +172,48 @@ function writeGame(st, name, data, s) {
       Number(s.awayMin) || 0, Number(s.attemptsTotal) || 0, (s.attempts || []).join(" · ")]);
   const r = r0 || sh.getLastRow() + 1;
   sh.getRange(r, 1, 1, row.length).setValues([row]);
+}
+
+// ---------- лідерборд ----------
+// Рахує зірки кожного учня в усіх аркушах «Прогрес: …». Вчителі (клас «вчитель», «вчителька», «вчителі») у список не потрапляють.
+const isTeacher = cls => norm(cls).indexOf("вчител") === 0;
+function leaders(me) {
+  const cache = CacheService.getScriptCache();
+  let all = null;
+  const hit = cache.get("leaders");
+  if (hit) { try { all = JSON.parse(hit); } catch (e) { all = null; } }
+  if (!all) { all = buildLeaders(); try { cache.put("leaders", JSON.stringify(all), 120); } catch (e) {} }
+  const mineCls = norm(me.cls), teacher = isTeacher(me.cls);
+  const cls = teacher ? [] : all.filter(x => norm(x.cls) === mineCls);
+  const classes = teacher ? Array.from(new Set(all.map(x => x.cls))).sort() : [];
+  return { me: me.login, cls: cls.map(strip(me)), school: all.slice(0, 10).map(strip(me)), all: teacher ? all.map(strip(me)) : undefined, classes: classes };
+}
+function strip(me) { return function (x) { return { name: x.name, cls: x.cls, stars: x.stars, streak: x.streak, snake: x.snake, look: x.look, me: x.login === me.login }; }; }
+function buildLeaders() {
+  const book = ss(), people = {};
+  const us = book.getSheetByName("Учні");
+  us.getDataRange().getDisplayValues().slice(1).forEach(r => {
+    if (!r[0] || isTeacher(r[3])) return;
+    people[norm(r[0])] = { login: norm(r[0]), name: String(r[2] || r[0]).trim(), cls: String(r[3]).trim(), stars: 0, streak: 0, snake: "", look: {} };
+  });
+  book.getSheets().forEach(sh => {
+    if (sh.getName().indexOf("Прогрес: ") !== 0) return;
+    const rows = sh.getDataRange().getValues();
+    rows.slice(1).forEach(r => { const p = people[norm(r[0])]; if (p) p.stars += Number(r[3]) || 0; });
+  });
+  const pf = book.getSheetByName("Профілі");
+  if (pf) {
+    const today = Utilities.formatDate(new Date(), "Europe/Kyiv", "yyyy-MM-dd");
+    const yest = Utilities.formatDate(new Date(Date.now() - 864e5), "Europe/Kyiv", "yyyy-MM-dd");
+    pf.getDataRange().getValues().slice(1).forEach(r => {
+      const p = people[norm(r[0])]; if (!p) return;
+      let j = null; try { j = JSON.parse(r[PROFILE_HEAD.length - 1] || "null"); } catch (e) {}
+      if (!j) return;
+      p.snake = j.name || "";
+      p.look = { skin: j.skin || "", acc: j.acc || "", shape: j.shape || "", head: j.head || "" };
+      const k = j.streak || {};
+      p.streak = (k.last === today || k.last === yest) ? (k.n || 0) : 0;
+    });
+  }
+  return Object.keys(people).map(k => people[k]).sort((a, b) => b.stars - a.stars || b.streak - a.streak || a.name.localeCompare(b.name, "uk"));
 }

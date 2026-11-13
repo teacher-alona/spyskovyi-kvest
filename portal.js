@@ -10,8 +10,9 @@ function renderHome() {
   const total = KV.totalStars(), maxAll = KV.GAMES.reduce((s, g) => s + g.max, 0);
   const first = (KV.session && KV.session.name || "").split(" ").slice(-1)[0];
   app.innerHTML = `
-  <header class="hero">
+  <header class="hero hasboard">
     ${KV.whoami()}
+    <div class="heromain">
     <div class="eyebrow">Python, цифрова грамотність і не тільки</div>
     <h1>ІТ-квести</h1>
     <p>${first ? `Привіт, ${esc(first)}! ` : ""}Вибери гру. Зірки з усіх ігор рахуються разом і відкривають нові скіни для змійки.</p>
@@ -24,6 +25,8 @@ function renderHome() {
         <button class="btn ghost small" id="wardrobe">Гардероб${(() => { const k = KV.openIds().length - 2; return k > 0 ? ` · ${k} відкрито` : ""; })()}</button>
       </div>
     </div>
+    </div>
+    <aside class="lboard" id="lb"><h2>Лідерборд</h2><div class="lbody status">Завантажую…</div></aside>
   </header>
   <div class="games">
     ${games.length ? games.map(g => {
@@ -39,6 +42,32 @@ function renderHome() {
   <div class="version">версія ${KV.VERSION}</div>`;
   KV.bindWhoami();
   $("#wardrobe").onclick = () => KV.renderWardrobe(renderHome, "До ігор");
+  fillBoard();
+}
+// ---------- лідерборд ----------
+let lbTab = null;
+async function fillBoard() {
+  const box = $("#lb"); if (!box) return;
+  const r = await KV.leaders();
+  if (!$("#lb")) return;
+  const body = box.querySelector(".lbody");
+  if (!r.ok) {
+    body.textContent = r.error === "unknown_action" ? "Лідерборд з'явиться, щойно вчителька оновить скрипт таблиці." : "Лідерборд з'явиться, коли буде зв'язок з таблицею.";
+    return;
+  }
+  const teacher = !!r.all;
+  const tabs = teacher ? [["school", "Уся школа"], ...r.classes.map(c => ["c:" + c, c])] : [["cls", "Мій клас"], ["school", "Уся школа"]];
+  if (!lbTab || !tabs.some(t => t[0] === lbTab)) lbTab = tabs[0][0];
+  const list = lbTab === "cls" ? r.cls : lbTab === "school" ? (teacher ? r.all : r.school) : r.all.filter(x => x.cls === lbTab.slice(2));
+  const medal = i => ["🥇", "🥈", "🥉"][i] || `<span class="lnum">${i + 1}</span>`;
+  body.classList.remove("status");
+  body.innerHTML = `<div class="ltabs">${tabs.map(([k, t]) => `<button class="ltab ${k === lbTab ? "on" : ""}" data-k="${esc(k)}">${esc(t)}</button>`).join("")}</div>
+    ${list.length ? `<ol class="lrows">${list.map((x, i) => `<li class="${x.me ? "me" : ""}">
+      <span class="lrank">${medal(i)}</span>
+      ${KV.snakeSVG({ len: 2, skin: x.look.skin || "classic", acc: x.look.acc || "none", shape: x.look.shape || undefined, headType: x.look.head || undefined, cls: "lsn", crop: true })}
+      <span class="lwho"><b>${esc(x.name)}${x.me ? " (ти)" : ""}</b>${x.snake ? `<small>${esc(x.snake)}${lbTab === "school" ? " · " + esc(x.cls) : ""}</small>` : lbTab === "school" ? `<small>${esc(x.cls)}</small>` : ""}</span>
+      <span class="lstars">★ ${x.stars}${x.streak ? `<small>🔥 ${x.streak}</small>` : ""}</span></li>`).join("")}</ol>` : `<p class="status">Тут поки нікого немає.</p>`}`;
+  body.querySelectorAll(".ltab").forEach(b => b.onclick = () => { lbTab = b.dataset.k; fillBoard(); });
 }
 KV.boot({ title: "ІТ-квести", eyebrow: "Python, цифрова грамотність і не тільки", onReady: renderHome, isIdle: () => !app.firstElementChild || !!app.querySelector(".hero") });
 })();
