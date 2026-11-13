@@ -2,7 +2,7 @@
    змійка з гардеробом, заслона при виході з гри. Кожна гра підключає цей файл і додає свої рівні. */
 (function () {
 "use strict";
-const VERSION = "2026.11.13-17";
+const VERSION = "2026.11.13-18";
 const API = "https://script.google.com/macros/s/AKfycbzPtRGlYI4osS-xL-J_pAZ2A2HxTWUeuecjy9-13MgAdFIzkDnYuCr1qmLHqZvqWkQMWQ/exec";
 
 // Усі ігри порталу. sheet — назва аркуша з прогресом у таблиці вчительки.
@@ -371,6 +371,26 @@ const daysWord = n => { n = Math.abs(n) % 100; const d = n % 10; return n > 10 &
 const streakBadge = () => { const n = streakNow(), today = streakDoneToday();
   return `<span class="streak ${n ? "on" : ""} ${today ? "today" : ""}" title="Дні поспіль, коли ти проходиш хоча б один рівень">🔥 ${n} ${daysWord(n)}${n && !today ? " · пройди рівень сьогодні, щоб не згасла" : ""}</span>`; };
 // анімації змійки (видно на великій змійці: головна сторінка, гардероб)
+// форма блоків змійки (голова лишається з обличчям)
+const SHAPES = [
+  { id: "square", name: "Квадратики", need: 0 },
+  { id: "circle", name: "Кружечки", price: 10 },
+  { id: "diamond", name: "Ромбики", price: 15 },
+  { id: "hexagon", name: "Шестикутники", price: 15 },
+  { id: "heart", name: "Сердечка", price: 20 },
+  { id: "star", name: "Зірочки", price: 25 },
+];
+// фігура в квадраті 22×22 з лівим верхнім кутом (x, y): атрибути заливки й обведення передаються готовими
+function shapeEl(kind, x, y, rx, attrs) {
+  const cx = x + 11, cy = y + 11, pts = arr => arr.map(([a, b]) => `${(cx + a).toFixed(1)},${(cy + b).toFixed(1)}`).join(" ");
+  const poly = (n, r1, r2, rot) => pts(Array.from({ length: n * (r2 ? 2 : 1) }, (_, k) => { const r = r2 && k % 2 ? r2 : r1, a = rot + k * Math.PI * 2 / (n * (r2 ? 2 : 1)); return [r * Math.cos(a), r * Math.sin(a)]; }));
+  if (kind === "circle") return `<circle cx="${cx}" cy="${cy}" r="11.5" ${attrs}/>`;
+  if (kind === "diamond") return `<polygon points="${pts([[0, -13], [13, 0], [0, 13], [-13, 0]])}" stroke-linejoin="round" ${attrs}/>`;
+  if (kind === "hexagon") return `<polygon points="${poly(6, 12.5, 0, 0)}" stroke-linejoin="round" ${attrs}/>`;
+  if (kind === "star") return `<polygon points="${poly(5, 14, 7.5, -Math.PI / 2)}" stroke-linejoin="round" ${attrs}/>`;
+  if (kind === "heart") return `<path d="M${cx} ${cy + 11} C${cx - 16} ${cy + 1} ${cx - 12} ${cy - 15} ${cx} ${cy - 6} C${cx + 12} ${cy - 15} ${cx + 16} ${cy + 1} ${cx} ${cy + 11} Z" stroke-linejoin="round" ${attrs}/>`;
+  return `<rect x="${x}" y="${y}" width="22" height="22" rx="${rx}" ${attrs}/>`;
+}
 const ANIMS = [
   { id: "none", name: "Без анімації", need: 0 },
   { id: "jump", name: "Підстрибує", price: 15 },
@@ -379,7 +399,7 @@ const ANIMS = [
 ];
 // комплекти: усе разом дешевше
 const SETS = [{ id: "set67", name: "Комплект 67", price: 67, items: ["tiger67", "glasses67", "hat67", "six7"] }];
-const ALLITEMS = () => [...SKINS, ...ACCS, ...ANIMS, ...SETS];
+const ALLITEMS = () => [...SKINS, ...ACCS, ...ANIMS, ...SHAPES, ...SETS];
 const setCost = st => Math.max(0, st.price - st.items.reduce((s, id) => { const x = ALLITEMS().find(y => y.id === id); return s + (x && isOpen(x) ? x.price : 0); }, 0));
 // витрачене: тепер ведемо рахунок (spent); для старих покупок рахуємо за списком
 const bytesSpent = () => Math.max(store.profile.spent || 0, (store.profile.bought || []).reduce((s, id) => { const x = [...SKINS, ...ACCS].find(y => y.id === id); return s + (x && x.price || 0); }, 0));
@@ -406,6 +426,9 @@ function snakeSVG(o) {
   const skinAt = k => { const id = mix[k]; const it = id && SKINS.find(x => x.id === id); return it && isOpen(it) ? it : skinOf(o.skin || p.skin); };
   const len = o.len, falling = o.falling || 0, mood = o.mood || "happy";
   // анімація: o.anim — для попереднього перегляду; інакше обрана, але лише на великій змійці
+  const shIt = SHAPES.find(x => x.id === (o.shape || p.shape));
+  const shape = shIt && (o.shape || isOpen(shIt)) ? shIt.id : "square";
+  const uid = "s" + Math.random().toString(36).slice(2, 8);   // для clipPath, щоб візерунок скіна не вилазив за фігуру
   const animIt = ANIMS.find(a => a.id === (o.anim || (String(o.cls || "").includes("big") ? p.anim : "")));
   const anim = animIt && animIt.id !== "none" && (o.anim || isOpen(animIt)) ? animIt.id : "";
   const W = 18 + N * 26 + 58, H = 66;
@@ -413,11 +436,11 @@ function snakeSVG(o) {
   let g = "";
   for (let i = N - 1; i >= 0; i--) {
     const x = segX(i), y = segY(i), sk = skinAt(i);
-    const ghost = `<rect class="ghost" x="${x}" y="${y - 11}" width="22" height="22" rx="7"/>`;
+    const ghost = shapeEl(shape, x, y - 11, 7, `class="ghost"`);
     const jx = sk.jitter ? [2, -3, 1, -2, 3][i] : 0, jy = sk.jitter ? [-2, 3, -3, 1, 2][i] : 0;
-    const rect = (fill, dx, op) => `<rect x="${x + jx + dx}" y="${y + jy - 11}" width="22" height="22" rx="${sk.rx ?? 7}" fill="${fill}"${op ? ` opacity="${op}"` : ` stroke="rgba(0,0,0,.22)" stroke-width="1.5"`}/>`;
+    const rect = (fill, dx, op) => shapeEl(shape, x + jx + dx, y + jy - 11, sk.rx ?? 7, `fill="${fill}"${op ? ` opacity="${op}"` : ` stroke="rgba(0,0,0,.22)" stroke-width="1.5"`}`);
     const body = (sk.jitter ? rect("#00e5ff", -2.5, .8) + rect("#ff2bd6", 2.5, .8) : "") + rect(sk.col(i), 0)
-      + (sk.seg ? `<g transform="translate(${jx} ${jy})">${sk.seg(x, y, i)}</g>` : "")
+      + (sk.seg ? (shape !== "square" ? `<clipPath id="${uid}c${i}">${shapeEl(shape, x + jx, y + jy - 11, 7, "")}</clipPath>` : "") + `<g transform="translate(${jx} ${jy})"${shape !== "square" ? ` clip-path="url(#${uid}c${i})"` : ""}>${sk.seg(x, y, i)}</g>` : "")
       + `<text x="${x + jx + 11}" y="${y + jy + 3.5}" class="segidx"${sk.idx ? ` style="fill:${sk.idx}"` : ""}>${i}</text>`;
     const wing = (dx, fill) => `<path d="M${x + 12 + dx} ${y - 8} C${x + 7 + dx} ${y - 26} ${x - 5 + dx} ${y - 32} ${x - 16 + dx} ${y - 30} Q${x - 12 + dx} ${y - 26} ${x - 13 + dx} ${y - 22} Q${x - 7 + dx} ${y - 21} ${x - 8 + dx} ${y - 17} Q${x - 2 + dx} ${y - 16} ${x - 2 + dx} ${y - 12} Q${x + 4 + dx} ${y - 12} ${x + 5 + dx} ${y - 8} Z" fill="${fill}"/><path d="M${x + 9 + dx} ${y - 12} Q${x + dx} ${y - 22} ${x - 11 + dx} ${y - 27}" fill="none" stroke-width=".9"/>`;
     const wings = has("wings") && i === 2 ? `<g class="wings" stroke="#8fa3c4" stroke-width="1.2" stroke-linejoin="round">${wing(8, "#e6edfa")}${wing(0, "#fff")}</g>` : "";
@@ -473,10 +496,11 @@ function renderWardrobe(back, backLabel) {
   const total = totalStars(), maxAll = GAMES.reduce((s, g) => s + g.max, 0), p = store.profile, left = bytesLeft();
   const tile = (x, kind) => {
     const curSkin = paintTarget === "all" ? (Object.keys(p.mix || {}).length ? null : p.skin) : ((p.mix || {})[paintTarget] || p.skin);
-    const curAnim = p.anim && p.anim !== "none" ? p.anim : "none";
-    const open = isOpen(x), sel = open && (kind === "set" ? false : kind === "anim" ? curAnim === x.id : kind === "skin" ? curSkin === x.id : x.id === "none" ? !accList().length : hasAcc(x.id));
+    const curAnim = p.anim && p.anim !== "none" ? p.anim : "none", curShape = p.shape || "square";
+    const open = isOpen(x), sel = open && (kind === "set" ? false : kind === "anim" ? curAnim === x.id : kind === "shape" ? curShape === x.id : kind === "skin" ? curSkin === x.id : x.id === "none" ? !accList().length : hasAcc(x.id));
     const prev = kind === "set" ? snakeSVG({ len: N, skin: x.items[0], acc: x.items.slice(1, 3).join(","), anim: x.items[3] })
       : kind === "anim" ? snakeSVG({ len: N, anim: x.id, acc: "none" })
+      : kind === "shape" ? snakeSVG({ len: N, shape: x.id, acc: "none" })
       : snakeSVG(kind === "skin" ? { len: N, skin: x.id, acc: "none" } : { len: N, acc: x.id });
     const cost = kind === "set" ? setCost(x) : x.price;
     const shop = x.price && !open, can = shop && left >= cost;
@@ -505,6 +529,8 @@ function renderWardrobe(back, backLabel) {
     <h3>Аксесуари</h3>
     <p class="status">Можна вдягти кілька речей одразу, але по одній на кожне місце: одну шапку, одні окуляри і так далі. Клік по вдягнутій речі знімає її.</p>
     <div class="wgrid">${ACCS.filter(x => !x.price).map(x => tile(x, "acc")).join("")}</div>
+    <h3>Форма блоків</h3>
+    <div class="wgrid">${SHAPES.map(x => tile(x, "shape")).join("")}</div>
     <h3>Анімації</h3>
     <p class="status">Анімацію видно на великій змійці: на головній сторінці й тут, у гардеробі.</p>
     <div class="wgrid">${ANIMS.map(x => tile(x, "anim")).join("")}</div>
@@ -528,6 +554,7 @@ function renderWardrobe(back, backLabel) {
       x.items.forEach(it => { if (SKINS.some(y => y.id === it)) { p.skin = it; p.mix = {}; } else if (ANIMS.some(y => y.id === it)) p.anim = it;
         else { const l = accList().filter(a => !SLOT[it] || SLOT[a] !== SLOT[it]); l.push(it); p.acc = l.join(","); } });
     } else if (kind === "anim") p.anim = id;
+    else if (kind === "shape") p.shape = id;
     else if (kind === "skin") {
       if (paintTarget === "all") { p.skin = id; p.mix = {}; }
       else { p.mix = Object.assign({}, p.mix, { [paintTarget]: id }); }
