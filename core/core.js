@@ -2,7 +2,7 @@
    змійка з гардеробом, заслона при виході з гри. Кожна гра підключає цей файл і додає свої рівні. */
 (function () {
 "use strict";
-const VERSION = "2026.11.14-36";
+const VERSION = "2026.11.14-37";
 const API = "https://script.google.com/macros/s/AKfycbzPtRGlYI4osS-xL-J_pAZ2A2HxTWUeuecjy9-13MgAdFIzkDnYuCr1qmLHqZvqWkQMWQ/exec";
 
 // Усі ігри порталу. sheet — назва аркуша з прогресом у таблиці вчительки.
@@ -332,6 +332,12 @@ const SKINS = [
   { id: "tiger67", name: "Тигр 67", price: 35, col: () => "#f39a1e", idx: "#7a3d00", head: "#f39a1e",
     seg: (x, y) => `<g font-family="Arial Black, Arial, sans-serif" font-weight="900" font-size="10" fill="#3a1f05" opacity=".55"><text x="${x + 2}" y="${y - 2}" transform="rotate(-14 ${x + 5} ${y - 5})">6</text><text x="${x + 14}" y="${y + 10}" transform="rotate(-14 ${x + 17} ${y + 7})">7</text></g>`,
     headDeco: (hx, hy) => `<g font-family="Arial Black, Arial, sans-serif" font-weight="900" font-size="8" fill="#3a1f05"><text x="${hx + 3}" y="${hy + 12}" transform="rotate(-14 ${hx + 6} ${hy + 9})">6</text><text x="${hx + 27}" y="${hy + 12}" transform="rotate(-14 ${hx + 30} ${hy + 9})">7</text></g>` },
+  // скін за малюнком учня: світна зелена планета з кільцем у космосі
+  { id: "fayniks", name: "Файнікс", price: 30, col: () => "#35e07f", idx: "#0b3b2a", head: "#35e07f", rx: 11, headStroke: "#9dffc8",
+    seg: (x, y) => `<circle cx="${x + 8}" cy="${y - 4}" r="5" fill="#d8ffe9" opacity=".55"/>`,
+    // кільце планети малюємо поверх форми блоку, щоб воно не обрізалось
+    segOver: (x, y, i) => `<ellipse cx="${x + 11}" cy="${y}" rx="14.5" ry="4.2" transform="rotate(-22 ${x + 11} ${y})" fill="none" stroke="#5dffa4" stroke-width="2" opacity=".9"/>${i % 2 ? `<circle cx="${x + 2}" cy="${y - 14}" r=".9" fill="#7dffb6"/>` : `<circle cx="${x + 21}" cy="${y + 13}" r=".9" fill="#7dffb6"/>`}`,
+    headDeco: (hx, hy) => `<circle cx="${hx + 9}" cy="${hy - 7}" r="5" fill="#d8ffe9" opacity=".5"/>` },
   { id: "neon", name: "Неон", price: 40, col: () => "#141826", idx: "#39ff14", head: "#141826", headStroke: "#39ff14",
     seg: (x, y) => `<rect x="${x + 2.5}" y="${y - 8.5}" width="17" height="17" rx="5" fill="none" stroke="#39ff14" stroke-width="1.6"/>` },
   { id: "zebra", name: "Зебра", price: 60, col: () => "#fafafa", idx: "#1b1b1b",
@@ -494,7 +500,7 @@ function snakeSVG(o) {
     const jx = sk.jitter ? [2, -3, 1, -2, 3][i] : 0, jy = sk.jitter ? [-2, 3, -3, 1, 2][i] : 0;
     const rect = (fill, dx, op) => shapeEl(shape, x + jx + dx, y + jy - 11, sk.rx ?? 7, `fill="${fill}"${op ? ` opacity="${op}"` : ` stroke="rgba(0,0,0,.22)" stroke-width="1.5"`}`);
     const body = (sk.jitter ? rect("#00e5ff", -2.5, .8) + rect("#ff2bd6", 2.5, .8) : "") + rect(sk.col(i), 0)
-      + (sk.seg ? (shape !== "square" ? `<clipPath id="${uid}c${i}">${shapeEl(shape, x + jx, y + jy - 11, 7, "")}</clipPath>` : "") + `<g transform="translate(${jx} ${jy})"${shape !== "square" ? ` clip-path="url(#${uid}c${i})"` : ""}>${sk.seg(x, y, i)}</g>` : "")
+      + (sk.seg ? (shape !== "square" ? `<clipPath id="${uid}c${i}">${shapeEl(shape, x + jx, y + jy - 11, 7, "")}</clipPath>` : "") + `<g transform="translate(${jx} ${jy})"${shape !== "square" ? ` clip-path="url(#${uid}c${i})"` : ""}>${sk.seg(x, y, i)}</g>` : "") + (sk.segOver ? `<g transform="translate(${jx} ${jy})">${sk.segOver(x, y, i)}</g>` : "")
       + `<text x="${x + jx + 11}" y="${y + jy + 3.5}" class="segidx"${sk.idx ? ` style="fill:${sk.idx}"` : ""}>${i}</text>`;
     const wing = (dx, fill) => `<path d="M${x + 12 + dx} ${y - 8} C${x + 7 + dx} ${y - 26} ${x - 5 + dx} ${y - 32} ${x - 16 + dx} ${y - 30} Q${x - 12 + dx} ${y - 26} ${x - 13 + dx} ${y - 22} Q${x - 7 + dx} ${y - 21} ${x - 8 + dx} ${y - 17} Q${x - 2 + dx} ${y - 16} ${x - 2 + dx} ${y - 12} Q${x + 4 + dx} ${y - 12} ${x + 5 + dx} ${y - 8} Z" fill="${fill}"/><path d="M${x + 9 + dx} ${y - 12} Q${x + dx} ${y - 22} ${x - 11 + dx} ${y - 27}" fill="none" stroke-width=".9"/>`;
     const wings = has("wings") && i === 2 ? `<g class="wings" stroke="#8fa3c4" stroke-width="1.2" stroke-linejoin="round">${wing(8, "#e6edfa")}${wing(0, "#fff")}</g>` : "";
