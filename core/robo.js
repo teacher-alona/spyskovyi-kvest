@@ -278,7 +278,13 @@ T.blocks = (it, A) => {
     A.$("#bprog").querySelectorAll("[data-out]").forEach(b => b.onclick = ev => { ev.stopPropagation(); const i = +b.dataset.out; ["setup", "loop"].forEach(k => prog[k] = prog[k].filter(x => x !== i)); draw(); });
     A.$("#bpool").querySelectorAll("[data-in]").forEach(b => b.onclick = () => { prog[target].push(+b.dataset.in); draw(); });
   };
-  const same = (k) => prog[k].length === it[k].length && prog[k].every((i, n) => all[i].t === it[k][n]);
+  // setup — це налаштування, вони одне від одного не залежать, тож порядок там не важливий; у loop порядок важливий
+  const same = (k) => {
+    if (prog[k].length !== it[k].length) return false;
+    const got = prog[k].map(i => all[i].t);
+    if (k === "setup") { const a = got.slice().sort(), b = it[k].slice().sort(); return a.every((t, n) => t === b[n]); }
+    return got.every((t, n) => t === it[k][n]);
+  };
   const showCode = () => { if (it.code) A.$("#bcode").innerHTML = `<div class="answer-label">Ця ж програма мовою Arduino:</div>${A.pre(it.code)}`; };
   const check = () => {
     if (same("setup") && same("loop")) { done = true; A.$("#bmsg").textContent = ""; draw(); showCode(); A.feedback(tries === 0, tries === 0 ? A.praise() : "Тепер правильно!", it.why || ""); A.nextBtn(); return; }
@@ -294,7 +300,7 @@ T.blocks = (it, A) => {
     }
     const wrongSetup = !same("setup");
     A.$("#bmsg").textContent = (it.extra || []).some(t => [...prog.setup, ...prog.loop].some(i => all[i].t === t)) ? "У програмі є зайвий блок. Перевір, чи всі блоки потрібні."
-      : wrongSetup ? "Перевір розділ «Один раз на початку»." : "Перевір порядок у розділі «Повторювати завжди».";
+      : wrongSetup ? "Перевір розділ «Один раз на початку»: чогось бракує або є зайве." : "Перевір порядок у розділі «Повторювати завжди».";
   };
   A.setActs(`<button class="btn" id="ck">Перевірити</button>`, { ck: check });
   draw();
