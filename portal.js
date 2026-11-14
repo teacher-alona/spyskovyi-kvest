@@ -62,8 +62,10 @@ async function fillBoard() {
   const teacher = !!r.all;
   const tabs = teacher ? [["school", "Усі"], ...r.classes.slice().sort((a, b) => (parseInt(a) || 99) - (parseInt(b) || 99) || a.localeCompare(b, "uk")).map(c => ["c:" + c, shortCls(c)])] : [["cls", "Мій клас"], ["school", "Усі"]];
   if (!lbTab || !tabs.some(t => t[0] === lbTab)) lbTab = tabs[0][0];
-  const list = lbTab === "cls" ? r.cls : lbTab === "school" ? (teacher ? r.all : r.school) : r.all.filter(x => x.cls === lbTab.slice(2));
-  const medal = i => ["🥇", "🥈", "🥉"][i] || `<span class="lnum">${i + 1}</span>`;
+  const list = (lbTab === "cls" ? r.cls : lbTab === "school" ? (teacher ? r.all : r.school) : r.all.filter(x => x.cls === lbTab.slice(2))).slice().sort((a, b) => b.stars - a.stars || a.name.localeCompare(b.name, "uk"));
+  // однакова кількість зірок — однакове місце (1, 2, 2, 4…); у межах місця — за абеткою
+  const rankOf = i => list.findIndex(y => y.stars === list[i].stars);
+  const medal = i => { const r = rankOf(i); return ["🥇", "🥈", "🥉"][r] || `<span class="lnum">${r + 1}</span>`; };
   body.classList.remove("status");
   body.innerHTML = `<div class="ltabs">${tabs.map(([k, t]) => `<button class="ltab ${k === lbTab ? "on" : ""}" data-k="${esc(k)}">${esc(t)}</button>`).join("")}</div>
     ${list.length ? `<ol class="lrows">${list.map((x, i) => `<li class="${x.me ? "me" : ""}">
