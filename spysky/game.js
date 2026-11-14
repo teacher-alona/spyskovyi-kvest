@@ -20,7 +20,7 @@ KV.useGame(GAME, g => ({
   levels: LEVELS.map(l => (g.stars || {})[l.id] || 0),
   levelTitles: LEVELS.map(l => l.title),
   total: LEVELS.reduce((a, l) => a + ((g.stars || {})[l.id] || 0), 0),
-  bytes: g.bytes || 0, leaves: g.leaves || 0,
+  bytes: g.bytes || 0, leaves: g.leaves || 0, peeks: g.peeks || 0, mouseOut: g.mouseOut || 0,
   awayMin: Math.round((g.awayMs || 0) / 6000) / 10,
   attemptsTotal: LEVELS.reduce((a, l) => a + ((g.attempts || {})[l.id] || 0), 0),
   attempts: LEVELS.map(l => (g.attempts || {})[l.id] || 0),
@@ -164,6 +164,9 @@ const active = () => run && !run.over;
 KV.leave.configure({
   isActive: active,
   onHide: () => { if (run) { run.guardLost = 0; run.guardTime = 0; } },
+  // коротке перемикання вкладки (до 1,5 с) і мишка за межами сторінки: без штрафу, тільки рахуємо
+  onPeek: () => { if (!active()) return; run.peeks = (run.peeks || 0) + 1; const g = gd(); g.peeks = (g.peeks || 0) + 1; save(); },
+  onMouseOut: () => { if (!active()) return; run.mouseOut = (run.mouseOut || 0) + 1; const g = gd(); g.mouseOut = (g.mouseOut || 0) + 1; save(); },
   // n — скільки сегментів зняти, t — скільки мс учня не було, wasOpen — заслона вже висіла
   onPenalty: (reason, n, t, wasOpen) => {
     if (!active()) return;
@@ -574,7 +577,7 @@ function renderDone() {
     ${fresh.length ? `<div class="unlock">Відкрито в гардеробі: ${fresh.map(x => `<b>${esc(x.name)}</b>`).join(", ")}</div>` : ""}
     ${sk.grew ? `<div class="streakgot">🔥 Серія: ${sk.n} ${KV.daysWord(sk.n)} поспіль!${sk.bonus ? ` +${sk.bonus} байтів за ${sk.n} ${KV.daysWord(sk.n)}` : ""}</div>` : ""}
     <div class="bytesgot">${earned ? `+${earned} ${KV.bytesWord(earned)}${run.mistakes === 0 ? ` (з них ${KV.BYTES_PERFECT} — бонус за рівень без помилок)` : ""}. Усього: ${KV.bytesLeft()}` : prev ? `За повторне проходження байтів не дають. У тебе ${KV.bytesLeft()} ${KV.bytesWord(KV.bytesLeft())}` : ""}</div>
-    <p>Помилок: ${run.mistakes}. ${s < 3 ? "Три зірки дають, якщо помилок не більше однієї." : run.mistakes === 0 ? "Чистий рівень!" : "Майже ідеально!"}${s > prev && prev ? " Новий рекорд!" : ""}${run.leaves ? ` Виходів з гри: ${run.leaves}${run.awayMs >= GRACE ? `, поза грою ${fmtTime(run.awayMs)}` : ""}.` : ""} Це твоя ${gd().attempts[lv.id] || 1}-а спроба цього рівня.</p>
+    <p>Помилок: ${run.mistakes}. ${s < 3 ? "Три зірки дають, якщо помилок не більше однієї." : run.mistakes === 0 ? "Чистий рівень!" : "Майже ідеально!"}${s > prev && prev ? " Новий рекорд!" : ""}${run.leaves ? ` Виходів з гри: ${run.leaves}${run.awayMs >= GRACE ? `, поза грою ${fmtTime(run.awayMs)}` : ""}.` : ""}${run.peeks ? ` Коротких перемикань на інше вікно: ${run.peeks}.` : ""} Це твоя ${gd().attempts[lv.id] || 1}-а спроба цього рівня.</p>
     <div class="syncbox">${KV.syncLabel()}</div>
     <div class="row">${hasNext ? `<button class="btn" id="nx">Наступний рівень →</button>` : ""}<button class="btn ghost" id="map">На карту</button><button class="link" id="again">Пройти ще раз</button>${fresh.length ? `<button class="link" id="ward">Приміряти</button>` : ""}</div>
   </div>`;
@@ -604,6 +607,7 @@ function renderFail() {
 }
 
 
-window.__game = { runPy, LEVELS, startLevel, items: () => run && run.items, goto: async (li, k) => { await startLevel(li); run.idx = k; run.st = {}; renderItem(); } };
+// хід для автоматичних перевірок — лише на локальному тестовому сервері, не на сайті
+if (/^(localhost|127\.0\.0\.1)$/.test(location.hostname)) window.__game = { runPy, LEVELS, startLevel, items: () => run && run.items, goto: async (li, k) => { await startLevel(li); run.idx = k; run.st = {}; renderItem(); } };
 KV.boot({ title: GI.title, eyebrow: GI.eyebrow, onReady: renderMap, isIdle: () => !run && (!app.firstElementChild || !!app.querySelector(".hero") || !!app.querySelector(".bootwait")) });
 })();

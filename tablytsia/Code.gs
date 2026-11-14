@@ -6,7 +6,7 @@
  * Аркуші «Прогрес: <гра>»: прогрес у кожній грі — заповнюються самі.
  * Старий аркуш «Прогрес» сам перейменовується на «Прогрес: Списки».
  */
-const VERSION = "2026.11.14-3";
+const VERSION = "2026.11.14-4";
 const SPYSKY_SHEET = "Прогрес: Списки";
 const DATA_HEADER = "Дані гри (не змінювати)";
 
@@ -116,7 +116,7 @@ function writeProfile(st, p) {
 }
 
 // ---------- прогрес гри ----------
-// Колонки: Логін | Ім'я | Клас | Зірки всього | Байти | Виходів з гри | <рівні…> | Ім'я змійки | Забарвлення | Аксесуар | Оновлено | Дані гри | Поза грою, хв | Спроб рівнів | Спроби по рівнях
+// Колонки: Логін | Ім'я | Клас | Зірки всього | Байти | Виходів з гри | <рівні…> | Ім'я змійки | Забарвлення | Аксесуар | Оновлено | Дані гри | Поза грою, хв | Спроб рівнів | Спроби по рівнях | Коротких перемикань | Мишка за вікном
 function gameSheet(name, create, levelTitles) {
   let sh = ss().getSheetByName(name);
   if (!sh && name === SPYSKY_SHEET) {
@@ -126,7 +126,7 @@ function gameSheet(name, create, levelTitles) {
   if (!sh && create) {
     sh = ss().insertSheet(name);
     const head = ["Логін", "Ім'я", "Клас", "Зірки всього", "Байти", "Виходів з гри"].concat(levelTitles || [])
-      .concat(["Ім'я змійки", "Забарвлення", "Аксесуар", "Оновлено", DATA_HEADER, "Поза грою, хв", "Спроб рівнів", "Спроби по рівнях"]);
+      .concat(["Ім'я змійки", "Забарвлення", "Аксесуар", "Оновлено", DATA_HEADER, "Поза грою, хв", "Спроб рівнів", "Спроби по рівнях", "Коротких перемикань", "Мишка за вікном"]);
     sh.getRange(1, 1, 1, head.length).setValues([head]).setFontWeight("bold");
     sh.setFrozenRows(1);
   }
@@ -154,8 +154,8 @@ function writeGame(st, name, data, s) {
   const dc = dataCol(sh), n = dc - 5 - 6;
   const levels = (s.levels || []).slice(0, n);
   while (levels.length < n) levels.push("");
-  const extra = sh.getRange(1, dc + 1, 1, 3).getDisplayValues()[0];
-  if (!extra[0]) sh.getRange(1, dc + 1, 1, 3).setValues([["Поза грою, хв", "Спроб рівнів", "Спроби по рівнях"]]);
+  const extra = sh.getRange(1, dc + 1, 1, 5).getDisplayValues()[0];
+  if (!extra[0] || !extra[3]) sh.getRange(1, dc + 1, 1, 5).setValues([["Поза грою, хв", "Спроб рівнів", "Спроби по рівнях", "Коротких перемикань", "Мишка за вікном"]]);
   const r0 = findRow(sh, st.login);
   // зірки в таблиці ніколи не зменшуються: ручні трійки вчительки не затре навіть стара копія гри
   if (r0 && n > 0) {
@@ -169,7 +169,7 @@ function writeGame(st, name, data, s) {
   const row = [st.login, st.name, st.cls, Math.max(Number(s.total) || 0, sum), Number(s.bytes) || 0, Number(s.leaves) || 0]
     .concat(levels)
     .concat([s.snake || "", s.skin || "", s.acc || "", new Date(), JSON.stringify(data),
-      Number(s.awayMin) || 0, Number(s.attemptsTotal) || 0, (s.attempts || []).join(" · ")]);
+      Number(s.awayMin) || 0, Number(s.attemptsTotal) || 0, (s.attempts || []).join(" · "), Number(s.peeks) || 0, Number(s.mouseOut) || 0]);
   const r = r0 || sh.getLastRow() + 1;
   sh.getRange(r, 1, 1, row.length).setValues([row]);
 }

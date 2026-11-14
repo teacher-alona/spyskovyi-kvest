@@ -2,7 +2,7 @@
    змійка з гардеробом, заслона при виході з гри. Кожна гра підключає цей файл і додає свої рівні. */
 (function () {
 "use strict";
-const VERSION = "2026.11.14-28";
+const VERSION = "2026.11.14-29";
 const API = "https://script.google.com/macros/s/AKfycbzPtRGlYI4osS-xL-J_pAZ2A2HxTWUeuecjy9-13MgAdFIzkDnYuCr1qmLHqZvqWkQMWQ/exec";
 
 // Усі ігри порталу. sheet — назва аркуша з прогресом у таблиці вчительки.
@@ -149,7 +149,7 @@ function mergeGame(local, remote) {
   m.stars = mx(local.stars, remote.stars);
   m.attempts = mx(local.attempts, remote.attempts);
   m.lvLeaves = mx(local.lvLeaves, remote.lvLeaves);
-  ["leaves", "bytes", "awayMs"].forEach(k => { m[k] = Math.max(local[k] || 0, remote[k] || 0); });
+  ["leaves", "bytes", "awayMs", "peeks", "mouseOut"].forEach(k => { m[k] = Math.max(local[k] || 0, remote[k] || 0); });
   return m;
 }
 function mergeProfile(local, remote) {
@@ -625,7 +625,9 @@ function goneAway() { if (leaveCfg.isActive() && !awaySince) awaySince = Date.no
 function cameBack() {
   if (!awaySince || document.hidden) return;
   const t = Date.now() - awaySince; awaySince = 0;
-  if (t < GRACE || !leaveCfg.isActive()) return;
+  if (!leaveCfg.isActive()) return;
+  // коротке перемикання (до 1,5 с) не штрафуємо, але рахуємо — учителька бачить його в таблиці
+  if (t < GRACE) { if (!guardOpen && leaveCfg.onPeek) leaveCfg.onPeek(t); return; }
   // якщо заслона вже висить, за сам вихід уже знято — рахуємо лише час
   const n = (guardOpen ? 0 : 1) + Math.floor(t / AWAY_STEP);
   leaveCfg.onPenalty("away", n, t, guardOpen);
@@ -633,6 +635,15 @@ function cameBack() {
 document.addEventListener("visibilitychange", () => document.hidden ? goneAway() : cameBack());
 window.addEventListener("blur", goneAway);
 window.addEventListener("focus", cameBack);
+// мишка за межами сторінки (наприклад, на другому моніторі) довше 2 с — не штраф, лише лічильник для вчительки
+const MOUSE_OUT = 2000;
+let mouseOutSince = 0;
+document.documentElement.addEventListener("mouseleave", () => { if (leaveCfg.isActive() && !mouseOutSince) mouseOutSince = Date.now(); });
+document.documentElement.addEventListener("mouseenter", () => {
+  if (!mouseOutSince) return;
+  const t = Date.now() - mouseOutSince; mouseOutSince = 0;
+  if (t >= MOUSE_OUT && leaveCfg.isActive() && !document.hidden && leaveCfg.onMouseOut) leaveCfg.onMouseOut(t);
+});
 document.addEventListener("fullscreenchange", () => {
   if (document.fullscreenElement) { wasFull = true; return; }
   if (!wasFull) return;
@@ -679,7 +690,7 @@ window.KV = {
   profile, gameData, totalStars, save, scheduleSync, syncLabel, boot, logout, whoami, bindWhoami,
   useGame: (id, summaryFn, levelIds) => { currentGame = id; gameSummary = summaryFn; const G = GAMES.find(g => g.id === id); if (G) G.levelIds = levelIds; },
   N, SKINS, ACCS, isOpen, openIds, achieve, snakeSVG, renderWardrobe, hasAcc, leaders, bytesLeft, bytesWord, BYTES_PERFECT, streakTouch, streakNow, streakBadge, daysWord, STREAK_EVERY,
-  leave: { configure: cfg => { leaveCfg = Object.assign({ isActive: () => false, onPenalty: () => {} }, cfg); }, GRACE, AWAY_STEP },
+  leave: { configure: cfg => { leaveCfg = Object.assign({ isActive: () => false, onPenalty: () => {}, onPeek: null, onMouseOut: null }, cfg); }, GRACE, AWAY_STEP },
   get guardOpen() { return guardOpen; }, showGuard, hideGuard, goFullscreen, leaveFullscreen, toast,
 };
 })();
