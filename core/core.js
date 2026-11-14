@@ -2,7 +2,7 @@
    змійка з гардеробом, заслона при виході з гри. Кожна гра підключає цей файл і додає свої рівні. */
 (function () {
 "use strict";
-const VERSION = "2026.11.14-30";
+const VERSION = "2026.11.14-31";
 const API = "https://script.google.com/macros/s/AKfycbzPtRGlYI4osS-xL-J_pAZ2A2HxTWUeuecjy9-13MgAdFIzkDnYuCr1qmLHqZvqWkQMWQ/exec";
 
 // Усі ігри порталу. sheet — назва аркуша з прогресом у таблиці вчительки.
@@ -60,6 +60,17 @@ function fixStore() {
   if (p.bought.includes("palianytsia")) { p.bought = p.bought.filter(x => x !== "palianytsia"); p.spent = Math.max(0, (p.spent || 0) - 20); }
 }
 fixStore();
+// ---------- тема: світла за замовчуванням, темна — за вимикачем; вибір живе в профілі учня ----------
+function applyTheme() { document.documentElement.dataset.theme = store.profile.theme === "dark" ? "dark" : "light"; }
+applyTheme();
+function toggleTheme() {
+  store.profile.theme = store.profile.theme === "dark" ? "light" : "dark";
+  applyTheme(); save("profile");
+  const b = document.getElementById("themesw"); if (b) b.outerHTML = themeSwitch(); bindTheme();
+}
+const themeSwitch = () => { const dark = store.profile.theme === "dark";
+  return `<button class="lightsw ${dark ? "off" : "on"}" id="themesw" type="button" aria-pressed="${dark}" title="${dark ? "Увімкнути світло (світла тема)" : "Вимкнути світло (темна тема)"}" aria-label="${dark ? "Увімкнути світлу тему" : "Увімкнути темну тему"}"><span class="plate"><span class="rocker"></span></span></button>`; };
+function bindTheme() { const b = document.getElementById("themesw"); if (b) b.onclick = toggleTheme; }
 const gameData = id => { const g = store.games[id] = store.games[id] || {}; g.stars = g.stars || {}; return g; };
 const profile = () => store.profile;
 let currentGame = null; // id гри на цій сторінці (null — портал)
@@ -193,7 +204,7 @@ function applyServer(r) {
   });
   store.profile = mergeProfile(store.profile, remoteProfile);
   store.owner = session.login;
-  fixStore();
+  fixStore(); applyTheme();
   const changed = JSON.stringify(store) !== before;
   persist();
   // зберігаємо лише якщо щось справді змінилось (або новий скрипт ще не має профілю), щоб не затерти ручні зміни вчительки
@@ -207,7 +218,7 @@ let access = lsGet("kv-access");
 // opts.onReady — що показати після входу; opts.title/eyebrow — заголовок екрана входу
 let bootOpts = {};
 function renderLogin(msg) {
-  app().innerHTML = `<div class="center login">
+  app().innerHTML = `<div class="whoami">${themeSwitch()}</div><div class="center login">
     <div class="eyebrow">${esc(bootOpts.eyebrow || "Python, цифрова грамотність і не тільки")}</div>
     <h1 class="logintitle">${esc(bootOpts.title || "ІТ-квести")}</h1>
     ${snakeSVG({ len: 5, cls: "big", skin: "classic", acc: "none" })}
@@ -221,6 +232,7 @@ function renderLogin(msg) {
     </form>
     <div class="version">версія ${VERSION}</div>
   </div>`;
+  bindTheme();
   $("#lf").addEventListener("submit", async e => {
     e.preventDefault();
     const login = $("#lg").value.trim().toLowerCase(), pin = $("#pn").value.trim();
@@ -270,9 +282,9 @@ function logout() {
 }
 // рядок «хто увійшов» для шапки
 function whoami() {
-  return `<div class="whoami">${session ? `<span class="syncbox">${syncLabel()}</span><span>${esc(session.name)}${session.cls ? " · " + esc(session.cls) : ""}</span><button class="link" id="logout">Вийти</button>` : offline ? `<span>Гра без збереження</span><button class="link" id="logout">Увійти</button>` : ""}</div>`;
+  return `<div class="whoami">${themeSwitch()}${session ? `<span class="syncbox">${syncLabel()}</span><span>${esc(session.name)}${session.cls ? " · " + esc(session.cls) : ""}</span><button class="link" id="logout">Вийти</button>` : offline ? `<span>Гра без збереження</span><button class="link" id="logout">Увійти</button>` : ""}</div>`;
 }
-function bindWhoami() { const b = $("#logout"); if (b) b.onclick = logout; }
+function bindWhoami() { const b = $("#logout"); if (b) b.onclick = logout; bindTheme(); }
 
 // ---------- змійка ----------
 const N = 5;

@@ -25,15 +25,6 @@
   --f-code: "JetBrains Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
   --f-hand: "Caveat", "Segoe Print", "Comic Sans MS", cursive;
 }
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --paper: #0f141e; --grid: rgba(140, 170, 255, 0.06); --card: #161d2a; --line: #283245;
-    --fg: #e5e9f2; --muted: #9aa3b7; --ink: #8eaeff; --ink-soft: #1d2840;
-    --red: #ff7b78; --red-soft: #3a1f24; --green: #5fd39b; --green-soft: #15302a; --gold: #f2bd45;
-    --code-bg: #0b1018; --kw: #c49bff; --str: #7fd8a8; --num: #ffb27a; --com: #7d879c; --fn: #8eaeff;
-    color-scheme: dark;
-  }
-}
 :root[data-theme="dark"] {
   --paper: #0f141e; --grid: rgba(140, 170, 255, 0.06); --card: #161d2a; --line: #283245;
   --fg: #e5e9f2; --muted: #9aa3b7; --ink: #8eaeff; --ink-soft: #1d2840;
@@ -331,3 +322,14 @@ textarea { resize: vertical; line-height: 1.6; }
 .streak.today { color: inherit; }
 .streak.today .flame { filter: none; opacity: 1; }
 .streak.today b { color: #ff8a1f; }
+
+/* ---------- вимикач світла (тема) ---------- */
+.lightsw { appearance: none; border: 0; background: none; padding: 2px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; font: inherit; color: var(--muted); }
+.lightsw .plate { width: 28px; height: 40px; border-radius: 7px; background: #fbfaf6; border: 1.5px solid #cfd3db; box-shadow: 0 1px 3px rgba(0,0,0,.15); display: grid; place-items: center; position: relative; }
+.lightsw .plate::after { content: ""; position: absolute; top: 4px; width: 5px; height: 5px; border-radius: 50%; background: #ffcc33; box-shadow: 0 0 6px 2px rgba(255, 204, 51, .8); }
+.lightsw .rocker { width: 14px; height: 22px; margin-top: 6px; border-radius: 3px; background: linear-gradient(#e9ebef 0 45%, #ffffff 45% 100%); border: 1px solid #c3c8d1; box-shadow: 0 -2px 0 #d5d9e0; }
+.lightsw.off .plate { background: #2a3142; border-color: #4a5470; }
+.lightsw.off .plate::after { background: #4a5470; box-shadow: none; }
+.lightsw.off .rocker { background: linear-gradient(#58627d 0 55%, #3a4256 55% 100%); border-color: #5e6884; box-shadow: 0 2px 0 #1e2433; }
+.lightsw:hover .plate { border-color: var(--ink); }
+.lightsw:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; border-radius: 8px; }
