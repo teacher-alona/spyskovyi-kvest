@@ -100,7 +100,7 @@ const EL = {
       <path d="M-7 13 V60 M8 13 V48" stroke="#9aa1ad" stroke-width="3"/>
       <rect x="-14" y="30" width="14" height="26" rx="5" fill="#e8d2a6" stroke="#a88a55"/><path d="M-14 36 h14 M-14 41 h14 M-14 47 h14" stroke="#c0392b" stroke-width="1.6"/>
       <text x="14" y="-26" class="ellbl">${on ? "Світиться!" : ""}</text></g>` },
-  button: { name: "кнопка",
+  button: { name: "кнопка", swap: [["a", "b"]],   // ніжки кнопки рівноцінні
     pins: [{ id: "a", label: "ніжка 1", ok: "D2", hint: "Одна ніжка кнопки йде на цифровий пін 2 — його ми читатимемо." },
            { id: "b", label: "ніжка 2", ok: "GND", hint: "Друга ніжка — на GND. Коли кнопку натиснуто, пін 2 з'єднується з «землею»." }],
     pic: on => `<g transform="translate(560 110)"><rect x="-30" y="-30" width="60" height="60" rx="6" fill="#2b2d31"/>
@@ -113,7 +113,7 @@ const EL = {
     pic: on => `<g transform="translate(560 112)"><circle r="32" fill="#1d1f23" stroke="#000" stroke-width="2"/><circle r="5" fill="#000"/><text x="0" y="22" text-anchor="middle" class="ellbl w">+</text>
       <path d="M-8 32 v26 M8 32 v26" stroke="#9aa1ad" stroke-width="3"/>
       ${on ? `<g class="notes"><text x="36" y="-14">♪</text><text x="48" y="-34">♫</text><text x="22" y="-40">♪</text></g>` : ""}</g>` },
-  pot: { name: "потенціометр (крутилка)",
+  pot: { name: "потенціометр (крутилка)", swap: [["l", "r"]],   // крайні ніжки можна поміняти: зміниться лише напрям
     pins: [{ id: "l", label: "ліва ніжка", ok: "5V", hint: "Крайні ніжки — живлення: ліва на 5V." },
            { id: "m", label: "середня (повзунок)", ok: "A0", hint: "Середня ніжка дає змінну напругу — її читає аналоговий вхід A0." },
            { id: "r", label: "права ніжка", ok: "GND", hint: "Права крайня ніжка — на GND." }],
@@ -234,7 +234,14 @@ T.wire = (it, A) => {
     A.$("#wmsg").textContent = sel ? `Тепер клацни на пін плати для «${e.pins.find(p => p.id === sel).label}».` : selPin ? `Тепер клацни на ніжку елемента для піна ${PINS[selPin].label}.` : "";
   };
   const check = () => {
-    const bad = e.pins.find(p => !pinMatches(conn[p.id], p.ok));
+    // рівноцінні ніжки (swap): годиться будь-який порядок
+    const okFor = {};
+    e.pins.forEach(p => okFor[p.id] = p.ok);
+    (e.swap || []).forEach(([a, b]) => {
+      const pa = e.pins.find(p => p.id === a), pb = e.pins.find(p => p.id === b);
+      if (!pinMatches(conn[a], pa.ok) && pinMatches(conn[a], pb.ok) && pinMatches(conn[b], pa.ok)) { okFor[a] = pb.ok; okFor[b] = pa.ok; }
+    });
+    const bad = e.pins.find(p => !pinMatches(conn[p.id], okFor[p.id]));
     if (!bad) {
       done = true; draw(true); A.$("#wmsg").textContent = "";
       A.feedback(tries === 0, tries === 0 ? A.praise() + " Працює!" : "Працює!", it.why || "");
