@@ -5,6 +5,7 @@ const { esc, $ } = KV;
 const app = KV.app();
 const sum = o => Object.values(o || {}).reduce((a, b) => a + b, 0);
 function renderHome() {
+  document.body.classList.add("is-portal");
   const access = KV.access, p = KV.profile();
   const games = KV.GAMES.filter(g => !access || access.includes(g.id) || access.includes(g.title.toLowerCase()));
   const total = KV.totalStars(), maxAll = KV.GAMES.reduce((s, g) => s + g.max, 0);
@@ -12,20 +13,21 @@ function renderHome() {
   app.innerHTML = `
   <header class="hero hasboard">
     ${KV.whoami()}
-    <div class="heromain">
-    <div class="eyebrow">Python, цифрова грамотність і не тільки</div>
-    <h1>ІТ-квести</h1>
-    <p>${first ? `Привіт, ${esc(first)}! ` : ""}Вибери гру. Зірки з усіх ігор рахуються разом і відкривають нові скіни для змійки.</p>
-    <div class="pet">
+    <div class="intro">
+      <div class="eyebrow">Python, цифрова грамотність і не тільки</div>
+      <h1>ІТ-квести</h1>
+      <p>${first ? `Привіт, ${esc(first)}! ` : ""}Вибери гру. Зірки з усіх ігор рахуються разом і відкривають нові скіни для змійки.</p>
+    </div>
+    <section class="pcard" aria-label="Твоя змійка">
       ${KV.snakeSVG({ len: KV.N, cls: "big" })}
-      <div class="petinfo">
-        <div class="petname">${esc(p.name)}</div>
-        <div class="score">★ <b>${total}</b> / ${maxAll} в усіх іграх</div>
-        <div class="score">${KV.streakBadge()}</div>
-        <button class="btn ghost small" id="wardrobe">Гардероб${(() => { const k = KV.openIds().length - 2; return k > 0 ? ` · ${k} відкрито` : ""; })()}</button>
+      <div class="petname">${esc(p.name)}</div>
+      <div class="pstats">
+        <div class="pstat"><b class="gold">★ ${total}</b><span>з ${maxAll} зірок</span></div>
+        <div class="pstat">${KV.streakBadge(true)}</div>
+        <div class="pstat"><b>${KV.bytesLeft()}</b><span>${KV.bytesWord(KV.bytesLeft())}</span></div>
       </div>
-    </div>
-    </div>
+      <button class="btn ghost" id="wardrobe">Гардероб${(() => { const k = KV.openIds().length - 2; return k > 0 ? ` · ${k} ${k % 10 === 1 && k % 100 !== 11 ? "річ" : [2, 3, 4].includes(k % 10) && ![12, 13, 14].includes(k % 100) ? "речі" : "речей"}` : ""; })()}</button>
+    </section>
     <aside class="lboard" id="lb"><h2>Лідерборд</h2><div class="lbody status">Завантажую…</div></aside>
   </header>
   <div class="games">

@@ -281,14 +281,32 @@ textarea { resize: vertical; line-height: 1.6; }
 
 @media (prefers-reduced-motion: reduce) { .snake, .snake .seg, .snake .head, .snake .t67 { animation: none !important; } }
 
-/* ---------- лідерборд на головній ---------- */
-.hero.hasboard { grid-template-columns: minmax(0, 1fr); }
-.hero .heromain { display: grid; gap: 10px; align-content: start; min-width: 0; }
-.hero .heromain > * { min-width: 0; max-width: 100%; }
-@media (min-width: 1000px) {
-  .hero.hasboard { grid-template-columns: minmax(0, 1fr) minmax(280px, 340px); column-gap: 28px; }
-  .hero.hasboard > :first-child { grid-column: 1 / -1; }
-  .hero .lboard { align-self: start; }
+/* ---------- головна: вступ, картка змійки, лідерборд ---------- */
+.is-portal .sheet { max-width: 1280px; }
+.hero.hasboard { display: grid; gap: 16px; grid-template-columns: minmax(0, 1fr); align-items: start; }
+.hero.hasboard > * { min-width: 0; }
+.hero .intro { display: grid; gap: 10px; align-content: start; }
+.pcard { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 18px; display: grid; gap: 12px; justify-items: center; text-align: center; }
+.pcard .snake.big { max-width: 300px; }
+.pcard .petname { font-size: 2.1rem; }
+.pstats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; width: 100%; }
+.pstat { display: grid; gap: 2px; justify-items: center; padding: 8px 4px; border-radius: 12px; background: var(--ink-soft); min-width: 0; }
+.pstat > b, .pstat .streak > b { font-family: var(--f-code); font-size: 1.25rem; line-height: 1.2; }
+.pstat > span, .pstat .streak > span { font-size: .78rem; color: var(--muted); line-height: 1.2; }
+.pstat .gold { color: var(--gold, #f2b33d); }
+.pstat .streak.st { display: grid; gap: 2px; justify-items: center; white-space: normal; }
+.pcard #wardrobe { width: 100%; }
+@media (min-width: 760px) {
+  .hero.hasboard { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .hero.hasboard > :first-child, .hero .intro { grid-column: 1 / -1; }
+  .hero .lboard { align-self: stretch; display: flex; flex-direction: column; }
+  .hero .lboard .lbody { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+  .hero .lboard .lrows { flex: 1 1 0; min-height: 160px; max-height: none; }
+}
+@media (min-width: 1200px) {
+  .hero.hasboard { grid-template-columns: minmax(0, 1fr) 340px 400px; column-gap: 24px; }
+  .hero .intro { grid-column: auto; align-self: center; }
+  .hero .intro h1 { font-size: clamp(3rem, 4.6vw, 4.6rem); }
 }
 .lboard { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 14px 14px 10px; min-width: 0; }
 .lboard h2 { font-size: 1.05rem; margin: 0 0 8px; color: var(--ink); }
@@ -313,8 +331,3 @@ textarea { resize: vertical; line-height: 1.6; }
 .streak.today { color: inherit; }
 .streak.today .flame { filter: none; opacity: 1; }
 .streak.today b { color: #ff8a1f; }
-@media (min-width: 1000px) {
-  .hero .lboard { align-self: stretch; display: flex; flex-direction: column; }
-  .hero .lboard .lbody { flex: 1; display: flex; flex-direction: column; min-height: 0; }
-  .hero .lboard .lrows { flex: 1 1 0; min-height: 120px; max-height: none; }
-}
