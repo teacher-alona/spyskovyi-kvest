@@ -333,3 +333,17 @@ textarea { resize: vertical; line-height: 1.6; }
 .lightsw.off .rocker { background: linear-gradient(#58627d 0 55%, #3a4256 55% 100%); border-color: #5e6884; box-shadow: 0 2px 0 #1e2433; }
 .lightsw:hover .plate { border-color: var(--ink); }
 .lightsw:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; border-radius: 8px; }
+
+/* ---------- ширина сторінок ігор: карта широка, завдання — трохи ширші за текст ---------- */
+.is-map .sheet { max-width: 1280px; }
+.is-play .sheet { max-width: 960px; }
+.hero.maphero { display: grid; gap: 16px; grid-template-columns: minmax(0, 1fr); align-items: start; }
+.hero.maphero > * { min-width: 0; }
+.hero.maphero .intro { display: grid; gap: 10px; align-content: start; }
+.maphero .pcard .mystats { font-size: .82rem; color: var(--muted); }
+@media (min-width: 1000px) {
+  .hero.maphero { grid-template-columns: minmax(0, 1fr) 380px; column-gap: 32px; }
+  .hero.maphero .topnav { grid-column: 1 / -1; }
+  .hero.maphero .intro { align-self: center; }
+  .hero.maphero .intro h1 { font-size: clamp(3rem, 4.6vw, 4.6rem); }
+}

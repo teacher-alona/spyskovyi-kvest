@@ -138,6 +138,7 @@ async function prepareItems(items) {
 const itemType = w => w.pick ? w.pick[0].t : w.gen ? (w._t || (w._t = w.gen().t)) : w.t;
 
 async function startLevel(li) {
+  document.body.classList.remove("is-map"); document.body.classList.add("is-play");
   const lv = LEVELS[li];
   goFullscreen();
   hideGuard();
@@ -206,23 +207,28 @@ function next() {
 // ---------- карта ----------
 function renderMap() {
   run = null; hideGuard(); leaveFullscreen();
+  document.body.classList.add("is-map"); document.body.classList.remove("is-play");
   const total = LEVELS.reduce((s, l) => s + (gd().stars[l.id] || 0), 0);
   const n = LEVELS.length;
   app.innerHTML = `
-  <header class="hero">
+  <header class="hero maphero">
     <div class="topnav"><a class="link" href="../">← Усі ігри</a>${KV.whoami()}</div>
-    <div class="eyebrow">${esc(GI.eyebrow)}</div>
-    <h1>${esc(GI.title)}</h1>
-    <p>${esc(GI.intro)}</p>
-    <div class="pet">
-      ${snakeSVG({ len: N, cls: "big" })}
-      <div class="petinfo">
-        <div class="petname">${esc(pf().name)}</div>
-        <div class="score">${PLAIN ? "Зірок:" : "sum(stars) ="} <b>${total}</b> / ${n * 3} · Байтів: <b>${KV.bytesLeft()}</b> · ${KV.streakBadge()}</div>
-        <div class="mystats">Спроб рівнів: <b>${LEVELS.reduce((a, l) => a + ((gd().attempts || {})[l.id] || 0), 0)}</b> · Виходів з гри: <b class="${gd().leaves ? "bad" : ""}">${gd().leaves || 0}</b>${gd().awayMs ? ` · Поза грою: <b class="bad">${fmtTime(gd().awayMs)}</b>` : ""}</div>
-        <button class="btn ghost small" id="wardrobe">Гардероб${(() => { const k = openIds().length - 2; return k > 0 ? ` · ${k} відкрито` : ""; })()}</button>
-      </div>
+    <div class="intro">
+      <div class="eyebrow">${esc(GI.eyebrow)}</div>
+      <h1>${esc(GI.title)}</h1>
+      <p>${esc(GI.intro)}</p>
     </div>
+    <section class="pcard" aria-label="Твоя змійка">
+      ${snakeSVG({ len: N, cls: "big" })}
+      <div class="petname">${esc(pf().name)}</div>
+      <div class="pstats">
+        <div class="pstat"><b class="gold">★ ${total}</b><span>з ${n * 3} у цій грі</span></div>
+        <div class="pstat">${KV.streakBadge(true)}</div>
+        <div class="pstat"><b>${KV.bytesLeft()}</b><span>${KV.bytesWord(KV.bytesLeft())}</span></div>
+      </div>
+      <div class="mystats">Спроб рівнів: <b>${LEVELS.reduce((a, l) => a + ((gd().attempts || {})[l.id] || 0), 0)}</b> · Виходів з гри: <b class="${gd().leaves ? "bad" : ""}">${gd().leaves || 0}</b>${gd().awayMs ? ` · Поза грою: <b class="bad">${fmtTime(gd().awayMs)}</b>` : ""}</div>
+      <button class="btn ghost" id="wardrobe">Гардероб${(() => { const k = openIds().length - 2; return k > 0 ? ` · ${k} відкрито` : ""; })()}</button>
+    </section>
   </header>
   <div class="listopen">${PLAIN ? "Рівні" : "levels = ["}</div>
   <div class="levels">
@@ -249,6 +255,7 @@ function renderMap() {
 function renderWardrobe() { KV.renderWardrobe(renderMap, "На карту"); }
 
 function renderIntro(li) {
+  document.body.classList.remove("is-map"); document.body.classList.add("is-play");
   const lv = LEVELS[li];
   const counts = {};
   lv.items.forEach(it => { const k = it.warm ? "Розминка з основ" : TYPE[itemType(it)]; counts[k] = (counts[k] || 0) + 1; });
