@@ -347,3 +347,8 @@ textarea { resize: vertical; line-height: 1.6; }
   .hero.maphero .intro { align-self: center; }
   .hero.maphero .intro h1 { font-size: clamp(3rem, 4.6vw, 4.6rem); }
 }
+
+/* телепорт: змійка пірнає в портал і виринає з іншого (раз за правильну відповідь) */
+.snake .tpmove { animation: kv-tp 1.5s cubic-bezier(.5, 0, .5, 1) 1 both; }
+@keyframes kv-tp { from { transform: translateX(0); } to { transform: translateX(var(--tw)); } }
+@media (prefers-reduced-motion: reduce) { .snake .tpmove { animation: none; transform: translateX(var(--tw)); } }

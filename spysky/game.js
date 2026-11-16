@@ -304,7 +304,7 @@ function feedback(good, title, text, extra) {
   // байт — за правильну відповідь з першої спроби
   if (!good) run.st.bad = true;
   else if (!run.st.bad && !run.st.paid && run.mistakes === run.st.m0 && run.items[run.idx].t !== "lesson") { run.st.paid = true; run.clean = (run.clean || 0) + 1; }
-  if (good && $("#snake")) { $("#snake").innerHTML = snakeSVG({ len: run.hearts, mood: "wow", cls: "hop" }); }
+  if (good && $("#snake")) { const tp = KV.hasAcc("teleport") && KV.isOpen(KV.ACCS.find(x => x.id === "teleport")); $("#snake").innerHTML = snakeSVG({ len: run.hearts, mood: "wow", cls: tp ? "" : "hop", tpRun: tp }); }
   $("#fb").innerHTML = `<div class="feedback ${good ? "good" : "bad"}"><div class="verdict">${title}</div>${extra || ""}${text ? `<p>${md(text)}</p>` : ""}</div>`;
 }
 function setActs(html, handlers) {

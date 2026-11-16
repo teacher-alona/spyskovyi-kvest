@@ -2,7 +2,7 @@
    змійка з гардеробом, заслона при виході з гри. Кожна гра підключає цей файл і додає свої рівні. */
 (function () {
 "use strict";
-const VERSION = "2026.11.16-38";
+const VERSION = "2026.11.16-40";
 const API = "https://script.google.com/macros/s/AKfycbzPtRGlYI4osS-xL-J_pAZ2A2HxTWUeuecjy9-13MgAdFIzkDnYuCr1qmLHqZvqWkQMWQ/exec";
 
 // Усі ігри порталу. sheet — назва аркуша з прогресом у таблиці вчительки.
@@ -339,6 +339,12 @@ const SKINS = [
     // кільце планети малюємо поверх форми блоку, щоб воно не обрізалось
     segOver: (x, y, i) => `<ellipse cx="${x + 11}" cy="${y}" rx="14.5" ry="4.2" transform="rotate(-22 ${x + 11} ${y})" fill="none" stroke="#5dffa4" stroke-width="2" opacity=".9"/>${i % 2 ? `<circle cx="${x + 2}" cy="${y - 14}" r=".9" fill="#7dffb6"/>` : `<circle cx="${x + 21}" cy="${y + 13}" r=".9" fill="#7dffb6"/>`}`,
     headDeco: (hx, hy) => `<circle cx="${hx + 9}" cy="${hy - 7}" r="5" fill="#d8ffe9" opacity=".5"/>` },
+  { id: "trash", name: "Смітник", price: 25, col: () => "#8d96a3", idx: "#2b2f36", head: "#7b8491", rx: 4,
+    seg: (x, y) => `<path d="M${x + 5} ${y - 8} v16 M${x + 11} ${y - 8} v16 M${x + 17} ${y - 8} v16" stroke="#6b7380" stroke-width="2"/><rect x="${x - 1}" y="${y - 12}" width="24" height="4" rx="2" fill="#6b7380"/>`,
+    headDeco: (hx, hy) => `<rect x="${hx - 2}" y="${hy - 18}" width="38" height="7" rx="3" fill="#5e6673" stroke="#454b55" stroke-width="1"/><rect x="${hx + 12}" y="${hy - 23}" width="10" height="5" rx="2" fill="none" stroke="#454b55" stroke-width="2"/><path d="M${hx + 3} ${hy + 4} l3 3 l-3 0" stroke="#3ddc6a" stroke-width="1.6" fill="none"/>` },
+  { id: "crow", name: "Ворон", price: 25, col: () => "#1d2230", idx: "#9fb0d6", head: "#161a25",
+    seg: (x, y) => `<path d="M${x + 1} ${y + 2} q5 6 10 0 q5 6 10 0 M${x + 1} ${y - 5} q5 6 10 0 q5 6 10 0" stroke="#3b4a72" stroke-width="1.6" fill="none"/><path d="M${x + 3} ${y - 9} q6 -3 12 0" stroke="#5c6f9e" stroke-width="1.2" fill="none" opacity=".7"/>`,
+    headDeco: (hx, hy) => `<path d="M${hx + 32} ${hy - 1} L${hx + 45} ${hy + 3} L${hx + 32} ${hy + 7} Z" fill="#f2b33d" stroke="#b37a12" stroke-width="1" stroke-linejoin="round"/><path d="M${hx + 32} ${hy + 3} L${hx + 44} ${hy + 3}" stroke="#b37a12" stroke-width=".8"/><path d="M${hx + 6} ${hy - 14} q3 -7 8 -6 q-1 4 -3 6" fill="#161a25" stroke="#3b4a72" stroke-width="1"/>` },
   { id: "neon", name: "Неон", price: 40, col: () => "#141826", idx: "#39ff14", head: "#141826", headStroke: "#39ff14",
     seg: (x, y) => `<rect x="${x + 2.5}" y="${y - 8.5}" width="17" height="17" rx="5" fill="none" stroke="#39ff14" stroke-width="1.6"/>` },
   { id: "zebra", name: "Зебра", price: 60, col: () => "#fafafa", idx: "#1b1b1b",
@@ -370,6 +376,7 @@ const ACCS = [
   { id: "wings", name: "Крила янгола", ach: "angel", secret: true },
   { id: "devilwings", name: "Крила диявола", price: 35 },
   { id: "cattail", name: "Котячий хвостик", price: 20 },
+  { id: "teleport", name: "Телепорт", price: 40 },
   // за байти
   { id: "bow", name: "Бантик", price: 15 },
   { id: "flower", name: "Квітка", price: 25 },
@@ -387,8 +394,8 @@ const ACCS = [
 ];
 // місце аксесуара: з одного місця можна вдягти лише одну річ, з різних — скільки завгодно
 const SLOT = { cap: "hat", cowboy: "hat", propeller: "hat", crown: "hat", horn: "hat", halo: "hat", pot: "hat", loafhat: "hat", devil: "hat", wizard: "hat", duck: "hat", catears: "hat", bearhood: "hat", sunhood: "hat", hat67: "hat", glasses67: "eyes",
-  glasses: "eyes", pirate: "eyes", moustache: "face", gasmask: "face", scarf: "neck", devilwings: "back", cattail: "tail", polo: "neck", badgeaplus: "decor", iron: "tool", phones: "ears", bow: "decor", flower: "decor", wings: "back" };
-const SLOT_NAME = { hat: "на голову", eyes: "на очі", face: "на обличчя", neck: "на шию", ears: "навушники", decor: "прикраса", tool: "паяє хвіст", tail: "хвостик", back: "на спину" };
+  glasses: "eyes", pirate: "eyes", moustache: "face", gasmask: "face", scarf: "neck", devilwings: "back", cattail: "tail", teleport: "portal", polo: "neck", badgeaplus: "decor", iron: "tool", phones: "ears", bow: "decor", flower: "decor", wings: "back" };
+const SLOT_NAME = { hat: "на голову", eyes: "на очі", face: "на обличчя", neck: "на шию", ears: "навушники", decor: "прикраса", tool: "паяє хвіст", tail: "хвостик", portal: "ефект", back: "на спину" };
 const accList = () => String(store.profile.acc || "").split(",").map(x => x.trim()).filter(x => x && x !== "none");
 const hasAcc = id => accList().includes(id);
 const ACH = { fail: "Лишитися без хвоста", perfect: "Пройти рівень без жодної помилки", peek: "Підглянути розв'язок задачі", lastdeath: "", loafhat: "", angel: "" };
@@ -497,6 +504,7 @@ function snakeSVG(o) {
   const W = 18 + N * 26 + 58, H = 66;
   const segX = i => 18 + (N - 1 - i) * 26, segY = i => 40 + Math.sin((N - i) * 1.15) * 5;
   let g = "";
+  const parts = [];   // розмітка кожного блоку окремо — для телепорту
   for (let i = N - 1; i >= 0; i--) {
     const x = segX(i), y = segY(i), sk = skinAt(i);
     const ghost = shapeEl(shape, x, y - 11, 7, `class="ghost"`);
@@ -512,12 +520,26 @@ function snakeSVG(o) {
     const dwings = has("devilwings") && i === 2 ? `<g class="wings" stroke="#2a050b" stroke-width="1.2" stroke-linejoin="round">${bat(8, "#4a0b14")}${bat(0, "#8a1424")}</g>` : "";
     // котячий хвостик росте з останнього блоку, того ж кольору, що й блок
     const ctail = has("cattail") && i === len - 1 ? `<path d="M${x + 3} ${y + 5} C${x - 9} ${y + 8} ${x - 15} ${y - 2} ${x - 11} ${y - 13} C${x - 9} ${y - 19} ${x - 3} ${y - 21} ${x - 3} ${y - 15}" fill="none" stroke="rgba(0,0,0,.28)" stroke-width="6.5" stroke-linecap="round"/><path d="M${x + 3} ${y + 5} C${x - 9} ${y + 8} ${x - 15} ${y - 2} ${x - 11} ${y - 13} C${x - 9} ${y - 19} ${x - 3} ${y - 21} ${x - 3} ${y - 15}" fill="none" stroke="${sk.col(i)}" stroke-width="4" stroke-linecap="round"/>` : "";
-    if (i < len) g += `<g class="seg ${i % 2 ? "o" : "e"}" style="--i:${i}">${wings}${dwings}${ctail}${body}</g>`;
-    else if (i < len + falling) g += ghost + `<g class="fall">${body}</g>`;
-    else g += ghost;
+    if (i < len) parts[i] = `<g class="seg ${i % 2 ? "o" : "e"}" style="--i:${i}">${wings}${dwings}${ctail}${body}</g>`;
+    else if (i < len + falling) parts[i] = ghost + `<g class="fall">${body}</g>`;
+    else parts[i] = ghost;
   }
+  // телепорт: блок 2 розрізано навпіл — передня частина (голова, 0, 1, пів блоку 2) переїжджає назад,
+  // а задня (пів блоку 2, 3, 4) — вперед, і між ними видно портали
+  const tele = has("teleport") && !o.crop && !o.tpRun && N >= 4;
+  let dxF = 0, dxB = 0;
+  if (tele) {
+    const cut = segX(2) + 11, left = segX(N - 1), frontLen = segX(0) + 58 - cut;
+    dxF = left - cut; dxB = frontLen + 22;
+    const y2 = segY(2), clip = (id, x0, w) => `<clipPath id="${uid}${id}"><rect x="${x0}" y="0" width="${w}" height="${H}"/></clipPath>`;
+    g += clip("tl", -40, cut + 40) + clip("tr", cut, W + 40);
+    g += `<g transform="translate(${dxB} 0)">${parts.slice(3).reverse().join("")}<g clip-path="url(#${uid}tl)">${parts[2]}</g></g>`;
+    g += `<g transform="translate(${dxF} 0)"><g clip-path="url(#${uid}tr)">${parts[2]}</g>${parts[1] || ""}${parts[0] || ""}</g>`;
+    const portal = (x, c1, c2) => `<ellipse cx="${x}" cy="${y2}" rx="4.5" ry="17" fill="${c2}" opacity=".35"/><ellipse cx="${x}" cy="${y2}" rx="3" ry="15" fill="none" stroke="${c1}" stroke-width="2.6"/>`;
+    g += `<g class="portals">${portal(cut + dxF - 1, "#2b9bd6", "#7cc8ff")}${portal(cut + dxB + 1, "#f08a24", "#ffc27a")}</g>`;
+  } else g += parts.slice().reverse().join("");
   // паяльник стоїть за хвостом і з кожним втраченим блоком переїжджає ближче до голови
-  if (has("iron") && len > 0) { const x = segX(len - 1) - 12, y = segY(len - 1); g += `<g stroke-linecap="round"><path d="M${x - 9} ${y - 33} L${x + 1} ${y - 23}" stroke="#2b5fc7" stroke-width="5.2"/><path d="M${x - 7} ${y - 32} L${x} ${y - 25}" stroke="#4d82e8" stroke-width="1.4"/><path d="M${x + 1} ${y - 23} L${x + 4} ${y - 20}" stroke="#d4d7dc" stroke-width="3.4"/><path d="M${x + 4} ${y - 20} L${x + 9} ${y - 15}" stroke="#9aa1ad" stroke-width="2.2"/><path d="M${x + 9} ${y - 15} l2 2" stroke="#e07b2a" stroke-width="1.8"/><path d="M${x + 14} ${y - 14} l3 -2 M${x + 13} ${y - 17} l1 -3.5 M${x + 15} ${y - 11} l3.5 0" stroke="#ffc83d" stroke-width="1.3"/></g>`; }
+  if (has("iron") && len > 0) { const x = segX(len - 1) - 12, y = segY(len - 1); g += `<g stroke-linecap="round"${tele ? ` transform="translate(${len - 1 >= 2 ? dxB : dxF} 0)"` : ""}><path d="M${x - 9} ${y - 33} L${x + 1} ${y - 23}" stroke="#2b5fc7" stroke-width="5.2"/><path d="M${x - 7} ${y - 32} L${x} ${y - 25}" stroke="#4d82e8" stroke-width="1.4"/><path d="M${x + 1} ${y - 23} L${x + 4} ${y - 20}" stroke="#d4d7dc" stroke-width="3.4"/><path d="M${x + 4} ${y - 20} L${x + 9} ${y - 15}" stroke="#9aa1ad" stroke-width="2.2"/><path d="M${x + 9} ${y - 15} l2 2" stroke="#e07b2a" stroke-width="1.8"/><path d="M${x + 14} ${y - 14} l3 -2 M${x + 13} ${y - 17} l1 -3.5 M${x + 15} ${y - 11} l3.5 0" stroke="#ffc83d" stroke-width="1.3"/></g>`; }
   const sk = skinAt("h"), hx = segX(0) + 24, hy = 38, hc = sk.head || sk.col(-0.6);
   let head = (sk.jitter ? `<rect x="${hx - 2.5}" y="${hy - 14}" width="34" height="28" rx="11" fill="#00e5ff" opacity=".8"/><rect x="${hx + 2.5}" y="${hy - 14}" width="34" height="28" rx="11" fill="#ff2bd6" opacity=".8"/>` : "")
     + (headType === "unicorn" ? unicornHead(hx, hy)
@@ -559,7 +581,16 @@ function snakeSVG(o) {
   if (has("crown")) head += `<path d="M${hx + 8} ${hy - 13} L${hx + 7} ${hy - 25} L${hx + 12.5} ${hy - 19} L${hx + 17} ${hy - 28} L${hx + 21.5} ${hy - 19} L${hx + 27} ${hy - 25} L${hx + 26} ${hy - 13} Z" fill="#f2c230" stroke="#b8860b" stroke-width="1.2"/><circle cx="${hx + 17}" cy="${hy - 17}" r="1.8" fill="#e8483f"/>`;
   const pop = falling ? `<text class="poptxt" x="${segX(len + falling - 1) - 2}" y="12">${esc(popName())}.pop()</text>` : "";
   const t67 = anim === "six7" ? `<text class="t67 a" x="${segX(N - 1) + 4}" y="14">6</text><text class="t67 b" x="${segX(0) + 30}" y="14">7</text>` : "";
-  return `<svg class="snake ${o.cls || ""} ${anim ? "anim-" + anim : ""}" viewBox="${o.crop ? `${segX(len - 1) - 6} 0 ${W - segX(len - 1) + 6} ${H}` : `0 0 ${W} ${H}`}" role="img" aria-label="Змійка, сегментів: ${len} з ${N}">${g}<g class="head">${head}</g>${pop}${t67}</svg>`;
+  // анімація телепорту (безкоштовно до «Телепорту»): змійка ціла пірнає в помаранчевий портал праворуч і виринає з синього ліворуч
+  if (has("teleport") && o.tpRun && !o.crop) {
+    const whole = `${g}<g class="head">${head}</g>`;
+    const ring = (x, c1, c2) => `<ellipse cx="${x}" cy="${segY(2)}" rx="4.5" ry="19" fill="${c2}" opacity=".35"/><ellipse cx="${x}" cy="${segY(2)}" rx="3" ry="17" fill="none" stroke="${c1}" stroke-width="2.6"/>`;
+    return `<svg class="snake ${o.cls || ""}" viewBox="0 0 ${W} ${H}" role="img" aria-label="Змійка проходить крізь портал">
+      <clipPath id="${uid}tp"><rect x="6" y="-20" width="${W - 12}" height="${H + 40}"/></clipPath>
+      <g clip-path="url(#${uid}tp)"><g class="tpmove" style="--tw:${W - 12}px"><g>${whole}</g><g transform="translate(${-(W - 12)} 0)">${whole}</g></g></g>
+      ${ring(6, "#2b9bd6", "#7cc8ff")}${ring(W - 6, "#f08a24", "#ffc27a")}</svg>`;
+  }
+  return `<svg class="snake ${o.cls || ""} ${anim ? "anim-" + anim : ""}" viewBox="${o.crop ? `${segX(len - 1) - 6} 0 ${W - segX(len - 1) + 6} ${H}` : `0 0 ${W} ${H}`}" role="img" aria-label="Змійка, сегментів: ${len} з ${N}">${g}<g class="head"${tele ? ` transform="translate(${dxF} 0)"` : ""}>${head}</g>${pop}${t67}</svg>`;
 }
 
 // ---------- гардероб (спільний для всіх ігор) ----------
