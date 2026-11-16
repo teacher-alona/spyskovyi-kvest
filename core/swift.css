@@ -1,0 +1,24 @@
+/* ---------- SwiftUI: макети екрана ---------- */
+.looks { display: grid; gap: 10px; margin: 10px 0; }
+.looks.mocks { grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); }
+.looks.codes { grid-template-columns: 1fr; }
+.opt.look { position: relative; padding: 10px; display: flex; flex-direction: column; align-items: stretch; gap: 6px; text-align: left; }
+.opt.look pre.code { margin: 0; font-size: .82rem; background: var(--code-bg); }
+.look-n { font: 800 .8rem var(--f-body, sans-serif); color: var(--muted, #666); }
+.look-mock, .look-screen { display: flex; justify-content: center; }
+.look-screen { margin: 8px 0 4px; }
+.ph { width: 168px; height: 300px; border: 5px solid #1c1c1e; border-radius: 26px; background: #f2f2f7; box-sizing: border-box; overflow: hidden; display: flex; flex-direction: column; justify-content: center; box-shadow: 0 2px 6px rgba(0,0,0,.15); }
+.look-screen .ph { width: 200px; height: 356px; }
+.ph-in { padding: 10px; display: flex; flex-direction: column; align-items: center; font: 13px -apple-system, "SF Pro Text", system-ui, sans-serif; color: #000; }
+.m-t { line-height: 1.25; text-align: center; }
+.m-s { line-height: 1; text-align: center; }
+.m-v { display: flex; flex-direction: column; align-items: center; }
+.m-h { display: flex; flex-direction: row; align-items: center; }
+.m-z { display: grid; place-items: center; } .m-z > * { grid-area: 1 / 1; }
+.m-box { display: flex; flex-direction: column; align-items: center; box-sizing: border-box; }
+.m-btn { font-size: 12px; padding: 5px 12px; border-radius: 7px; color: #007aff; text-align: center; }
+.m-btn.auto { padding: 2px 4px; }
+.m-btn.bordered { background: rgba(0,122,255,.14); }
+.m-btn.prom { background: #007aff; color: #fff; font-weight: 600; }
+.m-btn.plain { color: #007aff; padding: 2px 4px; }
+.m-btn.large { font-size: 13px; padding: 8px 18px; border-radius: 10px; }

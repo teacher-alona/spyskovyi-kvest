@@ -6,7 +6,7 @@
  * Аркуші «Прогрес: <гра>»: прогрес у кожній грі — заповнюються самі.
  * Старий аркуш «Прогрес» сам перейменовується на «Прогрес: Списки».
  */
-const VERSION = "2026.11.16-6";
+const VERSION = "2026.11.16-7";
 const SPYSKY_SHEET = "Прогрес: Списки";
 const DATA_HEADER = "Дані гри (не змінювати)";
 
@@ -70,7 +70,7 @@ function findStudent(login, pin) {
 // Нові класи (з аркуша «Учні») і нові ігри додаються самі: клас — з усіма галочками, гра — без галочок.
 // Якщо класу в таблиці немає, він бачить усі ігри.
 const GAME_LIST = [["spysky", "Списковий квест"], ["python6", "Перші кроки в Python"], ["fajly", "Файли і папки"],
-  ["klavishi", "Гарячі клавіші"], ["trenazhery", "Тренажери"], ["robo", "Робототехніка"]];
+  ["klavishi", "Гарячі клавіші"], ["trenazhery", "Тренажери"], ["robo", "Робототехніка"], ["swift", "SwiftUI"]];
 const isTrue = v => v === true || String(v).trim().toUpperCase() === "TRUE";
 function accessSheet(extraCodes) {
   const book = ss();

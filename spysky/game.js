@@ -26,10 +26,14 @@ KV.useGame(GAME, g => ({
   attempts: LEVELS.map(l => (g.attempts || {})[l.id] || 0),
 }), LEVELS.map(l => l.id));
 
-const KW = new Set("def return for in if elif else while break continue True False None and or not import from lambda is pass as with try except".split(" "));
-const BI = new Set("print len range input int str float sum max min sorted list round type enumerate zip map abs".split(" "));
+const SWIFT = GI.lang === "swift"; // гра про Swift: інше підсвічування, відповіді з урахуванням великих літер
+const KW = new Set((SWIFT ? "import struct var let some func return if else true false private for in while self @State #Preview nil"
+  : "def return for in if elif else while break continue True False None and or not import from lambda is pass as with try except").split(" "));
+const BI = new Set((SWIFT ? "Text Image Button VStack HStack ZStack Spacer Color View String Int Bool Double RoundedRectangle Capsule Circle LinearGradient Toggle print max min"
+  : "print len range input int str float sum max min sorted list round type enumerate zip map abs").split(" "));
 function hl(code) {
-  const re = /(#.*$)|("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')|(\b\d+(?:\.\d+)?\b)|([A-Za-z_Ѐ-ӿ][\wЀ-ӿ]*)/gm;
+  const re = SWIFT ? /(\/\/.*$)|("(?:[^"\\]|\\.)*")|(\b\d+(?:\.\d+)?\b)|([@#]?[A-Za-z_Ѐ-ӿ][\wЀ-ӿ]*)/gm
+    : /(#.*$)|("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')|(\b\d+(?:\.\d+)?\b)|([A-Za-z_Ѐ-ӿ][\wЀ-ӿ]*)/gm;
   let out = "", last = 0, m;
   while ((m = re.exec(code))) {
     out += esc(code.slice(last, m.index));
@@ -46,8 +50,8 @@ function hl(code) {
 }
 const pre = code => `<pre class="code">${hl(code)}</pre>`;
 const normOut0 = s => String(s).replace(/\r/g, "").replace(/"/g, "'").split("\n").map(l => l.trim().replace(/\s*([,\[\]\(\)])\s*/g, "$1").replace(/\s+/g, " ")).join("\n").replace(/^\n+|\n+$/g, "");
-const normOut = s => PLAIN ? normOut0(s).toLowerCase() : normOut0(s);
-const normFill = s => { const v = String(s).trim().replace(/"/g, "'").replace(/\s+/g, ""); return PLAIN ? v.toLowerCase() : v; };
+const normOut = s => PLAIN && !SWIFT ? normOut0(s).toLowerCase() : normOut0(s);
+const normFill = s => { const v = String(s).trim().replace(/"/g, "'").replace(/\s+/g, ""); return PLAIN && !SWIFT ? v.toLowerCase() : v; };
 const levelOpen = i => !!GI.openAll || i === 0 || (gd().stars[LEVELS[i - 1].id] || 0) > 0;
 
 // ---------- змійка й гардероб — у core ----------
@@ -462,7 +466,7 @@ function rOrder(it) {
   };
   const reveal = `<p>${PLAIN ? "Правильний порядок:" : "Правильна програма:"}</p>${pre(it.code)}`;
   const check = async () => {
-    const exact = ans.every((v, i) => v === i);
+    const exact = ans.every((v, i) => correct[v] === correct[i]); // однакові рядки (наприклад, «}») взаємозамінні
     let ok = exact, note = "";
     if (!exact && it.out) {
       setActs(`<span class="status">Запускаю програму…</span>`);
