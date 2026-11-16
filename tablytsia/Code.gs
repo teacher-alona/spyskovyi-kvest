@@ -1,12 +1,12 @@
 /**
  * ІТ-квести — сервер для всіх ігор порталу.
  * Аркуш «Учні»: Логін | PIN | Ім'я | Клас — заповнює вчителька.
- * Аркуш «Доступ»: Клас | Ігри — які ігри бачить клас (через кому). Якщо класу немає в списку, він бачить усі ігри.
+ * Аркуш «Доступ»: таблиця з галочками — рядки ігри, стовпці класи. Клас, якого там немає, бачить усі ігри.
  * Аркуш «Профілі»: змійка учня (спільна для всіх ігор) — заповнюється сам.
  * Аркуші «Прогрес: <гра>»: прогрес у кожній грі — заповнюються самі.
  * Старий аркуш «Прогрес» сам перейменовується на «Прогрес: Списки».
  */
-const VERSION = "2026.11.16-5";
+const VERSION = "2026.11.16-6";
 const SPYSKY_SHEET = "Прогрес: Списки";
 const DATA_HEADER = "Дані гри (не змінювати)";
 
@@ -24,7 +24,7 @@ function doPost(e) {
     if (!st) return out({ ok: false, error: "auth" });
 
     if (req.action === "login") {
-      const res = { ok: true, v: 2, version: VERSION, name: st.name, cls: st.cls, access: accessFor(st.cls), profile: readProfile(st.login), games: {} };
+      const res = { ok: true, v: 2, version: VERSION, name: st.name, cls: st.cls, access: accessFor(st.cls, (req.games || []).map(g => g.id)), profile: readProfile(st.login), games: {} };
       const games = req.games || [{ id: "spysky", sheet: SPYSKY_SHEET }];
       games.forEach(g => { res.games[g.id] = readGame(g.sheet, st.login); });
       // стара версія гри чекає data / levels / bytes
@@ -65,24 +65,65 @@ function findStudent(login, pin) {
   }
   return null;
 }
-function accessSheet() {
-  let sh = ss().getSheetByName("Доступ");
-  if (sh) return sh;
-  sh = ss().insertSheet("Доступ");
-  sh.getRange(1, 1, 1, 3).setValues([["Клас", "Ігри", "Підказка"]]).setFontWeight("bold");
-  const classes = [];
-  ss().getSheetByName("Учні").getDataRange().getDisplayValues().slice(1).forEach(r => { if (r[3] && classes.indexOf(r[3]) < 0) classes.push(r[3]); });
-  if (classes.length) sh.getRange(2, 1, classes.length, 2).setValues(classes.map(c => [c, "spysky"]));
-  sh.getRange(2, 3).setValue("Ігри пишемо через кому. Коди ігор: spysky — «Списковий квест», python6 — «Перші кроки в Python», fajly — «Файли і папки», klavishi — «Гарячі клавіші», trenazhery — «Тренажери», robo — «Робототехніка». Якщо класу немає в списку, він бачить усі ігри.");
-  sh.setFrozenRows(1);
-  return sh;
-}
-function accessFor(cls) {
-  const rows = accessSheet().getDataRange().getDisplayValues();
-  for (let i = 1; i < rows.length; i++) {
-    if (norm(rows[i][0]) === norm(cls)) return String(rows[i][1]).split(",").map(norm).filter(x => x);
+// ---------- доступ: таблиця з прапорцями ----------
+// Рядки — ігри, стовпці — класи; галочка на перетині означає, що клас бачить гру.
+// Нові класи (з аркуша «Учні») і нові ігри додаються самі: клас — з усіма галочками, гра — без галочок.
+// Якщо класу в таблиці немає, він бачить усі ігри.
+const GAME_LIST = [["spysky", "Списковий квест"], ["python6", "Перші кроки в Python"], ["fajly", "Файли і папки"],
+  ["klavishi", "Гарячі клавіші"], ["trenazhery", "Тренажери"], ["robo", "Робототехніка"]];
+const isTrue = v => v === true || String(v).trim().toUpperCase() === "TRUE";
+function accessSheet(extraCodes) {
+  const book = ss();
+  let sh = book.getSheetByName("Доступ");
+  // що вже позначено: { код: { клас: true/false } }, порядок класів і ігор
+  const marks = {}, classes = [], games = [];
+  const addGame = (code, title) => { code = norm(code); if (code && !games.some(g => g[0] === code)) games.push([code, title || code]); };
+  let changed = !sh;
+  if (sh) {
+    const v = sh.getDataRange().getValues();
+    if (norm(v[0][0]) === "клас") {
+      // старий вигляд «Клас | Ігри»: переносимо в нову таблицю, а старий аркуш лишаємо як «Доступ (старий)»
+      const old = {};
+      v.slice(1).forEach(r => { if (String(r[0]).trim()) old[String(r[0]).trim()] = String(r[1]).split(",").map(norm).filter(x => x); });
+      sh.setName("Доступ (старий)"); sh = null; changed = true;
+      GAME_LIST.forEach(g => addGame(g[0], g[1]));
+      Object.keys(old).forEach(c => { classes.push(c); games.forEach(g => { (marks[g[0]] = marks[g[0]] || {})[c] = old[c].indexOf(g[0]) >= 0; }); });
+    } else {
+      const head = v[0].slice(2).map(x => String(x).trim());
+      head.forEach(c => { if (c) classes.push(c); });
+      v.slice(1).forEach(r => { const code = norm(r[1]); if (!code) return; addGame(code, String(r[0]).trim()); marks[code] = marks[code] || {}; head.forEach((c, k) => { if (c) marks[code][c] = isTrue(r[2 + k]); }); });
+    }
   }
-  return null;
+  const before = games.length;
+  GAME_LIST.forEach(g => addGame(g[0], g[1]));
+  (extraCodes || []).forEach(c => addGame(c));
+  if (games.length !== before) changed = true;
+  // класи з аркуша «Учні», яких ще немає в таблиці: бачать усе, як і раніше
+  const fresh = [];
+  book.getSheetByName("Учні").getDataRange().getDisplayValues().slice(1).forEach(r => {
+    const c = String(r[3] || "").trim();
+    if (c && !isTeacher(c) && !classes.some(x => norm(x) === norm(c)) && !fresh.some(x => norm(x) === norm(c))) fresh.push(c);
+  });
+  fresh.sort((a, b) => (parseInt(a) || 99) - (parseInt(b) || 99) || a.localeCompare(b, "uk"));
+  fresh.forEach(c => { classes.push(c); games.forEach(g => { (marks[g[0]] = marks[g[0]] || {})[c] = true; }); });
+  if (fresh.length) changed = true;
+  if (changed) {
+    if (!sh) sh = book.insertSheet("Доступ"); else sh.clear();
+    const rows = [["Гра", "Код"].concat(classes)].concat(games.map(g => [g[1], g[0]].concat(classes.map(c => !!(marks[g[0]] || {})[c]))));
+    sh.getRange(1, 1, rows.length, rows[0].length).setValues(rows);
+    sh.getRange(1, 1, 1, rows[0].length).setFontWeight("bold");
+    if (classes.length && games.length) sh.getRange(2, 3, games.length, classes.length).insertCheckboxes();
+    sh.getRange(1, 1).setNote("Постав галочку на перетині гри й класу — і клас бачитиме цю гру. Нові класи з аркуша «Учні» й нові ігри з'являються тут самі. Клас, якого тут немає, бачить усі ігри. Колонку «Код» не змінюй.");
+    sh.setFrozenRows(1); sh.setFrozenColumns(2);
+  }
+  return { sh, classes, games, marks };
+}
+function accessFor(cls, extraCodes) {
+  const a = accessSheet(extraCodes);
+  if (isTeacher(cls)) return null;   // учитель завжди бачить усі ігри
+  const col = a.classes.find(c => norm(c) === norm(cls));
+  if (!col) return null;
+  return a.games.filter(g => (a.marks[g[0]] || {})[col]).map(g => g[0]);
 }
 
 // ---------- профіль (змійка) ----------
