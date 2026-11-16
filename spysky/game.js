@@ -137,6 +137,27 @@ async function prepareItems(items) {
 }
 const itemType = w => w.pick ? w.pick[0].t : w.gen ? (w._t || (w._t = w.gen().t)) : w.t;
 
+// ---------- міні-події на рівні: змінюють байти за цей рівень ----------
+const EVENTS = {
+  storm: { name: "Піщана буря", icon: "🌪️", mult: 5, text: "Байти за цей рівень ×5!" },
+  acid: { name: "Кислотний дощ", icon: "☣️", mult: 0.5, text: "Байти за цей рівень ×0,5. Тримайся!" },
+  snow: { name: "Снігопад", icon: "❄️", mult: 1.5, text: "Байти за цей рівень ×1,5!" },
+};
+function rollEvent() {   // 1% — буря, 5% — кислотний дощ, 10% — снігопад
+  // для автоматичних перевірок подію можна задати лише на локальному тестовому сервері
+  if (window.__forceEv !== undefined && /^(localhost|127\.0\.0\.1)$/.test(location.hostname)) { const f = window.__forceEv; delete window.__forceEv; return f; }
+  const r = Math.random();
+  return r < 0.01 ? "storm" : r < 0.06 ? "acid" : r < 0.16 ? "snow" : "";
+}
+function showEvent(ev, replay) {
+  document.body.classList.remove("ev-storm", "ev-acid", "ev-snow");
+  let fx = document.getElementById("evfx"); if (fx) fx.remove();
+  if (!ev) return;
+  const e = EVENTS[ev];
+  document.body.classList.add("ev-" + ev);
+  fx = document.createElement("div"); fx.id = "evfx"; fx.setAttribute("aria-hidden", "true"); document.body.appendChild(fx);
+  KV.toast(`${e.icon} ${e.name}! ${e.text}${replay ? " Але за вже пройдений рівень байтів не дають." : ""}`);
+}
 async function startLevel(li) {
   document.body.classList.remove("is-map"); document.body.classList.add("is-play");
   const lv = LEVELS[li];
@@ -155,7 +176,8 @@ async function startLevel(li) {
     $("#map").onclick = renderMap;
     return;
   }
-  run = { li, idx: 0, hearts: MAX_HEARTS, shown: MAX_HEARTS, mistakes: 0, leaves: 0, awayMs: 0, items, st: {} };
+  run = { li, idx: 0, hearts: MAX_HEARTS, shown: MAX_HEARTS, mistakes: 0, leaves: 0, awayMs: 0, items, st: {}, ev: rollEvent() };
+  showEvent(run.ev, !!gd().stars[lv.id]);
   gd().attempts = gd().attempts || {}; gd().attempts[lv.id] = (gd().attempts[lv.id] || 0) + 1; save();
   renderItem();
   scrollTo(0, 0);
@@ -206,7 +228,7 @@ function next() {
 
 // ---------- карта ----------
 function renderMap() {
-  run = null; hideGuard(); leaveFullscreen();
+  run = null; hideGuard(); leaveFullscreen(); showEvent("");
   document.body.classList.add("is-map"); document.body.classList.remove("is-play");
   const total = LEVELS.reduce((s, l) => s + (gd().stars[l.id] || 0), 0);
   const n = LEVELS.length;
@@ -566,7 +588,10 @@ function renderDone() {
   if (s > prev) { gd().stars[lv.id] = s; }
   const sk = KV.streakTouch();
   // байти дають лише за перше успішне проходження рівня (коли зірок ще не було)
-  const earned = prev ? 0 : (run.clean || 0) + (run.mistakes === 0 ? KV.BYTES_PERFECT : 0);
+  const ev = run.ev && EVENTS[run.ev], baseEarned = prev ? 0 : (run.clean || 0) + (run.mistakes === 0 ? KV.BYTES_PERFECT : 0);
+  const earned = Math.round(baseEarned * (ev ? ev.mult : 1));
+  if (run.ev === "storm" && earned > 40) achieve("dune");
+  showEvent("");
   if (earned) gd().bytes = (gd().bytes || 0) + earned;
   save(); KV.scheduleSync(true);
   if (run.mistakes === 0) achieve("perfect");
@@ -583,7 +608,8 @@ function renderDone() {
     ${starStr(s, "bigstars")}
     ${fresh.length ? `<div class="unlock">Відкрито в гардеробі: ${fresh.map(x => `<b>${esc(x.name)}</b>`).join(", ")}</div>` : ""}
     ${sk.grew ? `<div class="streakgot">🔥 Серія: ${sk.n} ${KV.daysWord(sk.n)} поспіль!${sk.bonus ? ` +${sk.bonus} байтів за ${sk.n} ${KV.daysWord(sk.n)}` : ""}</div>` : ""}
-    <div class="bytesgot">${earned ? `+${earned} ${KV.bytesWord(earned)}${run.mistakes === 0 ? ` (з них ${KV.BYTES_PERFECT} — бонус за рівень без помилок)` : ""}. Усього: ${KV.bytesLeft()}` : prev ? `За повторне проходження байтів не дають. У тебе ${KV.bytesLeft()} ${KV.bytesWord(KV.bytesLeft())}` : ""}</div>
+    ${ev ? `<div class="evgot">${ev.icon} ${ev.name}: байти ×${String(ev.mult).replace(".", ",")}</div>` : ""}
+    <div class="bytesgot">${earned ? `+${earned} ${KV.bytesWord(earned)}${run.mistakes === 0 && !ev ? ` (з них ${KV.BYTES_PERFECT} — бонус за рівень без помилок)` : ""}. Усього: ${KV.bytesLeft()}` : prev ? `За повторне проходження байтів не дають. У тебе ${KV.bytesLeft()} ${KV.bytesWord(KV.bytesLeft())}` : ""}</div>
     <p>Помилок: ${run.mistakes}. ${s < 3 ? "Три зірки дають, якщо помилок не більше однієї." : run.mistakes === 0 ? "Чистий рівень!" : "Майже ідеально!"}${s > prev && prev ? " Новий рекорд!" : ""}${run.leaves ? ` Виходів з гри: ${run.leaves}${run.awayMs >= GRACE ? `, поза грою ${fmtTime(run.awayMs)}` : ""}.` : ""}${run.peeks ? ` Коротких перемикань на інше вікно: ${run.peeks}.` : ""} Це твоя ${gd().attempts[lv.id] || 1}-а спроба цього рівня.</p>
     <div class="syncbox">${KV.syncLabel()}</div>
     <div class="row">${hasNext ? `<button class="btn" id="nx">Наступний рівень →</button>` : ""}<button class="btn ghost" id="map">На карту</button><button class="link" id="again">Пройти ще раз</button>${fresh.length ? `<button class="link" id="ward">Приміряти</button>` : ""}</div>

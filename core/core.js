@@ -2,7 +2,7 @@
    змійка з гардеробом, заслона при виході з гри. Кожна гра підключає цей файл і додає свої рівні. */
 (function () {
 "use strict";
-const VERSION = "2026.11.16-41";
+const VERSION = "2026.11.16-43";
 const API = "https://script.google.com/macros/s/AKfycbzPtRGlYI4osS-xL-J_pAZ2A2HxTWUeuecjy9-13MgAdFIzkDnYuCr1qmLHqZvqWkQMWQ/exec";
 
 // Усі ігри порталу. sheet — назва аркуша з прогресом у таблиці вчительки.
@@ -345,6 +345,10 @@ const SKINS = [
   { id: "crow", name: "Ворон", price: 25, col: () => "#1d2230", idx: "#9fb0d6", head: "#161a25",
     seg: (x, y) => `<path d="M${x + 1} ${y + 2} q5 6 10 0 q5 6 10 0 M${x + 1} ${y - 5} q5 6 10 0 q5 6 10 0" stroke="#3b4a72" stroke-width="1.6" fill="none"/><path d="M${x + 3} ${y - 9} q6 -3 12 0" stroke="#5c6f9e" stroke-width="1.2" fill="none" opacity=".7"/>`,
     headDeco: (hx, hy) => `<path d="M${hx + 32} ${hy - 1} L${hx + 45} ${hy + 3} L${hx + 32} ${hy + 7} Z" fill="#f2b33d" stroke="#b37a12" stroke-width="1" stroke-linejoin="round"/><path d="M${hx + 32} ${hy + 3} L${hx + 44} ${hy + 3}" stroke="#b37a12" stroke-width=".8"/><path d="M${hx + 6} ${hy - 14} q3 -7 8 -6 q-1 4 -3 6" fill="#161a25" stroke="#3b4a72" stroke-width="1"/>` },
+  // секрет: понад 40 байтів за один рівень у піщану бурю
+  { id: "sandgiant", name: "Піщаний велетень", ach: "dune", secret: true, col: i => mix("#d9a55b", "#b97a35", i / N), idx: "#5a3410", head: "#c98a42", rx: 9,
+    seg: (x, y) => `<path d="M${x + 2} ${y - 6} q9 -4 18 0 M${x + 2} ${y} q9 -4 18 0 M${x + 2} ${y + 6} q9 -4 18 0" stroke="#8e5a22" stroke-width="1.4" fill="none" opacity=".75"/><circle cx="${x + 4}" cy="${y - 13}" r=".9" fill="#e8c48a"/><circle cx="${x + 19}" cy="${y + 13}" r="1.1" fill="#e8c48a"/>`,
+    headDeco: (hx, hy) => `<path d="M${hx + 3} ${hy - 10} q14 -5 28 0" stroke="#8e5a22" stroke-width="1.4" fill="none" opacity=".75"/><circle cx="${hx + 31}" cy="${hy + 10}" r="1" fill="#e8c48a"/>` },
   { id: "neon", name: "Неон", price: 40, col: () => "#141826", idx: "#39ff14", head: "#141826", headStroke: "#39ff14",
     seg: (x, y) => `<rect x="${x + 2.5}" y="${y - 8.5}" width="17" height="17" rx="5" fill="none" stroke="#39ff14" stroke-width="1.6"/>` },
   { id: "zebra", name: "Зебра", price: 60, col: () => "#fafafa", idx: "#1b1b1b",
@@ -398,7 +402,7 @@ const SLOT = { cap: "hat", cowboy: "hat", propeller: "hat", crown: "hat", horn: 
 const SLOT_NAME = { hat: "на голову", eyes: "на очі", face: "на обличчя", neck: "на шию", ears: "навушники", decor: "прикраса", tool: "паяє хвіст", tail: "хвостик", portal: "ефект", back: "на спину" };
 const accList = () => String(store.profile.acc || "").split(",").map(x => x.trim()).filter(x => x && x !== "none");
 const hasAcc = id => accList().includes(id);
-const ACH = { fail: "Лишитися без хвоста", perfect: "Пройти рівень без жодної помилки", peek: "Підглянути розв'язок задачі", lastdeath: "", loafhat: "", angel: "" };
+const ACH = { fail: "Лишитися без хвоста", perfect: "Пройти рівень без жодної помилки", peek: "Підглянути розв'язок задачі", lastdeath: "", loafhat: "", angel: "", dune: "" };
 // ---------- байти ----------
 const BYTES_PERFECT = 5;
 const bytesEarned = () => Object.values(store.games).reduce((s, g) => s + ((g && g.bytes) || 0), 0) + (store.profile.bonus || 0);
