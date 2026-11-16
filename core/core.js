@@ -2,7 +2,7 @@
    змійка з гардеробом, заслона при виході з гри. Кожна гра підключає цей файл і додає свої рівні. */
 (function () {
 "use strict";
-const VERSION = "2026.11.16-40";
+const VERSION = "2026.11.16-41";
 const API = "https://script.google.com/macros/s/AKfycbzPtRGlYI4osS-xL-J_pAZ2A2HxTWUeuecjy9-13MgAdFIzkDnYuCr1qmLHqZvqWkQMWQ/exec";
 
 // Усі ігри порталу. sheet — назва аркуша з прогресом у таблиці вчительки.
@@ -590,7 +590,7 @@ function snakeSVG(o) {
       <g clip-path="url(#${uid}tp)"><g class="tpmove" style="--tw:${W - 12}px"><g>${whole}</g><g transform="translate(${-(W - 12)} 0)">${whole}</g></g></g>
       ${ring(6, "#2b9bd6", "#7cc8ff")}${ring(W - 6, "#f08a24", "#ffc27a")}</svg>`;
   }
-  return `<svg class="snake ${o.cls || ""} ${anim ? "anim-" + anim : ""}" viewBox="${o.crop ? `${segX(len - 1) - 6} 0 ${W - segX(len - 1) + 6} ${H}` : `0 0 ${W} ${H}`}" role="img" aria-label="Змійка, сегментів: ${len} з ${N}">${g}<g class="head"${tele ? ` transform="translate(${dxF} 0)"` : ""}>${head}</g>${pop}${t67}</svg>`;
+  return `<svg class="snake ${o.cls || ""} ${anim ? "anim-" + anim : ""}" viewBox="${o.crop ? `${segX(len - 1) - 6} 0 ${W - segX(len - 1) + 6} ${H}` : `0 0 ${W} ${H}`}" role="img" aria-label="Змійка, сегментів: ${len} з ${N}">${g}${tele ? `<g transform="translate(${dxF} 0)">` : ""}<g class="head">${head}</g>${tele ? "</g>" : ""}${pop}${t67}</svg>`;
 }
 
 // ---------- гардероб (спільний для всіх ігор) ----------
