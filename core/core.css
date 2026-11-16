@@ -366,3 +366,13 @@ textarea { resize: vertical; line-height: 1.6; }
 @keyframes ev-storm { from { background-position: 0 0, 0 0, 0 0; } to { background-position: 80px 6px, 70px -4px, 100% 0; } }
 .evgot { font-weight: 800; margin: 4px 0; }
 @media (prefers-reduced-motion: reduce) { #evfx { animation: none !important; } }
+
+/* «Зоряний шлях» і фон за змійкою */
+.snake .tw { animation: kv-twinkle 1.8s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
+.snake .tw.big { animation-duration: 2.6s; }
+@keyframes kv-twinkle { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: .7; transform: scale(.82); } }
+.snake .sbg .bgi { animation: kv-bg 3s ease-in-out infinite; }
+.snake .bg-stars .bgi { animation-name: kv-bgtw; }
+@keyframes kv-bg { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-2px); } }
+@keyframes kv-bgtw { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
+@media (prefers-reduced-motion: reduce) { .snake .tw, .snake .sbg .bgi { animation: none; } }

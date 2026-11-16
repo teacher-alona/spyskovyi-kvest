@@ -62,8 +62,10 @@ async function fillBoard() {
   // новий скрипт каже прямо, чи це вчитель; старий давав повний список (all) лише вчителю
   const teacher = r.teacher !== undefined ? !!r.teacher : !!r.all;
   const clsTabs = (r.classes || []).slice().sort((a, b) => (parseInt(a) || 99) - (parseInt(b) || 99) || a.localeCompare(b, "uk")).map(c => ["c:" + c, shortCls(c)]);
-  const tabs = teacher ? [["school", "Усі"], ...clsTabs] : [["cls", "Мій клас"], ["school", "Усі"], ...clsTabs];
-  if (!lbTab || !tabs.some(t => t[0] === lbTab)) lbTab = tabs[0][0];
+  // учень: вкладка свого класу вже є серед класів, тож окремої «Мій клас» не треба — просто відкриваємо його клас
+  const mine = !teacher && ((r.cls || []).find(x => x.me) || (r.cls || [])[0] || {}).cls;
+  const tabs = teacher || clsTabs.some(t => t[0] === "c:" + mine) ? [["school", "Усі"], ...clsTabs] : [["cls", "Мій клас"], ["school", "Усі"], ...clsTabs];
+  if (!lbTab || !tabs.some(t => t[0] === lbTab)) lbTab = mine && tabs.some(t => t[0] === "c:" + mine) ? "c:" + mine : tabs[0][0];
   const list = (lbTab === "cls" ? r.cls : lbTab === "school" ? (r.all || r.school) : r.all.filter(x => x.cls === lbTab.slice(2))).slice().sort((a, b) => b.stars - a.stars || a.name.localeCompare(b.name, "uk"));
   // однакова кількість зірок — однакове місце, а наступне йде по порядку без пропусків (1, 2, 2, 3…); у межах місця — за абеткою
   const rankOf = i => new Set(list.slice(0, i).map(y => y.stars).filter(v => v > list[i].stars)).size;

@@ -2,7 +2,7 @@
    змійка з гардеробом, заслона при виході з гри. Кожна гра підключає цей файл і додає свої рівні. */
 (function () {
 "use strict";
-const VERSION = "2026.11.16-47";
+const VERSION = "2026.11.17-48";
 const API = "https://script.google.com/macros/s/AKfycbzPtRGlYI4osS-xL-J_pAZ2A2HxTWUeuecjy9-13MgAdFIzkDnYuCr1qmLHqZvqWkQMWQ/exec";
 
 // Усі ігри порталу. sheet — назва аркуша з прогресом у таблиці вчительки.
@@ -397,11 +397,13 @@ const ACCS = [
   { id: "iron", name: "Паяльник", price: 25 },
   { id: "hat67", name: "Шапка 67", price: 20 },
   { id: "loafhat", name: "Батон на голові", ach: "loafhat", secret: true },
+  // відкривається, коли куплено обидві речі
+  { id: "starry", name: "Зоряний шлях", combo: ["galaxy", "star"] },
 ];
 // місце аксесуара: з одного місця можна вдягти лише одну річ, з різних — скільки завгодно
 const SLOT = { cap: "hat", cowboy: "hat", propeller: "hat", crown: "hat", horn: "hat", halo: "hat", pot: "hat", loafhat: "hat", devil: "hat", wizard: "hat", duck: "hat", catears: "hat", bearhood: "hat", sunhood: "hat", hat67: "hat", glasses67: "eyes",
-  glasses: "eyes", pirate: "eyes", moustache: "face", gasmask: "face", scarf: "neck", devilwings: "back", cattail: "tail", teleport: "portal", polo: "neck", badgeaplus: "decor", iron: "tool", phones: "ears", bow: "decor", flower: "decor", wings: "back" };
-const SLOT_NAME = { hat: "на голову", eyes: "на очі", face: "на обличчя", neck: "на шию", ears: "навушники", decor: "прикраса", tool: "паяє хвіст", tail: "хвостик", portal: "ефект", back: "на спину" };
+  glasses: "eyes", pirate: "eyes", moustache: "face", gasmask: "face", scarf: "neck", devilwings: "back", cattail: "tail", teleport: "portal", polo: "neck", badgeaplus: "decor", iron: "tool", phones: "ears", bow: "decor", flower: "decor", wings: "back", starry: "sky" };
+const SLOT_NAME = { hat: "на голову", eyes: "на очі", face: "на обличчя", neck: "на шию", ears: "навушники", decor: "прикраса", tool: "паяє хвіст", tail: "хвостик", portal: "ефект", back: "на спину", sky: "зорі" };
 const accList = () => String(store.profile.acc || "").split(",").map(x => x.trim()).filter(x => x && x !== "none");
 const hasAcc = id => accList().includes(id);
 const ACH = { fail: "Лишитися без хвоста", perfect: "Пройти рівень без жодної помилки", peek: "Підглянути розв'язок задачі", lastdeath: "", loafhat: "", angel: "", dune: "" };
@@ -462,15 +464,42 @@ const ANIMS = [
   { id: "crawl", name: "Повзе", price: 20 },
   { id: "six7", name: "Танець 67", price: 30 },
 ];
+// фон за змійкою: візерунок на прозорому тлі
+const BGS = [
+  { id: "none", name: "Без фону", need: 0 },
+  { id: "stars", name: "Зорі", price: 20 },
+  { id: "snow", name: "Сніжинки", price: 20 },
+  { id: "hearts", name: "Сердечка", price: 20 },
+  { id: "bubbles", name: "Бульбашки", price: 15 },
+  { id: "code", name: "Нулі й одиниці", price: 25 },
+  { id: "notes", name: "Ноти", price: 20 },
+];
+// зірка з n променями: r1 — до кінчика, r2 — до западини
+const starPts = (cx, cy, n, r1, r2) => Array.from({ length: n * 2 }, (_, k) => { const r = k % 2 ? r2 : r1, a = -Math.PI / 2 + k * Math.PI / n; return `${(cx + r * Math.cos(a)).toFixed(1)},${(cy + r * Math.sin(a)).toFixed(1)}`; }).join(" ");
+// місця для візерунка фону: однакові щоразу, рівномірно по всій ширині
+const BG_SPOTS = (() => { let q = 7; const r = () => (q = (q * 1103515245 + 12345) % 2147483648) / 2147483648;
+  return Array.from({ length: 44 }, (_, k) => ({ x: 4 + (k % 11) * 20.5 + r() * 14, y: 4 + Math.floor(k / 11) * 15 + r() * 10, s: 0.65 + r() * 0.55, d: r() * 2.4 })); })();
+function bgEl(id, W) {
+  const sc = W / 230;
+  const item = (sp, k) => { const x = sp.x * sc, y = sp.y, r = sp.s;
+    if (id === "stars") return k % 3 ? `<circle cx="${x}" cy="${y}" r="${1.1 * r}" fill="#ffe27a"/>` : `<polygon points="${starPts(x, y, 5, 4 * r, 1.8 * r)}" fill="#ffd43b"/>`;
+    if (id === "snow") return `<g stroke="#8ec5ff" stroke-width="${0.9 * r}" stroke-linecap="round"><path d="M${x} ${y - 4 * r} V${y + 4 * r} M${x - 3.5 * r} ${y - 2 * r} L${x + 3.5 * r} ${y + 2 * r} M${x - 3.5 * r} ${y + 2 * r} L${x + 3.5 * r} ${y - 2 * r}"/></g>`;
+    if (id === "hearts") return `<path d="M${x} ${y + 3.5 * r} C${x - 5 * r} ${y} ${x - 3.5 * r} ${y - 4.5 * r} ${x} ${y - 1.6 * r} C${x + 3.5 * r} ${y - 4.5 * r} ${x + 5 * r} ${y} ${x} ${y + 3.5 * r} Z" fill="#ff7aa8" opacity=".8"/>`;
+    if (id === "bubbles") return `<circle cx="${x}" cy="${y}" r="${3.4 * r}" fill="rgba(120,200,255,.18)" stroke="#6cc0f5" stroke-width=".9"/><circle cx="${x - 1.1 * r}" cy="${y - 1.2 * r}" r="${0.8 * r}" fill="#fff" opacity=".8"/>`;
+    if (id === "code") return `<text x="${x}" y="${y + 3}" font-family="monospace" font-size="${7 * r}" font-weight="700" fill="#2fbf5b" opacity=".75" text-anchor="middle">${k % 2 ? 1 : 0}</text>`;
+    if (id === "notes") return `<text x="${x}" y="${y + 4}" font-size="${9 * r}" fill="#9b6dff" opacity=".8" text-anchor="middle">${k % 2 ? "♪" : "♫"}</text>`;
+    return ""; };
+  return `<g class="sbg bg-${id}">${BG_SPOTS.map((sp, k) => `<g class="bgi" style="animation-delay:-${sp.d.toFixed(2)}s">${item(sp, k)}</g>`).join("")}</g>`;
+}
 // комплекти: усе разом дешевше
 const SETS = [{ id: "set67", name: "Комплект 67", price: 67, items: ["tiger67", "glasses67", "hat67", "six7"] }];
-const ALLITEMS = () => [...SKINS, ...ACCS, ...ANIMS, ...SHAPES, ...HEADS, ...SETS];
+const ALLITEMS = () => [...SKINS, ...ACCS, ...ANIMS, ...SHAPES, ...HEADS, ...BGS, ...SETS];
 const setCost = st => Math.max(0, st.price - st.items.reduce((s, id) => { const x = ALLITEMS().find(y => y.id === id); return s + (x && isOpen(x) ? x.price : 0); }, 0));
 // витрачене: тепер ведемо рахунок (spent); для старих покупок рахуємо за списком
 const bytesSpent = () => Math.max(store.profile.spent || 0, (store.profile.bought || []).reduce((s, id) => { const x = [...SKINS, ...ACCS].find(y => y.id === id); return s + (x && x.price || 0); }, 0));
 const bytesLeft = () => Math.max(0, bytesEarned() - bytesSpent());
 const bytesWord = n => { n = Math.abs(n) % 100; const d = n % 10; return n > 10 && n < 20 ? "байтів" : d === 1 ? "байт" : d >= 2 && d <= 4 ? "байти" : "байтів"; };
-const isOpen = x => x.price ? ((store.profile.bought || []).includes(x.id) || SETS.some(st => st.items.includes(x.id) && (store.profile.bought || []).includes(st.id))) : x.ach ? !!(store.profile.ach && store.profile.ach[x.ach]) : x.need <= totalStars();
+const isOpen = x => x.combo ? x.combo.every(id => { const y = ALLITEMS().find(z => z.id === id); return y && isOpen(y); }) : x.price ? ((store.profile.bought || []).includes(x.id) || SETS.some(st => st.items.includes(x.id) && (store.profile.bought || []).includes(st.id))) : x.ach ? !!(store.profile.ach && store.profile.ach[x.ach]) : x.need <= totalStars();
 const openIds = () => [...SKINS, ...ACCS].filter(isOpen).map(x => x.id);
 function achieve(key) {
   const p = store.profile; p.ach = p.ach || {};
@@ -508,6 +537,8 @@ function snakeSVG(o) {
   const animIt = ANIMS.find(a => a.id === (o.anim || (String(o.cls || "").includes("big") ? p.anim : "")));
   const anim = animIt && animIt.id !== "none" && (o.anim || isOpen(animIt)) ? animIt.id : "";
   const W = 18 + N * 26 + 58, H = 66;
+  const bgIt = BGS.find(x => x.id === (o.bg || p.bg));
+  const bg = !o.crop && bgIt && bgIt.id !== "none" && (o.bg || isOpen(bgIt)) ? bgEl(bgIt.id, W) : "";
   const segX = i => 18 + (N - 1 - i) * 26, segY = i => 40 + Math.sin((N - i) * 1.15) * 5;
   let g = "";
   const parts = [];   // розмітка кожного блоку окремо — для телепорту
@@ -526,7 +557,9 @@ function snakeSVG(o) {
     const dwings = has("devilwings") && i === 2 ? `<g class="wings" stroke="#2a050b" stroke-width="1.2" stroke-linejoin="round">${bat(8, "#4a0b14")}${bat(0, "#8a1424")}</g>` : "";
     // котячий хвостик росте з останнього блоку, того ж кольору, що й блок
     const ctail = has("cattail") && i === len - 1 ? `<path d="M${x + 3} ${y + 5} C${x - 9} ${y + 8} ${x - 15} ${y - 2} ${x - 11} ${y - 13} C${x - 9} ${y - 19} ${x - 3} ${y - 21} ${x - 3} ${y - 15}" fill="none" stroke="rgba(0,0,0,.28)" stroke-width="6.5" stroke-linecap="round"/><path d="M${x + 3} ${y + 5} C${x - 9} ${y + 8} ${x - 15} ${y - 2} ${x - 11} ${y - 13} C${x - 9} ${y - 19} ${x - 3} ${y - 21} ${x - 3} ${y - 15}" fill="none" stroke="${sk.col(i)}" stroke-width="4" stroke-linecap="round"/>` : "";
-    if (i < len) parts[i] = `<g class="seg ${i % 2 ? "o" : "e"}" style="--i:${i}">${wings}${dwings}${ctail}${body}</g>`;
+    // «Зоряний шлях»: над кожним блоком хвоста — п'ятикутна зірочка
+    const sstar = has("starry") ? `<polygon class="tw" style="animation-delay:-${(i * 0.45).toFixed(2)}s" points="${starPts(x + 11, y - 18 - (i % 2) * 4, 5, 4.6, 2)}" fill="#ffd43b" stroke="#c79a12" stroke-width=".8" stroke-linejoin="round"/>` : "";
+    if (i < len) parts[i] = `<g class="seg ${i % 2 ? "o" : "e"}" style="--i:${i}">${wings}${dwings}${ctail}${body}${sstar}</g>`;
     else if (i < len + falling) parts[i] = ghost + `<g class="fall">${body}</g>`;
     else parts[i] = ghost;
   }
@@ -551,6 +584,8 @@ function snakeSVG(o) {
     + (headType === "unicorn" ? unicornHead(hx, hy)
       : `<rect x="${hx}" y="${hy - 14}" width="34" height="28" rx="${sk.headRx ?? 11}" fill="${hc}" stroke="${sk.headStroke || "rgba(0,0,0,.25)"}" stroke-width="${sk.headStroke ? 3 : 1.5}"/>`
         + (sk.headDeco ? sk.headDeco(hx, hy, acc) : ""));
+  // десятикутна зірка над головою — на самому верху, вище за шапки
+  const bigStar = has("starry") ? `<g class="tw big"><polygon points="${starPts(hx + 17, 9, 10, 8.5, 4.2)}" fill="#ffd43b" stroke="#c79a12" stroke-width="1" stroke-linejoin="round"/><circle cx="${hx + 17}" cy="9" r="2" fill="#fff6c4"/></g>` : "";
   if (has("scarf")) head = `<rect x="${hx - 7}" y="${hy + 1}" width="13" height="10" rx="3" fill="#e8483f"/><rect x="${hx - 4}" y="${hy + 8}" width="6" height="14" rx="2" fill="#e8483f" transform="rotate(14 ${hx - 1} ${hy + 8})"/><rect x="${hx - 7}" y="${hy + 4}" width="13" height="2.5" fill="#fff" opacity=".8"/>` + head;
   const eye = (ex) => `<circle cx="${ex}" cy="${hy - 4}" r="4.6" fill="#fff"/><circle cx="${ex + 1.3}" cy="${hy - 3.6}" r="2.3" fill="#1b1b1b"/>`;
   head += mood === "sad"
@@ -585,6 +620,7 @@ function snakeSVG(o) {
   if (has("hat67")) head += `<path d="M${hx + 3} ${hy - 12} Q${hx + 17} ${hy - 36} ${hx + 31} ${hy - 12} Z" fill="#e8483f" stroke="#a8261f" stroke-width="1.2"/><rect x="${hx + 1}" y="${hy - 15}" width="32" height="6" rx="3" fill="#b8302a"/><circle cx="${hx + 17}" cy="${hy - 31}" r="3.6" fill="#fff" stroke="#ddd"/><text x="${hx + 17}" y="${hy - 17.5}" text-anchor="middle" font-family="Arial Black, Arial, sans-serif" font-weight="900" font-size="8" fill="#fff">67</text>`;
   if (has("glasses67")) head += `<g font-family="Arial Black, Arial, sans-serif" font-weight="900" font-size="7.5" text-anchor="middle"><circle cx="${hx + 14.5}" cy="${hy - 4}" r="5" fill="#fff" stroke="#1b1b1b" stroke-width="1.5"/><circle cx="${hx + 25.5}" cy="${hy - 4}" r="5" fill="#fff" stroke="#1b1b1b" stroke-width="1.5"/><path d="M${hx + 19.5} ${hy - 4} h1" stroke="#1b1b1b" stroke-width="1.5"/><text x="${hx + 14.5}" y="${hy - 1.2}" fill="#1b1b1b">6</text><text x="${hx + 25.5}" y="${hy - 1.2}" fill="#1b1b1b">7</text></g>`;
   if (has("crown")) head += `<path d="M${hx + 8} ${hy - 13} L${hx + 7} ${hy - 25} L${hx + 12.5} ${hy - 19} L${hx + 17} ${hy - 28} L${hx + 21.5} ${hy - 19} L${hx + 27} ${hy - 25} L${hx + 26} ${hy - 13} Z" fill="#f2c230" stroke="#b8860b" stroke-width="1.2"/><circle cx="${hx + 17}" cy="${hy - 17}" r="1.8" fill="#e8483f"/>`;
+  head += bigStar;
   const pop = falling ? `<text class="poptxt" x="${segX(len + falling - 1) - 2}" y="12">${esc(popName())}.pop()</text>` : "";
   const t67 = anim === "six7" ? `<text class="t67 a" x="${segX(N - 1) + 4}" y="14">6</text><text class="t67 b" x="${segX(0) + 30}" y="14">7</text>` : "";
   // анімація телепорту (безкоштовно до «Телепорту»): змійка ціла пірнає в помаранчевий портал праворуч і виринає з синього ліворуч
@@ -596,12 +632,12 @@ function snakeSVG(o) {
     const fF = left - cut, fB = frontLen + 22, L = fB - fF, pB = cut + fF, pO = cut + fB, y2 = segY(2);
     const ring = (x, c1, c2) => `<ellipse cx="${x}" cy="${y2}" rx="4.5" ry="17" fill="${c2}" opacity=".35"/><ellipse cx="${x}" cy="${y2}" rx="3" ry="15" fill="none" stroke="${c1}" stroke-width="2.6"/>`;
     const copy = dx => `<g transform="translate(${dx} 0)">${whole}</g>`;
-    return `<svg class="snake ${o.cls || ""}" viewBox="0 0 ${W} ${H}" role="img" aria-label="Змійка проходить крізь портал">
+    return `<svg class="snake ${o.cls || ""}" viewBox="0 0 ${W} ${H}" role="img" aria-label="Змійка проходить крізь портал">${bg}
       <clipPath id="${uid}tp"><rect x="${pB}" y="-40" width="${pO - pB}" height="${H + 80}"/></clipPath>
       <g clip-path="url(#${uid}tp)"><g class="tpmove" style="--tw:${L}px">${copy(fF - L)}${copy(fF)}${copy(fB)}</g></g>
       ${ring(pB - 1, "#2b9bd6", "#7cc8ff")}${ring(pO + 1, "#f08a24", "#ffc27a")}</svg>`;
   }
-  return `<svg class="snake ${o.cls || ""} ${anim ? "anim-" + anim : ""}" viewBox="${o.crop ? `${segX(len - 1) - 6} 0 ${W - segX(len - 1) + 6} ${H}` : `0 0 ${W} ${H}`}" role="img" aria-label="Змійка, сегментів: ${len} з ${N}">${g}${tele ? `<g transform="translate(${dxF} 0)">` : ""}<g class="head">${head}</g>${tele ? "</g>" : ""}${pop}${t67}</svg>`;
+  return `<svg class="snake ${o.cls || ""} ${anim ? "anim-" + anim : ""}" viewBox="${o.crop ? `${segX(len - 1) - 6} 0 ${W - segX(len - 1) + 6} ${H}` : `0 0 ${W} ${H}`}" role="img" aria-label="Змійка, сегментів: ${len} з ${N}">${bg}${g}${tele ? `<g transform="translate(${dxF} 0)">` : ""}<g class="head">${head}</g>${tele ? "</g>" : ""}${pop}${t67}</svg>`;
 }
 
 // ---------- гардероб (спільний для всіх ігор) ----------
@@ -612,9 +648,10 @@ function renderWardrobe(back, backLabel) {
   const tile = (x, kind) => {
     const curSkin = paintTarget === "all" ? (Object.keys(p.mix || {}).length ? null : p.skin) : ((p.mix || {})[paintTarget] || p.skin);
     const curAnim = p.anim && p.anim !== "none" ? p.anim : "none", curShape = p.shape || "square";
-    const open = isOpen(x), sel = open && (kind === "set" ? false : kind === "anim" ? curAnim === x.id : kind === "shape" ? curShape === x.id : kind === "headtype" ? (p.head || "snake") === x.id : kind === "skin" ? curSkin === x.id : x.id === "none" ? !accList().length : hasAcc(x.id));
+    const open = isOpen(x), sel = open && (kind === "set" ? false : kind === "bg" ? (p.bg || "none") === x.id : kind === "anim" ? curAnim === x.id : kind === "shape" ? curShape === x.id : kind === "headtype" ? (p.head || "snake") === x.id : kind === "skin" ? curSkin === x.id : x.id === "none" ? !accList().length : hasAcc(x.id));
     const prev = kind === "set" ? snakeSVG({ len: N, skin: x.items[0], acc: x.items.slice(1, 3).join(","), anim: x.items[3] })
       : kind === "anim" ? snakeSVG({ len: N, anim: x.id, acc: "none" })
+      : kind === "bg" ? snakeSVG({ len: N, bg: x.id, acc: "none" })
       : kind === "shape" ? snakeSVG({ len: N, shape: x.id, acc: "none" })
       : kind === "headtype" ? snakeSVG({ len: N, headType: x.id, acc: "none" })
       : snakeSVG(kind === "skin" ? { len: N, skin: x.id, acc: "none" } : { len: N, acc: x.id });
@@ -623,6 +660,7 @@ function renderWardrobe(back, backLabel) {
     if (kind === "set" && open) return `<div class="wtile set" data-id="${x.id}">${prev}<span class="wname">${esc(x.name)}</span><span class="wlock">Куплено</span></div>`;
     const label = sel ? (kind === "acc" && x.id !== "none" ? "Вдягнуто · зняти" : "Обрано") : open ? (kind === "acc" && SLOT[x.id] ? "Відкрито · " + SLOT_NAME[SLOT[x.id]] : "Відкрито")
       : shop ? (pendingBuy === x.id ? `Натисни ще раз, щоб купити за ${cost}` : can ? `Купити за ${cost} ${bytesWord(cost)}` : `Коштує ${cost} ${bytesWord(cost)}`)
+      : x.combo ? "Купи " + x.combo.map(id => "«" + ALLITEMS().find(y => y.id === id).name + "»").join(" і ")
       : (x.secret ? "Секрет" : x.ach ? "Секрет: " + ACH[x.ach].toLowerCase() : `Потрібно ★ ${x.need}`);
     return `<button class="wtile ${sel ? "sel" : ""} ${shop ? "shop" : ""} ${pendingBuy === x.id ? "confirm" : ""}" data-kind="${kind}" data-id="${x.id}" ${open || can ? "" : "disabled"}>
       ${prev}<span class="wname">${esc(x.name)}</span>
@@ -649,6 +687,9 @@ function renderWardrobe(back, backLabel) {
     <div class="wgrid">${HEADS.map(x => tile(x, "headtype")).join("")}</div>
     <h3>Форма блоків</h3>
     <div class="wgrid">${SHAPES.map(x => tile(x, "shape")).join("")}</div>
+    <h3>Фон</h3>
+    <p class="status">Візерунок за змійкою на прозорому тлі.</p>
+    <div class="wgrid">${BGS.map(x => tile(x, "bg")).join("")}</div>
     <h3>Анімації</h3>
     <p class="status">Анімацію видно на великій змійці: на головній сторінці й тут, у гардеробі.</p>
     <div class="wgrid">${ANIMS.map(x => tile(x, "anim")).join("")}</div>
@@ -672,6 +713,7 @@ function renderWardrobe(back, backLabel) {
       x.items.forEach(it => { if (SKINS.some(y => y.id === it)) { p.skin = it; p.mix = {}; } else if (ANIMS.some(y => y.id === it)) p.anim = it;
         else { const l = accList().filter(a => !SLOT[it] || SLOT[a] !== SLOT[it]); l.push(it); p.acc = l.join(","); } });
     } else if (kind === "anim") p.anim = id;
+    else if (kind === "bg") p.bg = id;
     else if (kind === "shape") p.shape = id;
     else if (kind === "headtype") p.head = id;
     else if (kind === "skin") {
