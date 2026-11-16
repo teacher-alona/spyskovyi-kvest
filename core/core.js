@@ -2,7 +2,7 @@
    змійка з гардеробом, заслона при виході з гри. Кожна гра підключає цей файл і додає свої рівні. */
 (function () {
 "use strict";
-const VERSION = "2026.11.16-44";
+const VERSION = "2026.11.16-46";
 const API = "https://script.google.com/macros/s/AKfycbzPtRGlYI4osS-xL-J_pAZ2A2HxTWUeuecjy9-13MgAdFIzkDnYuCr1qmLHqZvqWkQMWQ/exec";
 
 // Усі ігри порталу. sheet — назва аркуша з прогресом у таблиці вчительки.
@@ -586,13 +586,18 @@ function snakeSVG(o) {
   const pop = falling ? `<text class="poptxt" x="${segX(len + falling - 1) - 2}" y="12">${esc(popName())}.pop()</text>` : "";
   const t67 = anim === "six7" ? `<text class="t67 a" x="${segX(N - 1) + 4}" y="14">6</text><text class="t67 b" x="${segX(0) + 30}" y="14">7</text>` : "";
   // анімація телепорту (безкоштовно до «Телепорту»): змійка ціла пірнає в помаранчевий портал праворуч і виринає з синього ліворуч
-  if (has("teleport") && o.tpRun && !o.crop) {
+  // анімація телепорту: змійка їде праворуч, пірнає в помаранчевий портал і виринає з синього.
+  // Довжина петлі дорівнює відстані між порталами, тож останній кадр збігається з розрізаною змійкою — без ривка
+  if (has("teleport") && o.tpRun && !o.crop && N >= 4) {
     const whole = `${g}<g class="head">${head}</g>`;
-    const ring = (x, c1, c2) => `<ellipse cx="${x}" cy="${segY(2)}" rx="4.5" ry="19" fill="${c2}" opacity=".35"/><ellipse cx="${x}" cy="${segY(2)}" rx="3" ry="17" fill="none" stroke="${c1}" stroke-width="2.6"/>`;
+    const cut = segX(2) + 11, left = segX(N - 1), frontLen = segX(0) + 58 - cut;
+    const fF = left - cut, fB = frontLen + 22, L = fB - fF, pB = cut + fF, pO = cut + fB, y2 = segY(2);
+    const ring = (x, c1, c2) => `<ellipse cx="${x}" cy="${y2}" rx="4.5" ry="17" fill="${c2}" opacity=".35"/><ellipse cx="${x}" cy="${y2}" rx="3" ry="15" fill="none" stroke="${c1}" stroke-width="2.6"/>`;
+    const copy = dx => `<g transform="translate(${dx} 0)">${whole}</g>`;
     return `<svg class="snake ${o.cls || ""}" viewBox="0 0 ${W} ${H}" role="img" aria-label="Змійка проходить крізь портал">
-      <clipPath id="${uid}tp"><rect x="6" y="-20" width="${W - 12}" height="${H + 40}"/></clipPath>
-      <g clip-path="url(#${uid}tp)"><g class="tpmove" style="--tw:${W - 12}px"><g>${whole}</g><g transform="translate(${-(W - 12)} 0)">${whole}</g></g></g>
-      ${ring(6, "#2b9bd6", "#7cc8ff")}${ring(W - 6, "#f08a24", "#ffc27a")}</svg>`;
+      <clipPath id="${uid}tp"><rect x="${pB}" y="-40" width="${pO - pB}" height="${H + 80}"/></clipPath>
+      <g clip-path="url(#${uid}tp)"><g class="tpmove" style="--tw:${L}px">${copy(fF - L)}${copy(fF)}${copy(fB)}</g></g>
+      ${ring(pB - 1, "#2b9bd6", "#7cc8ff")}${ring(pO + 1, "#f08a24", "#ffc27a")}</svg>`;
   }
   return `<svg class="snake ${o.cls || ""} ${anim ? "anim-" + anim : ""}" viewBox="${o.crop ? `${segX(len - 1) - 6} 0 ${W - segX(len - 1) + 6} ${H}` : `0 0 ${W} ${H}`}" role="img" aria-label="Змійка, сегментів: ${len} з ${N}">${g}${tele ? `<g transform="translate(${dxF} 0)">` : ""}<g class="head">${head}</g>${tele ? "</g>" : ""}${pop}${t67}</svg>`;
 }

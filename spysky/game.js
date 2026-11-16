@@ -138,16 +138,24 @@ async function prepareItems(items) {
 const itemType = w => w.pick ? w.pick[0].t : w.gen ? (w._t || (w._t = w.gen().t)) : w.t;
 
 // ---------- міні-події на рівні: змінюють байти за цей рівень ----------
+// подія накриває одне питання рівня: снігопад і буря множать байт за нього, кислотний дощ карає за помилку
+const EV_BASE = 10;
 const EVENTS = {
-  storm: { name: "Піщана буря", icon: "🌪️", mult: 5, text: "Байти за цей рівень ×5!" },
-  acid: { name: "Кислотний дощ", icon: "☣️", mult: 0.5, text: "Байти за цей рівень ×0,5. Тримайся!" },
-  snow: { name: "Снігопад", icon: "❄️", mult: 1.5, text: "Байти за цей рівень ×1,5!" },
+  storm: { name: "Піщана буря", icon: "🌪️", mult: 5, text: `Правильна відповідь з першої спроби на це питання дасть ${EV_BASE * 5} байтів!` },
+  acid: { name: "Кислотний дощ", icon: "☣️", penalty: 5, text: "Помилка на цьому питанні забере 5 байтів. Обережно!" },
+  snow: { name: "Снігопад", icon: "❄️", mult: 1.5, text: `Правильна відповідь з першої спроби на це питання дасть ${EV_BASE * 1.5} байтів!` },
 };
 function rollEvent() {   // 1% — буря, 5% — кислотний дощ, 10% — снігопад
   // для автоматичних перевірок подію можна задати лише на локальному тестовому сервері
   if (window.__forceEv !== undefined && /^(localhost|127\.0\.0\.1)$/.test(location.hostname)) { const f = window.__forceEv; delete window.__forceEv; return f; }
   const r = Math.random();
   return r < 0.01 ? "storm" : r < 0.06 ? "acid" : r < 0.16 ? "snow" : "";
+}
+// кислотний дощ: якщо на «дощовому» питанні була хоч одна помилка — мінус байти (рахуємо, коли питання позаду)
+function checkAcid() {
+  if (run.ev !== "acid" || run.evChecked || run.evM0 === undefined || run.idx <= run.evIdx) return;
+  run.evChecked = true;
+  if (run.evBad || run.mistakes > run.evM0) run.evPenalty = EVENTS.acid.penalty;
 }
 function showEvent(ev, replay) {
   document.body.classList.remove("ev-storm", "ev-acid", "ev-snow");
@@ -177,7 +185,8 @@ async function startLevel(li) {
     return;
   }
   run = { li, idx: 0, hearts: MAX_HEARTS, shown: MAX_HEARTS, mistakes: 0, leaves: 0, awayMs: 0, items, st: {}, ev: rollEvent() };
-  showEvent(run.ev, !!gd().stars[lv.id]);
+  if (run.ev) { const q = items.map((it, i) => it.t !== "lesson" ? i : -1).filter(i => i >= 0); run.evIdx = q.length ? q[Math.floor(Math.random() * q.length)] : -1; if (run.evIdx < 0) run.ev = ""; }
+  run.replay = !!gd().stars[lv.id];
   gd().attempts = gd().attempts || {}; gd().attempts[lv.id] = (gd().attempts[lv.id] || 0) + 1; save();
   renderItem();
   scrollTo(0, 0);
@@ -325,7 +334,12 @@ const $ = s => app.querySelector(s);
 function feedback(good, title, text, extra) {
   // байт — за правильну відповідь з першої спроби
   if (!good) run.st.bad = true;
-  else if (!run.st.bad && !run.st.paid && run.mistakes === run.st.m0 && run.items[run.idx].t !== "lesson") { run.st.paid = true; run.clean = (run.clean || 0) + 1; }
+  else if (!run.st.bad && !run.st.paid && run.mistakes === run.st.m0 && run.items[run.idx].t !== "lesson") {
+    run.st.paid = true;
+    const e = run.idx === run.evIdx && EVENTS[run.ev];
+    if (e && e.mult) run.evBytes = Math.round(EV_BASE * e.mult); else run.clean = (run.clean || 0) + 1;
+  }
+  if (!good && run.idx === run.evIdx) run.evBad = true;
   if (good && $("#snake")) { const tp = KV.hasAcc("teleport") && KV.isOpen(KV.ACCS.find(x => x.id === "teleport")); $("#snake").innerHTML = snakeSVG({ len: run.hearts, mood: "wow", cls: tp ? "" : "hop", tpRun: tp });
     // після проходу крізь портал змійка знову стає розрізаною біля порталів
     const mv = tp && $("#snake").querySelector(".tpmove");
@@ -344,6 +358,8 @@ const praise = () => PRAISE[Math.floor(Math.random() * PRAISE.length)];
 function renderItem() {
   const it = run.items[run.idx];
   if (run.st.m0 === undefined) run.st.m0 = run.mistakes;   // для байтів: чи були помилки в цьому завданні
+  checkAcid();
+  if (run.idx === run.evIdx) { if (!run.evShown) { run.evShown = true; run.evM0 = run.mistakes; showEvent(run.ev, run.replay); } } else showEvent("");
   const base = { lesson: rLesson, quiz: rQuiz, output: rOutput, bug: rBug, order: rOrder, fill: rFill, code: rCode };
   if (base[it.t]) return base[it.t](it);
   (window.GAME_TYPES || {})[it.t](it, API); // тренажери з core/sims.js
@@ -592,8 +608,9 @@ function renderDone() {
   if (s > prev) { gd().stars[lv.id] = s; }
   const sk = KV.streakTouch();
   // байти дають лише за перше успішне проходження рівня (коли зірок ще не було)
-  const ev = run.ev && EVENTS[run.ev], baseEarned = prev ? 0 : (run.clean || 0) + (run.mistakes === 0 ? KV.BYTES_PERFECT : 0);
-  const earned = Math.round(baseEarned * (ev ? ev.mult : 1));
+  run.idx = Math.max(run.idx, run.items.length); checkAcid();
+  const ev = run.ev && EVENTS[run.ev];
+  const earned = prev ? 0 : Math.max(0, (run.clean || 0) + (run.mistakes === 0 ? KV.BYTES_PERFECT : 0) + (run.evBytes || 0) - (run.evPenalty || 0));
   if (run.ev === "storm" && earned > 40) achieve("dune");
   showEvent("");
   if (earned) gd().bytes = (gd().bytes || 0) + earned;
@@ -612,8 +629,8 @@ function renderDone() {
     ${starStr(s, "bigstars")}
     ${fresh.length ? `<div class="unlock">Відкрито в гардеробі: ${fresh.map(x => `<b>${esc(x.name)}</b>`).join(", ")}</div>` : ""}
     ${sk.grew ? `<div class="streakgot">🔥 Серія: ${sk.n} ${KV.daysWord(sk.n)} поспіль!${sk.bonus ? ` +${sk.bonus} байтів за ${sk.n} ${KV.daysWord(sk.n)}` : ""}</div>` : ""}
-    ${ev ? `<div class="evgot">${ev.icon} ${ev.name}: байти ×${String(ev.mult).replace(".", ",")}</div>` : ""}
-    <div class="bytesgot">${earned ? `+${earned} ${KV.bytesWord(earned)}${run.mistakes === 0 && !ev ? ` (з них ${KV.BYTES_PERFECT} — бонус за рівень без помилок)` : ""}. Усього: ${KV.bytesLeft()}` : prev ? `За повторне проходження байтів не дають. У тебе ${KV.bytesLeft()} ${KV.bytesWord(KV.bytesLeft())}` : ""}</div>
+    ${ev ? `<div class="evgot">${ev.icon} ${ev.name}: ${ev.mult ? (run.evBytes ? `питання дало +${run.evBytes} байтів` : "з першої спроби не вийшло, бонусу немає") : (run.evPenalty ? `−${run.evPenalty} байтів за помилку` : "ти вистояв(-ла), байти цілі")}</div>` : ""}
+    <div class="bytesgot">${earned ? `+${earned} ${KV.bytesWord(earned)}${run.mistakes === 0 && !run.evBytes ? ` (з них ${KV.BYTES_PERFECT} — бонус за рівень без помилок)` : ""}. Усього: ${KV.bytesLeft()}` : run.evPenalty && !prev ? `Кислотний дощ з'їв усі байти за цей рівень. У тебе ${KV.bytesLeft()} ${KV.bytesWord(KV.bytesLeft())}` : prev ? `За повторне проходження байтів не дають. У тебе ${KV.bytesLeft()} ${KV.bytesWord(KV.bytesLeft())}` : ""}</div>
     <p>Помилок: ${run.mistakes}. ${s < 3 ? "Три зірки дають, якщо помилок не більше однієї." : run.mistakes === 0 ? "Чистий рівень!" : "Майже ідеально!"}${s > prev && prev ? " Новий рекорд!" : ""}${run.leaves ? ` Виходів з гри: ${run.leaves}${run.awayMs >= GRACE ? `, поза грою ${fmtTime(run.awayMs)}` : ""}.` : ""}${run.peeks ? ` Коротких перемикань на інше вікно: ${run.peeks}.` : ""} Це твоя ${gd().attempts[lv.id] || 1}-а спроба цього рівня.</p>
     <div class="syncbox">${KV.syncLabel()}</div>
     <div class="row">${hasNext ? `<button class="btn" id="nx">Наступний рівень →</button>` : ""}<button class="btn ghost" id="map">На карту</button><button class="link" id="again">Пройти ще раз</button>${fresh.length ? `<button class="link" id="ward">Приміряти</button>` : ""}</div>
@@ -645,6 +662,6 @@ function renderFail() {
 
 
 // хід для автоматичних перевірок — лише на локальному тестовому сервері, не на сайті
-if (/^(localhost|127\.0\.0\.1)$/.test(location.hostname)) window.__game = { runPy, LEVELS, startLevel, items: () => run && run.items, goto: async (li, k) => { await startLevel(li); run.idx = k; run.st = {}; renderItem(); } };
+if (/^(localhost|127\.0\.0\.1)$/.test(location.hostname)) window.__game = { runPy, LEVELS, startLevel, items: () => run && run.items, run: () => run, goto: async (li, k) => { await startLevel(li); run.idx = k; run.st = {}; renderItem(); } };
 KV.boot({ title: GI.title, eyebrow: GI.eyebrow, onReady: renderMap, isIdle: () => !run && (!app.firstElementChild || !!app.querySelector(".hero") || !!app.querySelector(".bootwait")) });
 })();
