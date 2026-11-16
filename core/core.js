@@ -2,7 +2,7 @@
    змійка з гардеробом, заслона при виході з гри. Кожна гра підключає цей файл і додає свої рівні. */
 (function () {
 "use strict";
-const VERSION = "2026.11.14-37";
+const VERSION = "2026.11.16-38";
 const API = "https://script.google.com/macros/s/AKfycbzPtRGlYI4osS-xL-J_pAZ2A2HxTWUeuecjy9-13MgAdFIzkDnYuCr1qmLHqZvqWkQMWQ/exec";
 
 // Усі ігри порталу. sheet — назва аркуша з прогресом у таблиці вчительки.
@@ -291,6 +291,7 @@ const N = 5;
 const mix = (a, b, t) => { t = Math.max(0, Math.min(1, t)); const h = x => [1, 3, 5].map(k => parseInt(x.substr(k, 2), 16)); const A = h(a), B = h(b); return "rgb(" + A.map((v, k) => Math.round(v + (B[k] - v) * t)).join(",") + ")"; };
 const SKINS = [
   { id: "classic", name: "Класика", need: 0, col: () => "#3fae6b" },
+  { id: "white", name: "Біла", need: 1, col: () => "#f7f8fa", idx: "#7a8291", head: "#ffffff" },
   { id: "loaf", name: "Батон", need: 2, col: () => "#d9a35b", rx: 9,
     seg: (x, y) => `<path d="M${x + 5} ${y + 5} l5 -10 M${x + 12} ${y + 5} l5 -10" stroke="#f6d9a2" stroke-width="2.4" stroke-linecap="round"/>` },
   { id: "sky", name: "Небо", need: 4, col: () => "#3d8bfd" },
@@ -367,6 +368,8 @@ const ACCS = [
   { id: "pot", name: "Каструля", ach: "peek" },
   { id: "devil", name: "Роги диявола", ach: "lastdeath", secret: true },
   { id: "wings", name: "Крила янгола", ach: "angel", secret: true },
+  { id: "devilwings", name: "Крила диявола", price: 35 },
+  { id: "cattail", name: "Котячий хвостик", price: 20 },
   // за байти
   { id: "bow", name: "Бантик", price: 15 },
   { id: "flower", name: "Квітка", price: 25 },
@@ -384,8 +387,8 @@ const ACCS = [
 ];
 // місце аксесуара: з одного місця можна вдягти лише одну річ, з різних — скільки завгодно
 const SLOT = { cap: "hat", cowboy: "hat", propeller: "hat", crown: "hat", horn: "hat", halo: "hat", pot: "hat", loafhat: "hat", devil: "hat", wizard: "hat", duck: "hat", catears: "hat", bearhood: "hat", sunhood: "hat", hat67: "hat", glasses67: "eyes",
-  glasses: "eyes", pirate: "eyes", moustache: "face", gasmask: "face", scarf: "neck", polo: "neck", badgeaplus: "decor", iron: "tool", phones: "ears", bow: "decor", flower: "decor", wings: "back" };
-const SLOT_NAME = { hat: "на голову", eyes: "на очі", face: "на обличчя", neck: "на шию", ears: "навушники", decor: "прикраса", tool: "паяє хвіст", back: "на спину" };
+  glasses: "eyes", pirate: "eyes", moustache: "face", gasmask: "face", scarf: "neck", devilwings: "back", cattail: "tail", polo: "neck", badgeaplus: "decor", iron: "tool", phones: "ears", bow: "decor", flower: "decor", wings: "back" };
+const SLOT_NAME = { hat: "на голову", eyes: "на очі", face: "на обличчя", neck: "на шию", ears: "навушники", decor: "прикраса", tool: "паяє хвіст", tail: "хвостик", back: "на спину" };
 const accList = () => String(store.profile.acc || "").split(",").map(x => x.trim()).filter(x => x && x !== "none");
 const hasAcc = id => accList().includes(id);
 const ACH = { fail: "Лишитися без хвоста", perfect: "Пройти рівень без жодної помилки", peek: "Підглянути розв'язок задачі", lastdeath: "", loafhat: "", angel: "" };
@@ -504,7 +507,12 @@ function snakeSVG(o) {
       + `<text x="${x + jx + 11}" y="${y + jy + 3.5}" class="segidx"${sk.idx ? ` style="fill:${sk.idx}"` : ""}>${i}</text>`;
     const wing = (dx, fill) => `<path d="M${x + 12 + dx} ${y - 8} C${x + 7 + dx} ${y - 26} ${x - 5 + dx} ${y - 32} ${x - 16 + dx} ${y - 30} Q${x - 12 + dx} ${y - 26} ${x - 13 + dx} ${y - 22} Q${x - 7 + dx} ${y - 21} ${x - 8 + dx} ${y - 17} Q${x - 2 + dx} ${y - 16} ${x - 2 + dx} ${y - 12} Q${x + 4 + dx} ${y - 12} ${x + 5 + dx} ${y - 8} Z" fill="${fill}"/><path d="M${x + 9 + dx} ${y - 12} Q${x + dx} ${y - 22} ${x - 11 + dx} ${y - 27}" fill="none" stroke-width=".9"/>`;
     const wings = has("wings") && i === 2 ? `<g class="wings" stroke="#8fa3c4" stroke-width="1.2" stroke-linejoin="round">${wing(8, "#e6edfa")}${wing(0, "#fff")}</g>` : "";
-    if (i < len) g += `<g class="seg ${i % 2 ? "o" : "e"}" style="--i:${i}">${wings}${body}</g>`;
+    // крила диявола — кажанячі, на тому ж блоці 2, що й янгольські
+    const bat = (dx, fill) => `<path d="M${x + 12 + dx} ${y - 8} C${x + 6 + dx} ${y - 24} ${x - 4 + dx} ${y - 31} ${x - 16 + dx} ${y - 32} Q${x - 10 + dx} ${y - 26} ${x - 14 + dx} ${y - 19} Q${x - 8 + dx} ${y - 22} ${x - 6 + dx} ${y - 15} Q${x - 1 + dx} ${y - 19} ${x + 2 + dx} ${y - 11} Q${x + 6 + dx} ${y - 13} ${x + 12 + dx} ${y - 8} Z" fill="${fill}"/><path d="M${x + 10 + dx} ${y - 10} L${x - 13 + dx} ${y - 30} M${x + 4 + dx} ${y - 14} L${x - 7 + dx} ${y - 24}" fill="none" stroke-width=".8"/>`;
+    const dwings = has("devilwings") && i === 2 ? `<g class="wings" stroke="#2a050b" stroke-width="1.2" stroke-linejoin="round">${bat(8, "#4a0b14")}${bat(0, "#8a1424")}</g>` : "";
+    // котячий хвостик росте з останнього блоку, того ж кольору, що й блок
+    const ctail = has("cattail") && i === len - 1 ? `<path d="M${x + 3} ${y + 5} C${x - 9} ${y + 8} ${x - 15} ${y - 2} ${x - 11} ${y - 13} C${x - 9} ${y - 19} ${x - 3} ${y - 21} ${x - 3} ${y - 15}" fill="none" stroke="rgba(0,0,0,.28)" stroke-width="6.5" stroke-linecap="round"/><path d="M${x + 3} ${y + 5} C${x - 9} ${y + 8} ${x - 15} ${y - 2} ${x - 11} ${y - 13} C${x - 9} ${y - 19} ${x - 3} ${y - 21} ${x - 3} ${y - 15}" fill="none" stroke="${sk.col(i)}" stroke-width="4" stroke-linecap="round"/>` : "";
+    if (i < len) g += `<g class="seg ${i % 2 ? "o" : "e"}" style="--i:${i}">${wings}${dwings}${ctail}${body}</g>`;
     else if (i < len + falling) g += ghost + `<g class="fall">${body}</g>`;
     else g += ghost;
   }

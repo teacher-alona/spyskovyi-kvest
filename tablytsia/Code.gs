@@ -6,7 +6,7 @@
  * Аркуші «Прогрес: <гра>»: прогрес у кожній грі — заповнюються самі.
  * Старий аркуш «Прогрес» сам перейменовується на «Прогрес: Списки».
  */
-const VERSION = "2026.11.14-4";
+const VERSION = "2026.11.16-5";
 const SPYSKY_SHEET = "Прогрес: Списки";
 const DATA_HEADER = "Дані гри (не змінювати)";
 
@@ -185,8 +185,9 @@ function leaders(me) {
   if (!all) { all = buildLeaders(); try { cache.put("leaders", JSON.stringify(all), 120); } catch (e) {} }
   const mineCls = norm(me.cls), teacher = isTeacher(me.cls);
   const cls = teacher ? [] : all.filter(x => norm(x.cls) === mineCls);
-  const classes = teacher ? Array.from(new Set(all.map(x => x.cls))).sort() : [];
-  return { me: me.login, cls: cls.map(strip(me)), school: all.slice(0, 10).map(strip(me)), all: teacher ? all.map(strip(me)) : undefined, classes: classes };
+  const classes = Array.from(new Set(all.map(x => x.cls))).sort();
+  // повний список і всі класи бачать і учні (вкладки по класах), і вчитель
+  return { me: me.login, teacher: teacher, cls: cls.map(strip(me)), school: all.slice(0, 10).map(strip(me)), all: all.map(strip(me)), classes: classes };
 }
 function strip(me) { return function (x) { return { name: x.name, cls: x.cls, stars: x.stars, streak: x.streak, snake: x.snake, look: x.look, me: x.login === me.login }; }; }
 function buildLeaders() {

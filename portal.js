@@ -59,10 +59,12 @@ async function fillBoard() {
     body.textContent = r.error === "unknown_action" ? "Лідерборд з'явиться, щойно вчителька оновить скрипт таблиці." : "Лідерборд з'явиться, коли буде зв'язок з таблицею.";
     return;
   }
-  const teacher = !!r.all;
-  const tabs = teacher ? [["school", "Усі"], ...r.classes.slice().sort((a, b) => (parseInt(a) || 99) - (parseInt(b) || 99) || a.localeCompare(b, "uk")).map(c => ["c:" + c, shortCls(c)])] : [["cls", "Мій клас"], ["school", "Усі"]];
+  // новий скрипт каже прямо, чи це вчитель; старий давав повний список (all) лише вчителю
+  const teacher = r.teacher !== undefined ? !!r.teacher : !!r.all;
+  const clsTabs = (r.classes || []).slice().sort((a, b) => (parseInt(a) || 99) - (parseInt(b) || 99) || a.localeCompare(b, "uk")).map(c => ["c:" + c, shortCls(c)]);
+  const tabs = teacher ? [["school", "Усі"], ...clsTabs] : [["cls", "Мій клас"], ["school", "Усі"], ...clsTabs];
   if (!lbTab || !tabs.some(t => t[0] === lbTab)) lbTab = tabs[0][0];
-  const list = (lbTab === "cls" ? r.cls : lbTab === "school" ? (teacher ? r.all : r.school) : r.all.filter(x => x.cls === lbTab.slice(2))).slice().sort((a, b) => b.stars - a.stars || a.name.localeCompare(b.name, "uk"));
+  const list = (lbTab === "cls" ? r.cls : lbTab === "school" ? (r.all || r.school) : r.all.filter(x => x.cls === lbTab.slice(2))).slice().sort((a, b) => b.stars - a.stars || a.name.localeCompare(b.name, "uk"));
   // однакова кількість зірок — однакове місце, а наступне йде по порядку без пропусків (1, 2, 2, 3…); у межах місця — за абеткою
   const rankOf = i => new Set(list.slice(0, i).map(y => y.stars).filter(v => v > list[i].stars)).size;
   const medal = i => { const r = rankOf(i); return ["🥇", "🥈", "🥉"][r] || `<span class="lnum">${r + 1}</span>`; };
