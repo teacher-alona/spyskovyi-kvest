@@ -2,7 +2,7 @@
    змійка з гардеробом, заслона при виході з гри. Кожна гра підключає цей файл і додає свої рівні. */
 (function () {
 "use strict";
-const VERSION = "2026.11.17-48";
+const VERSION = "2026.11.17-49";
 const API = "https://script.google.com/macros/s/AKfycbzPtRGlYI4osS-xL-J_pAZ2A2HxTWUeuecjy9-13MgAdFIzkDnYuCr1qmLHqZvqWkQMWQ/exec";
 
 // Усі ігри порталу. sheet — назва аркуша з прогресом у таблиці вчительки.
@@ -21,6 +21,8 @@ const GAMES = [
     levelIds: ["board", "led", "button", "buzzer", "pot", "ldr", "servo", "sonar"] },
   { id: "swift", title: "SwiftUI", sub: "Swift · 8–10 класи, усі рівні відкриті", path: "swiftui/", sheet: "Прогрес: SwiftUI", max: 33,
     levelIds: ["file", "stacks", "mods", "color", "card", "symbols", "vars", "struct", "buttons", "state", "boss"] },
+  { id: "flow", title: "Блок-схеми", sub: "Основи програмування · 5 клас", path: "blok-skhemy/", sheet: "Прогрес: Блок-схеми", max: 27,
+    levelIds: ["blocks", "rules", "line", "branch", "loops", "t_shape", "t_fill", "t_bug", "boss"] },
 ];
 
 // ---------- утиліти ----------

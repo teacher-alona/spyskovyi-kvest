@@ -5,7 +5,7 @@ const LEVELS = window.LEVELS;
 const GI = Object.assign({ id: "spysky", title: "Списковий квест", eyebrow: "Python · списки", intro: "Кожен рівень починається з розминки з основ. На рівнях «нова тема» спершу коротке пояснення, потім задачі. Наступний рівень відкривається, коли пройдено попередній." }, window.GAME_INFO || {});
 const GAME = GI.id;
 const MAX_HEARTS = KV.N;
-const KIND = { practice: "закріплення", learn: "нова тема", boss: "фінал" };
+const KIND = Object.assign({ practice: "закріплення", learn: "нова тема", boss: "фінал" }, GI.kinds || {});
 const TYPE = Object.assign({ quiz: "Питання", output: "Що виведе?", bug: "Знайди помилку", order: "Збери код", fill: "Встав пропущене", code: "Напиши код", lesson: "Нове" }, window.GAME_TYPE_LABELS || {}, GI.types || {});
 const PLAIN = !!GI.plain; // гра без Python: звичайні підписи, відповіді без урахування великих літер
 const { esc, md, shuffle, fmtTime, starStr, snakeSVG, achieve, isOpen, openIds, SKINS, ACCS } = KV;
@@ -52,7 +52,9 @@ const pre = code => `<pre class="code">${hl(code)}</pre>`;
 const normOut0 = s => String(s).replace(/\r/g, "").replace(/"/g, "'").split("\n").map(l => l.trim().replace(/\s*([,\[\]\(\)])\s*/g, "$1").replace(/\s+/g, " ")).join("\n").replace(/^\n+|\n+$/g, "");
 const normOut = s => PLAIN && !SWIFT ? normOut0(s).toLowerCase() : normOut0(s);
 const normFill = s => { const v = String(s).trim().replace(/"/g, "'").replace(/\s+/g, ""); return PLAIN && !SWIFT ? v.toLowerCase() : v; };
-const levelOpen = i => !!GI.openAll || i === 0 || (gd().stars[LEVELS[i - 1].id] || 0) > 0;
+// рівень відкривається після попереднього або після рівня з after (наприклад, фінал — одразу після тем, без тренажерів)
+const needIdx = i => LEVELS[i].after ? LEVELS.findIndex(l => l.id === LEVELS[i].after) : i - 1;
+const levelOpen = i => !!GI.openAll || i === 0 || !!LEVELS[i].open || (gd().stars[LEVELS[needIdx(i)].id] || 0) > 0;
 
 // ---------- змійка й гардероб — у core ----------
 
@@ -273,7 +275,7 @@ function renderMap() {
         <span class="idx">${PLAIN ? `<span>${i + 1}</span>` : `<span>[${i}]</span><span>[${i - n}]</span>`}</span>
         <span class="kind">${KIND[l.kind]}</span>
         <h3>${esc(l.title)}</h3>
-        ${open ? starStr(s, "stars") : `<span class="lock">Спершу пройди ${PLAIN ? "рівень " + i : `[${i - 1}]`}</span>`}
+        ${open ? starStr(s, "stars") : `<span class="lock">Спершу пройди ${PLAIN ? "рівень " + (needIdx(i) + 1) : `[${needIdx(i)}]`}</span>`}
         ${open && ((gd().attempts || {})[l.id] || (gd().lvLeaves || {})[l.id]) ? `<span class="cellstat">спроб: ${(gd().attempts || {})[l.id] || 0}${(gd().lvLeaves || {})[l.id] ? ` · <b>виходів: ${gd().lvLeaves[l.id]}</b>` : ""}</span>` : ""}
       </button>`;
     }).join("")}
@@ -375,7 +377,7 @@ const API = {
 };
 
 function rLesson(it) {
-  frame(it, `<h2>${esc(it.title)}</h2><p>${md(it.text)}</p>${it.code ? pre(it.code) : ""}`);
+  frame(it, `<h2>${esc(it.title)}</h2><p>${md(it.text)}</p>${it.code ? pre(it.code) : ""}${it.html || ""}${it.fc && window.FLOW ? `<div class="flowbox">${FLOW.svgOf(it.fc)}</div>` : ""}`);
   setActs(`<button class="btn" id="nx">Зрозуміло, далі →</button>`, { nx: next });
 }
 

@@ -473,7 +473,7 @@ Button("Лайк", systemImage: "heart.fill") { }`),
 
 // ===================== 10. @State =====================
 LEVELS.push({
-  id: "state", kind: "learn", title: "@State: екран, що змінюється",
+  id: "state", kind: "learn", title: "Екран, що змінюється",
   about: "Лічильник, лайк із toggle(), кубик, типові помилки.",
   items: [
     L("Навіщо @State", "Звичайну змінну всередині View змінити не можна: Swift скаже **«Cannot assign to property: 'self' is immutable»**.\n\nЩоб значення змінювалося і екран оновлювався, змінну позначають `@State`:\n`@State private var count = 0`\n\nЦикл: натиснули кнопку → змінилося значення → SwiftUI **сам перемалював** екран з новим значенням.",
@@ -543,7 +543,7 @@ const ACT = phone(box(
   b("Почати тренування", "prom", "background:" + C.orange + ";border-radius:99px;margin-top:12px;font-size:11px"),
   "background:" + C.indigo + ";border-radius:18px;padding:14px 8px;width:100%"));
 LEVELS.push({
-  id: "boss", kind: "boss", title: "Фінал: повтори екран",
+  id: "boss", kind: "boss", title: "Повтори екран",
   about: "Усе разом: стеки, модифікатори, кнопки, @State.",
   items: [
     K("Який каркас у «Картки активності»?", "", [{ code: S`VStack {
