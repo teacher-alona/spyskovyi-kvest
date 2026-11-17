@@ -2,7 +2,7 @@
    змійка з гардеробом, заслона при виході з гри. Кожна гра підключає цей файл і додає свої рівні. */
 (function () {
 "use strict";
-const VERSION = "2026.11.17-50";
+const VERSION = "2026.11.17-51";
 const API = "https://script.google.com/macros/s/AKfycbzPtRGlYI4osS-xL-J_pAZ2A2HxTWUeuecjy9-13MgAdFIzkDnYuCr1qmLHqZvqWkQMWQ/exec";
 
 // Усі ігри порталу. sheet — назва аркуша з прогресом у таблиці вчительки.
@@ -180,6 +180,8 @@ function mergeProfile(local, remote) {
   m.streak = Object.assign({}, m.streak, { best: Math.max(a.best || 0, b.best || 0, m.streak.n || 0) });
   m.bonus = Math.max(remote.bonus || 0, local.bonus || 0);
   m.spent = Math.max(remote.spent || 0, local.spent || 0);
+  // ім'я змійки — те, яке змінили пізніше (учень у гардеробі або вчителька в таблиці)
+  if ((remote.nameAt || 0) || (local.nameAt || 0)) { const src = (remote.nameAt || 0) >= (local.nameAt || 0) ? remote : local; m.name = src.name; m.nameAt = src.nameAt; }
   return m;
 }
 // r — відповідь сервера на вхід (новий скрипт: profile + games; старий: data + levels + bytes)
@@ -699,7 +701,7 @@ function renderWardrobe(back, backLabel) {
     <div class="wgrid">${SETS.map(x => tile(x, "set")).join("")}${SKINS.filter(x => x.price).map(x => tile(x, "skin")).join("")}${ACCS.filter(x => x.price).map(x => tile(x, "acc")).join("")}</div>
   </div>`;
   $("#back").onclick = back;
-  $("#petname").addEventListener("change", e => { p.name = e.target.value.trim().slice(0, 16) || "Пітоша"; save("profile"); renderWardrobe(back, backLabel); });
+  $("#petname").addEventListener("change", e => { p.name = e.target.value.trim().slice(0, 16) || "Пітоша"; p.nameAt = Date.now(); save("profile"); renderWardrobe(back, backLabel); });
   app().querySelectorAll(".wtile").forEach(b => b.onclick = () => {
     const kind = b.dataset.kind, x = ALLITEMS().find(y => y.id === b.dataset.id);
     if (x.price && !isOpen(x)) {

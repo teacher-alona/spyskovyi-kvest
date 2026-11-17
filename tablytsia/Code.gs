@@ -6,7 +6,7 @@
  * Аркуші «Прогрес: <гра>»: прогрес у кожній грі — заповнюються самі.
  * Старий аркуш «Прогрес» сам перейменовується на «Прогрес: Списки».
  */
-const VERSION = "2026.11.17-9";
+const VERSION = "2026.11.17-10";
 const SPYSKY_SHEET = "Прогрес: Списки";
 const DATA_HEADER = "Дані гри (не змінювати)";
 
@@ -150,13 +150,26 @@ function findRow(sh, login) {
   for (let i = 0; i < logins.length; i++) if (norm(logins[i][0]) === login) return i + 2;
   return 0;
 }
+// Учителька може змінити ім'я змійки просто в колонці «Ім'я змійки» аркуша «Профілі».
+// Тоді ім'я в даних гри не збігається з колонкою — переносимо його в дані й позначаємо часом (nameAt), щоб воно перемогло старе ім'я з браузера учня.
+function storedProfile(sh, r) {
+  let j = null; try { j = JSON.parse(sh.getRange(r, PROFILE_HEAD.length).getValue() || "null"); } catch (e) {}
+  if (!j) return null;
+  const col = String(sh.getRange(r, 4).getValue() || "").trim().slice(0, 16);
+  if (col !== String(j.name || "")) {
+    j.name = col || "Пітоша"; j.nameAt = Date.now();
+    sh.getRange(r, 4).setValue(j.name); sh.getRange(r, PROFILE_HEAD.length).setValue(JSON.stringify(j));
+  }
+  return j;
+}
 function readProfile(login) {
   const sh = profileSheet(), r = findRow(sh, login);
-  if (!r) return null;
-  try { return JSON.parse(sh.getRange(r, PROFILE_HEAD.length).getValue() || "null"); } catch (e) { return null; }
+  return r ? storedProfile(sh, r) : null;
 }
 function writeProfile(st, p) {
-  const sh = profileSheet();
+  const sh = profileSheet(), old = findRow(sh, st.login) ? storedProfile(sh, findRow(sh, st.login)) : null;
+  // ім'я, яке змінили пізніше (учителька в таблиці або учень у грі), не перезаписуємо старішим
+  if (old && (old.nameAt || 0) > (p.nameAt || 0)) { p.name = old.name; p.nameAt = old.nameAt; }
   const row = [st.login, st.name, st.cls, p.name || "", p.skin || "", p.acc || "", Object.keys(p.ach || {}).join(", "), new Date(), JSON.stringify(p)];
   const r = findRow(sh, st.login) || sh.getLastRow() + 1;
   sh.getRange(r, 1, 1, row.length).setValues([row]);
