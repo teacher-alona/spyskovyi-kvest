@@ -6,7 +6,7 @@
  * Аркуші «Прогрес: <гра>»: прогрес у кожній грі — заповнюються самі.
  * Старий аркуш «Прогрес» сам перейменовується на «Прогрес: Списки».
  */
-const VERSION = "2026.11.17-8";
+const VERSION = "2026.11.17-9";
 const SPYSKY_SHEET = "Прогрес: Списки";
 const DATA_HEADER = "Дані гри (не змінювати)";
 
@@ -24,7 +24,7 @@ function doPost(e) {
     if (!st) return out({ ok: false, error: "auth" });
 
     if (req.action === "login") {
-      const res = { ok: true, v: 2, version: VERSION, name: st.name, cls: st.cls, access: accessFor(st.cls, (req.games || []).map(g => g.id)), profile: readProfile(st.login), games: {} };
+      const res = { ok: true, v: 2, version: VERSION, name: st.name, cls: st.cls, access: accessFor(st.cls, req.games || []), profile: readProfile(st.login), games: {} };
       const games = req.games || [{ id: "spysky", sheet: SPYSKY_SHEET }];
       games.forEach(g => { res.games[g.id] = readGame(g.sheet, st.login); });
       // стара версія гри чекає data / levels / bytes
@@ -77,7 +77,12 @@ function accessSheet(extraCodes) {
   let sh = book.getSheetByName("Доступ");
   // що вже позначено: { код: { клас: true/false } }, порядок класів і ігор
   const marks = {}, classes = [], games = [];
-  const addGame = (code, title) => { code = norm(code); if (code && !games.some(g => g[0] === code)) games.push([code, title || code]); };
+  const addGame = (code, title) => {
+    code = norm(code); if (!code) return;
+    const g = games.find(x => x[0] === code);
+    if (!g) games.push([code, title || code]);
+    else if (title && g[1] === code) { g[1] = title; changed = true; }   // раніше назви не знали — підставляємо
+  };
   let changed = !sh;
   if (sh) {
     const v = sh.getDataRange().getValues();
@@ -96,7 +101,8 @@ function accessSheet(extraCodes) {
   }
   const before = games.length;
   GAME_LIST.forEach(g => addGame(g[0], g[1]));
-  (extraCodes || []).forEach(c => addGame(c));
+  // ігри, які надсилає сайт: нова гра з'являється в таблиці сама, оновлювати цей скрипт не треба
+  (extraCodes || []).forEach(c => typeof c === "string" ? addGame(c) : addGame(c.id, c.title));
   if (games.length !== before) changed = true;
   // класи з аркуша «Учні», яких ще немає в таблиці: бачать усе, як і раніше
   const fresh = [];
