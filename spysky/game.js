@@ -149,13 +149,14 @@ const EV_BASE = 10;
 const EVENTS = {
   storm: { name: "Піщана буря", icon: "🌪️", mult: 5, text: `Правильна відповідь з першої спроби на це питання дасть ${EV_BASE * 5} байтів!` },
   acid: { name: "Кислотний дощ", icon: "☣️", penalty: 5, text: "Помилка на цьому питанні забере 5 байтів. Обережно!" },
+  starfall: { name: "Зорепад", icon: "🌠", half: true, text: "Байти за цей рівень поділяться на 2, зате після рівня відкриється секретний скін!" },
   snow: { name: "Снігопад", icon: "❄️", mult: 1.5, text: `Правильна відповідь з першої спроби на це питання дасть ${EV_BASE * 1.5} байтів!` },
 };
-function rollEvent() {   // 1% — буря, 5% — кислотний дощ, 10% — снігопад
+function rollEvent() {   // 1% — буря, 3% — зорепад, 5% — кислотний дощ, 10% — снігопад
   // для автоматичних перевірок подію можна задати лише на локальному тестовому сервері
   if (window.__forceEv !== undefined && /^(localhost|127\.0\.0\.1)$/.test(location.hostname)) { const f = window.__forceEv; delete window.__forceEv; return f; }
   const r = Math.random();
-  return r < 0.01 ? "storm" : r < 0.06 ? "acid" : r < 0.16 ? "snow" : "";
+  return r < 0.01 ? "storm" : r < 0.04 ? "starfall" : r < 0.09 ? "acid" : r < 0.19 ? "snow" : "";
 }
 // кислотний дощ: якщо на «дощовому» питанні була хоч одна помилка — мінус байти (рахуємо, коли питання позаду)
 function checkAcid() {
@@ -164,7 +165,7 @@ function checkAcid() {
   if (run.evBad || run.mistakes > run.evM0) run.evPenalty = EVENTS.acid.penalty;
 }
 function showEvent(ev, replay) {
-  document.body.classList.remove("ev-storm", "ev-acid", "ev-snow");
+  document.body.classList.remove("ev-storm", "ev-acid", "ev-snow", "ev-starfall");
   let fx = document.getElementById("evfx"); if (fx) fx.remove();
   if (!ev) return;
   const e = EVENTS[ev];
@@ -616,7 +617,11 @@ function renderDone() {
   // байти дають лише за перше успішне проходження рівня (коли зірок ще не було)
   run.idx = Math.max(run.idx, run.items.length); checkAcid();
   const ev = run.ev && EVENTS[run.ev];
-  const earned = prev ? 0 : Math.max(0, (run.clean || 0) + (run.mistakes === 0 ? KV.BYTES_PERFECT : 0) + (run.evBytes || 0) - (run.evPenalty || 0));
+  const full = prev ? 0 : Math.max(0, (run.clean || 0) + (run.mistakes === 0 ? KV.BYTES_PERFECT : 0) + (run.evBytes || 0) - (run.evPenalty || 0));
+  // зорепад: байти за рівень діляться на 2, а скін «Сонячна система» відкривається
+  const earned = run.ev === "starfall" ? Math.floor(full / 2) : full;
+  if (run.ev === "starfall") achieve("starfall");
+  const god = !prev && KV.godTouch(true);
   if (run.ev === "storm" && earned > 40) achieve("dune");
   showEvent("");
   if (earned) gd().bytes = (gd().bytes || 0) + earned;
@@ -635,8 +640,8 @@ function renderDone() {
     ${starStr(s, "bigstars")}
     ${fresh.length ? `<div class="unlock">Відкрито в гардеробі: ${fresh.map(x => `<b>${esc(x.name)}</b>`).join(", ")}</div>` : ""}
     ${sk.grew ? `<div class="streakgot">🔥 Серія: ${sk.n} ${KV.daysWord(sk.n)} поспіль!${sk.bonus ? ` +${sk.bonus} байтів за ${sk.n} ${KV.daysWord(sk.n)}` : ""}</div>` : ""}
-    ${ev ? `<div class="evgot">${ev.icon} ${ev.name}: ${ev.mult ? (run.evBytes ? `питання дало +${run.evBytes} байтів` : "з першої спроби не вийшло, бонусу немає") : (run.evPenalty ? `−${run.evPenalty} байтів за помилку` : "ти вистояв(-ла), байти цілі")}</div>` : ""}
-    <div class="bytesgot">${earned ? `+${earned} ${KV.bytesWord(earned)}${run.mistakes === 0 && !run.evBytes ? ` (з них ${KV.BYTES_PERFECT} — бонус за рівень без помилок)` : ""}. Усього: ${KV.bytesLeft()}` : run.evPenalty && !prev ? `Кислотний дощ з'їв усі байти за цей рівень. У тебе ${KV.bytesLeft()} ${KV.bytesWord(KV.bytesLeft())}` : prev ? `За повторне проходження байтів не дають. У тебе ${KV.bytesLeft()} ${KV.bytesWord(KV.bytesLeft())}` : ""}</div>
+    ${ev ? `<div class="evgot">${ev.icon} ${ev.name}: ${ev.half ? (prev ? "за пройдений рівень байтів і так немає, а секретний скін тепер твій" : `байти за рівень поділено на 2 (було ${full}, стало ${earned}), зате відкрито секретний скін`) : ev.mult ? (run.evBytes ? `питання дало +${run.evBytes} байтів` : "з першої спроби не вийшло, бонусу немає") : (run.evPenalty ? `−${run.evPenalty} байтів за помилку` : "ти вистояв(-ла), байти цілі")}</div>` : ""}
+    <div class="bytesgot">${earned ? `+${earned} ${KV.bytesWord(earned)}${run.mistakes === 0 && !run.evBytes && run.ev !== "starfall" ? ` (з них ${KV.BYTES_PERFECT} — бонус за рівень без помилок)` : ""}. Усього: ${KV.bytesLeft()}` : run.evPenalty && !prev ? `Кислотний дощ з'їв усі байти за цей рівень. У тебе ${KV.bytesLeft()} ${KV.bytesWord(KV.bytesLeft())}` : prev ? `За повторне проходження байтів не дають. У тебе ${KV.bytesLeft()} ${KV.bytesWord(KV.bytesLeft())}` : ""}</div>
     <p>Помилок: ${run.mistakes}. ${s < 3 ? "Три зірки дають, якщо помилок не більше однієї." : run.mistakes === 0 ? "Чистий рівень!" : "Майже ідеально!"}${s > prev && prev ? " Новий рекорд!" : ""}${run.leaves ? ` Виходів з гри: ${run.leaves}${run.awayMs >= GRACE ? `, поза грою ${fmtTime(run.awayMs)}` : ""}.` : ""}${run.peeks ? ` Коротких перемикань на інше вікно: ${run.peeks}.` : ""} Це твоя ${gd().attempts[lv.id] || 1}-а спроба цього рівня.</p>
     <div class="syncbox">${KV.syncLabel()}</div>
     <div class="row">${hasNext ? `<button class="btn" id="nx">Наступний рівень →</button>` : ""}<button class="btn ghost" id="map">На карту</button><button class="link" id="again">Пройти ще раз</button>${fresh.length ? `<button class="link" id="ward">Приміряти</button>` : ""}</div>
@@ -647,9 +652,43 @@ function renderDone() {
   $("#map").onclick = renderMap;
   $("#again").onclick = () => startLevel(li);
   scrollTo(0, 0);
+  if (god) setTimeout(godVisit, 900);
+}
+// ---------- бог-змійка: випадкове питання з відкритих рівнів цієї гри ----------
+function godVisit() {
+  const pool = [];
+  LEVELS.forEach((lv, i) => { if (!levelOpen(i)) return; lv.items.forEach(w => (w.pick || [w]).forEach(it => { if (it.t === "quiz" && it.options && typeof it.a === "number") pool.push(it); })); });
+  if (!pool.length) return;
+  const it = pool[Math.floor(Math.random() * pool.length)], order = shuffle(it.options.map((_, i) => i));
+  const first = !(pf().ach && pf().ach.god);
+  const box = document.createElement("div"); box.className = "godbox"; box.setAttribute("role", "dialog"); box.setAttribute("aria-label", "Бог-змійка");
+  box.innerHTML = `<div class="godcard">
+    <div class="godsnake">${snakeSVG({ len: N, skin: "god", acc: "none", shape: "square", bg: "none", mood: "wow", cls: "big" })}</div>
+    <div class="eyebrow">З'явилася бог-змійка</div>
+    <h2>Три нові рівні поспіль!</h2>
+    <p>Відповіси правильно — і я подвою твої байти (до +${KV.GOD_CAP})${first ? ", а ще подарую свій скін" : ""}. Помилишся — нічого не втратиш.</p>
+    <div class="q">${md(it.q)}</div>${it.code ? pre(it.code) : ""}
+    <div class="options">${order.map(i => `<button class="opt" data-i="${i}">${md(it.options[i])}</button>`).join("")}</div>
+    <div id="godfb"></div></div>`;
+  document.body.appendChild(box);
+  box.querySelectorAll(".opt").forEach(b => b.onclick = () => {
+    const ok = +b.dataset.i === it.a;
+    box.querySelectorAll(".opt").forEach(o => { o.disabled = true; if (+o.dataset.i === it.a) o.classList.add("right"); });
+    if (!ok) b.classList.add("wrong");
+    let msg;
+    if (ok) {
+      const gift = KV.godGift(), skin = achieve("god");
+      msg = `<div class="feedback good"><div class="verdict">Правильно!</div><p>${gift ? `+${gift} ${KV.bytesWord(gift)}. Тепер у тебе ${KV.bytesLeft()}.` : "Байтів поки немає, тож подвоювати нічого."}${skin.length ? " Скін «Бог-змійка» чекає в гардеробі!" : ""}</p></div>`;
+    } else msg = `<div class="feedback bad"><div class="verdict">Не цього разу</div>${it.why ? `<p>${md(it.why)}</p>` : ""}<p>Бог-змійка повернеться після наступних трьох нових рівнів поспіль.</p></div>`;
+    KV.scheduleSync(true);
+    box.querySelector("#godfb").innerHTML = msg + `<div class="row"><button class="btn" id="godok">Дякую!</button></div>`;
+    box.querySelector("#godok").onclick = () => { box.remove(); const bg = app.querySelector(".bytesgot"); if (bg && ok) bg.insertAdjacentHTML("beforeend", ` Після бога-змійки: ${KV.bytesLeft()}.`); };
+    box.querySelector("#godok").focus();
+  });
 }
 function renderFail() {
   run.over = true; hideGuard(); leaveFullscreen();
+  KV.godTouch(false);
   const li = run.li;
   const fresh = [...achieve("fail"), ...(run.idx >= run.items.length - 1 ? achieve("lastdeath") : [])];
   app.innerHTML = `<div class="center">

@@ -2,7 +2,7 @@
    змійка з гардеробом, заслона при виході з гри. Кожна гра підключає цей файл і додає свої рівні. */
 (function () {
 "use strict";
-const VERSION = "2026.11.17-52";
+const VERSION = "2026.11.18-53";
 const API = "https://script.google.com/macros/s/AKfycbzPtRGlYI4osS-xL-J_pAZ2A2HxTWUeuecjy9-13MgAdFIzkDnYuCr1qmLHqZvqWkQMWQ/exec";
 
 // Усі ігри порталу. sheet — назва аркуша з прогресом у таблиці вчительки.
@@ -362,6 +362,26 @@ const SKINS = [
   { id: "galaxy", name: "Галактика", price: 100, col: i => mix("#2a1b5c", "#7b2ff7", i / N), idx: "rgba(255,255,255,.8)", head: "#22164d",
     seg: (x, y) => `<circle cx="${x + 5}" cy="${y - 6}" r="1.1" fill="#fff"/><circle cx="${x + 17}" cy="${y - 2}" r="1.4" fill="#ffe27a"/><circle cx="${x + 8}" cy="${y + 7}" r="0.9" fill="#fff"/>`,
     headDeco: (hx, hy) => `<circle cx="${hx + 7}" cy="${hy + 8}" r="1.3" fill="#fff"/><circle cx="${hx + 30}" cy="${hy - 9}" r="1.1" fill="#ffe27a"/>` },
+  // секрет: пройти рівень у зорепад. Голова — Сонце, кожен блок — планета по порядку від Сонця
+  { id: "solar", name: "Сонячна система", ach: "starfall", secret: true, rx: 11,
+    col: i => ["#a8a39d", "#e6c27a", "#2f80d8", "#cf5a33", "#d9a068", "#e8d197", "#86dbe3", "#3d5fd9"][i % 8],
+    idx: "#2b2b2b", head: "#ffbf1f", headStroke: "#ff8a00",
+    seg: (x, y, i) => { const k = i % 8, c = x + 11;
+      if (k === 0) return `<circle cx="${c - 4}" cy="${y - 3}" r="2" fill="#8a857e"/><circle cx="${c + 4}" cy="${y + 4}" r="1.5" fill="#8a857e"/>`;
+      if (k === 2) return `<path d="M${c - 8} ${y - 3} q4 -6 9 -2 q2 4 -3 6 q-4 1 -6 -4 Z M${c + 2} ${y + 3} q5 -1 6 3 q-3 4 -7 1 Z" fill="#3fae5a"/><path d="M${c - 6} ${y - 9} q6 -2 12 0" stroke="#fff" stroke-width="2" fill="none" opacity=".8"/>`;
+      if (k === 3) return `<circle cx="${c + 3}" cy="${y - 3}" r="2.4" fill="#a8401f"/><circle cx="${c - 4}" cy="${y + 4}" r="1.6" fill="#a8401f"/>`;
+      if (k === 4) return `<path d="M${x} ${y - 6} h22 M${x} ${y - 1} h22 M${x} ${y + 5} h22" stroke="#b07440" stroke-width="2.2"/><ellipse cx="${c + 4}" cy="${y + 2}" rx="3.4" ry="2" fill="#c2552e"/>`;
+      if (k === 5) return `<path d="M${x} ${y - 3} h22 M${x} ${y + 3} h22" stroke="#cdb06b" stroke-width="1.6"/>`;
+      if (k === 7) return `<path d="M${x} ${y - 2} h22" stroke="#2f4bb8" stroke-width="2.4"/><circle cx="${c + 3}" cy="${y + 4}" r="2" fill="#20348a"/>`;
+      return ""; },
+    // кільце Сатурна — поверх форми блоку, щоб не обрізалось
+    segOver: (x, y, i) => i % 8 === 5 ? `<ellipse cx="${x + 11}" cy="${y}" rx="16" ry="4" transform="rotate(-18 ${x + 11} ${y})" fill="none" stroke="#c9a85a" stroke-width="2.2"/>` : "",
+    headDeco: (hx, hy) => Array.from({ length: 12 }, (_, k) => { const a = k * Math.PI / 6, cx = hx + 17, r1 = 19, r2 = k % 2 ? 23 : 26;
+      return `<path d="M${(cx + r1 * Math.cos(a)).toFixed(1)} ${(hy + r1 * Math.sin(a)).toFixed(1)} L${(cx + r2 * Math.cos(a)).toFixed(1)} ${(hy + r2 * Math.sin(a)).toFixed(1)}" stroke="#ffb000" stroke-width="2.4" stroke-linecap="round"/>`; }).join("") },
+  // секрет: правильна відповідь богу-змійці
+  { id: "god", name: "Бог-змійка", ach: "god", secret: true, col: i => mix("#fff3b0", "#f2b705", i / N), idx: "#7a5200", head: "#ffe27a", headStroke: "#d99a00",
+    seg: (x, y) => `<path d="M${x + 11} ${y - 6} l1.6 4.4 4.4 1.6 -4.4 1.6 -1.6 4.4 -1.6 -4.4 -4.4 -1.6 4.4 -1.6 Z" fill="#fffbe6" opacity=".9"/>`,
+    headDeco: (hx, hy) => `<ellipse cx="${hx + 17}" cy="${hy - 21}" rx="12" ry="3.6" fill="none" stroke="#ffd23d" stroke-width="2.6"/><ellipse cx="${hx + 17}" cy="${hy - 21}" rx="12" ry="3.6" fill="none" stroke="#fff6c4" stroke-width="1"/>` },
   { id: "rainbow", name: "Веселка", need: 33, col: i => `hsl(${(i * 62 + 330) % 360} 72% 55%)` },
   { id: "glitch", name: "Глітч", ach: "fail", col: () => "#1a1a1a", idx: "#39ff14", jitter: true,
     seg: () => "", head: "#1a1a1a",
@@ -410,7 +430,7 @@ const SLOT = { cap: "hat", cowboy: "hat", propeller: "hat", crown: "hat", horn: 
 const SLOT_NAME = { hat: "на голову", eyes: "на очі", face: "на обличчя", neck: "на шию", ears: "навушники", decor: "прикраса", tool: "паяє хвіст", tail: "хвостик", portal: "ефект", back: "на спину", sky: "зорі" };
 const accList = () => String(store.profile.acc || "").split(",").map(x => x.trim()).filter(x => x && x !== "none");
 const hasAcc = id => accList().includes(id);
-const ACH = { fail: "Лишитися без хвоста", perfect: "Пройти рівень без жодної помилки", peek: "Підглянути розв'язок задачі", lastdeath: "", loafhat: "", angel: "", dune: "" };
+const ACH = { fail: "Лишитися без хвоста", perfect: "Пройти рівень без жодної помилки", peek: "Підглянути розв'язок задачі", lastdeath: "", loafhat: "", angel: "", dune: "", starfall: "", god: "" };
 // ---------- байти ----------
 const BYTES_PERFECT = 5;
 const bytesEarned = () => Object.values(store.games).reduce((s, g) => s + ((g && g.bytes) || 0), 0) + (store.profile.bonus || 0);
@@ -505,6 +525,21 @@ const bytesLeft = () => Math.max(0, bytesEarned() - bytesSpent());
 const bytesWord = n => { n = Math.abs(n) % 100; const d = n % 10; return n > 10 && n < 20 ? "байтів" : d === 1 ? "байт" : d >= 2 && d <= 4 ? "байти" : "байтів"; };
 const isOpen = x => x.combo ? x.combo.every(id => { const y = ALLITEMS().find(z => z.id === id); return y && isOpen(y); }) : x.price ? ((store.profile.bought || []).includes(x.id) || SETS.some(st => st.items.includes(x.id) && (store.profile.bought || []).includes(st.id))) : x.ach ? !!(store.profile.ach && store.profile.ach[x.ach]) : x.need <= totalStars();
 const openIds = () => [...SKINS, ...ACCS].filter(isOpen).map(x => x.id);
+// бог-змійка: з'являється, коли поспіль пройдено три нові рівні (уперше, з будь-якої гри); програш скидає лічильник
+const GOD_EVERY = 3, GOD_CAP = 100;
+function godTouch(passed) {   // passed: true — новий рівень пройдено, false — рівень програно; повертає true, коли час з'явитися
+  const p = store.profile;
+  p.godRun = passed ? (p.godRun || 0) + 1 : 0;
+  const now = p.godRun >= GOD_EVERY;
+  if (now) p.godRun = 0;
+  save("profile");
+  return now;
+}
+function godGift() {   // подвоює байти, але не більше ніж на GOD_CAP
+  const gift = Math.min(bytesLeft(), GOD_CAP);
+  store.profile.bonus = (store.profile.bonus || 0) + gift; save("profile");
+  return gift;
+}
 function achieve(key) {
   const p = store.profile; p.ach = p.ach || {};
   if (p.ach[key]) return [];
@@ -804,7 +839,7 @@ window.KV = {
   get session() { return session; }, get offline() { return offline; }, get access() { return access; },
   profile, gameData, totalStars, save, scheduleSync, syncLabel, boot, logout, whoami, bindWhoami,
   useGame: (id, summaryFn, levelIds) => { currentGame = id; gameSummary = summaryFn; const G = GAMES.find(g => g.id === id); if (G) G.levelIds = levelIds; },
-  N, SKINS, ACCS, isOpen, openIds, achieve, snakeSVG, renderWardrobe, hasAcc, leaders, bytesLeft, bytesWord, BYTES_PERFECT, streakTouch, streakNow, streakBadge, daysWord, STREAK_EVERY,
+  N, SKINS, ACCS, isOpen, godTouch, godGift, GOD_EVERY, GOD_CAP, openIds, achieve, snakeSVG, renderWardrobe, hasAcc, leaders, bytesLeft, bytesWord, BYTES_PERFECT, streakTouch, streakNow, streakBadge, daysWord, STREAK_EVERY,
   leave: { configure: cfg => { leaveCfg = Object.assign({ isActive: () => false, onPenalty: () => {}, onPeek: null, onMouseOut: null }, cfg); }, GRACE, AWAY_STEP },
   get guardOpen() { return guardOpen; }, showGuard, hideGuard, goFullscreen, leaveFullscreen, toast,
 };
