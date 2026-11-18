@@ -621,7 +621,9 @@ function renderDone() {
   // зорепад: байти за рівень діляться на 2, а скін «Сонячна система» відкривається
   const earned = run.ev === "starfall" ? Math.floor(full / 2) : full;
   if (run.ev === "starfall") achieve("starfall");
-  const god = !prev && KV.godTouch(true);
+  // бог-змійка: три рівні поспіль на три зірки (9 зірок). Рівень з меншою кількістю зірок або програш скидає лічильник.
+  // Повтор рівня, де вже були три зірки, не рахується і не скидає — щоб не накручували на легкому рівні.
+  const god = s === 3 ? prev < 3 && KV.godTouch(true) : (KV.godTouch(false), false);
   if (run.ev === "storm" && earned > 40) achieve("dune");
   showEvent("");
   if (earned) gd().bytes = (gd().bytes || 0) + earned;
@@ -665,7 +667,7 @@ function godVisit() {
   box.innerHTML = `<div class="godcard">
     <div class="godsnake">${snakeSVG({ len: N, skin: "god", acc: "none", shape: "square", bg: "none", mood: "wow", cls: "big" })}</div>
     <div class="eyebrow">З'явилася бог-змійка</div>
-    <h2>Три нові рівні поспіль!</h2>
+    <h2>Три рівні поспіль на три зірки!</h2>
     <p>Відповіси правильно — і я подвою твої байти (до +${KV.GOD_CAP})${first ? ", а ще подарую свій скін" : ""}. Помилишся — нічого не втратиш.</p>
     <div class="q">${md(it.q)}</div>${it.code ? pre(it.code) : ""}
     <div class="options">${order.map(i => `<button class="opt" data-i="${i}">${md(it.options[i])}</button>`).join("")}</div>
@@ -679,7 +681,7 @@ function godVisit() {
     if (ok) {
       const gift = KV.godGift(), skin = achieve("god");
       msg = `<div class="feedback good"><div class="verdict">Правильно!</div><p>${gift ? `+${gift} ${KV.bytesWord(gift)}. Тепер у тебе ${KV.bytesLeft()}.` : "Байтів поки немає, тож подвоювати нічого."}${skin.length ? " Скін «Бог-змійка» чекає в гардеробі!" : ""}</p></div>`;
-    } else msg = `<div class="feedback bad"><div class="verdict">Не цього разу</div>${it.why ? `<p>${md(it.why)}</p>` : ""}<p>Бог-змійка повернеться після наступних трьох нових рівнів поспіль.</p></div>`;
+    } else msg = `<div class="feedback bad"><div class="verdict">Не цього разу</div>${it.why ? `<p>${md(it.why)}</p>` : ""}<p>Бог-змійка повернеться, коли знову пройдеш три рівні поспіль на три зірки.</p></div>`;
     KV.scheduleSync(true);
     box.querySelector("#godfb").innerHTML = msg + `<div class="row"><button class="btn" id="godok">Дякую!</button></div>`;
     box.querySelector("#godok").onclick = () => { box.remove(); const bg = app.querySelector(".bytesgot"); if (bg && ok) bg.insertAdjacentHTML("beforeend", ` Після бога-змійки: ${KV.bytesLeft()}.`); };
