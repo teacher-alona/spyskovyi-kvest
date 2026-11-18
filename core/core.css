@@ -388,3 +388,4 @@ textarea { resize: vertical; line-height: 1.6; }
 @keyframes god-in { from { opacity: 0; } }
 @keyframes god-rise { from { transform: translateY(60px); opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .godbox, .godsnake { display: flex; justify-content: center; margin: 4px 0 8px; animation: none; } }
+.lnote { font-size: .82rem; color: var(--muted, #5a6170); margin: 4px 2px 8px; }

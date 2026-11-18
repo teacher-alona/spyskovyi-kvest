@@ -64,19 +64,25 @@ async function fillBoard() {
   const clsTabs = (r.classes || []).slice().sort((a, b) => (parseInt(a) || 99) - (parseInt(b) || 99) || a.localeCompare(b, "uk")).map(c => ["c:" + c, shortCls(c)]);
   // учень: вкладка свого класу вже є серед класів, тож окремої «Мій клас» не треба — просто відкриваємо його клас
   const mine = !teacher && ((r.cls || []).find(x => x.me) || (r.cls || [])[0] || {}).cls;
-  const tabs = teacher || clsTabs.some(t => t[0] === "c:" + mine) ? [["school", "Усі"], ...clsTabs] : [["cls", "Мій клас"], ["school", "Усі"], ...clsTabs];
+  // 🔥 — окрема вкладка: хто найдовше заходить день у день (серед усіх учнів)
+  const tabs = teacher || clsTabs.some(t => t[0] === "c:" + mine) ? [["school", "Усі"], ["fire", "🔥"], ...clsTabs] : [["cls", "Мій клас"], ["school", "Усі"], ["fire", "🔥"], ...clsTabs];
+  const fire = lbTab === "fire";
   if (!lbTab || !tabs.some(t => t[0] === lbTab)) lbTab = mine && tabs.some(t => t[0] === "c:" + mine) ? "c:" + mine : tabs[0][0];
-  const list = (lbTab === "cls" ? r.cls : lbTab === "school" ? (r.all || r.school) : r.all.filter(x => x.cls === lbTab.slice(2))).slice().sort((a, b) => b.stars - a.stars || a.name.localeCompare(b.name, "uk"));
+  const all = r.all || r.school || [];
+  const list = fire ? all.filter(x => x.streak > 0).sort((a, b) => b.streak - a.streak || b.stars - a.stars || a.name.localeCompare(b.name, "uk"))
+    : (lbTab === "cls" ? r.cls : lbTab === "school" ? all : all.filter(x => x.cls === lbTab.slice(2))).slice().sort((a, b) => b.stars - a.stars || a.name.localeCompare(b.name, "uk"));
+  const score = x => fire ? x.streak : x.stars;
   // однакова кількість зірок — однакове місце, а наступне йде по порядку без пропусків (1, 2, 2, 3…); у межах місця — за абеткою
-  const rankOf = i => new Set(list.slice(0, i).map(y => y.stars).filter(v => v > list[i].stars)).size;
+  const rankOf = i => new Set(list.slice(0, i).map(score).filter(v => v > score(list[i]))).size;
   const medal = i => { const r = rankOf(i); return ["🥇", "🥈", "🥉"][r] || `<span class="lnum">${r + 1}</span>`; };
   body.classList.remove("status");
-  body.innerHTML = `<div class="ltabs">${tabs.map(([k, t]) => `<button class="ltab ${k === lbTab ? "on" : ""}" data-k="${esc(k)}">${esc(t)}</button>`).join("")}</div>
+  body.innerHTML = `<div class="ltabs">${tabs.map(([k, t]) => `<button class="ltab ${k === lbTab ? "on" : ""}" data-k="${esc(k)}"${k === "fire" ? ` title="Серії: днів поспіль" aria-label="Серії днів поспіль"` : ""}>${esc(t)}</button>`).join("")}</div>
+    ${fire ? `<p class="lnote">Хто найдовше проходить рівні день у день. Серія згасає, якщо пропустити день.</p>` : ""}
     ${list.length ? `<ol class="lrows">${list.map((x, i) => `<li class="${x.me ? "me" : ""}">
       <span class="lrank">${medal(i)}</span>
       ${KV.snakeSVG({ len: 2, skin: x.look.skin || "classic", acc: x.look.acc || "none", shape: x.look.shape || undefined, headType: x.look.head || undefined, cls: "lsn", crop: true })}
-      <span class="lwho"><b>${esc(x.name)}${x.me ? " (ти)" : ""}</b>${x.snake ? `<small>${esc(x.snake)}${lbTab === "school" ? " · " + esc(shortCls(x.cls)) : ""}</small>` : lbTab === "school" ? `<small>${esc(shortCls(x.cls))}</small>` : ""}</span>
-      <span class="lstars">★ ${x.stars}${x.streak ? `<small>🔥 ${x.streak}</small>` : ""}</span></li>`).join("")}</ol>` : `<p class="status">Тут поки нікого немає.</p>`}`;
+      <span class="lwho"><b>${esc(x.name)}${x.me ? " (ти)" : ""}</b>${x.snake ? `<small>${esc(x.snake)}${lbTab === "school" || fire ? " · " + esc(shortCls(x.cls)) : ""}</small>` : lbTab === "school" || fire ? `<small>${esc(shortCls(x.cls))}</small>` : ""}</span>
+      <span class="lstars">${fire ? `🔥 ${x.streak}<small>${KV.daysWord(x.streak)}</small>` : `★ ${x.stars}${x.streak ? `<small>🔥 ${x.streak}</small>` : ""}`}</span></li>`).join("")}</ol>` : `<p class="status">${fire ? "Зараз ні в кого немає серії. Пройди рівень сьогодні — і будеш першим (-ою)!" : "Тут поки нікого немає."}</p>`}`;
   body.querySelectorAll(".ltab").forEach(b => b.onclick = () => { lbTab = b.dataset.k; fillBoard(); });
 }
 KV.boot({ title: "ІТ-квести", eyebrow: "Python, цифрова грамотність і не тільки", onReady: renderHome, isIdle: () => !app.firstElementChild || !!app.querySelector(".hero") });
