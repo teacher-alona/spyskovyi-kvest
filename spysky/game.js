@@ -119,6 +119,7 @@ function resolveItems(lv) {
       let i = Math.floor(Math.random() * n);
       if (n > 1 && i === last[k]) i = (i + 1 + Math.floor(Math.random() * (n - 1))) % n;
       now[k] = i; it = w.pick[i];
+      if (it.gen) it = it.gen();   // варіант може бути генератором
     } else if (w.gen) { it = w.gen(); now[k] = -1; }
     else it = w;
     return Object.assign({}, it, { warm: !!(w.warm || it.warm), _gen: w.gen || null });
@@ -654,7 +655,7 @@ function renderDone() {
   $("#map").onclick = renderMap;
   $("#again").onclick = () => startLevel(li);
   scrollTo(0, 0);
-  if (god) setTimeout(godVisit, 900);
+  if (god) godVisit();   // одразу, щоб не з'явитися поверх наступного рівня
 }
 // ---------- бог-змійка: випадкове питання з відкритих рівнів цієї гри ----------
 function godVisit() {
