@@ -2,7 +2,7 @@
    змійка з гардеробом, заслона при виході з гри. Кожна гра підключає цей файл і додає свої рівні. */
 (function () {
 "use strict";
-const VERSION = "2026.11.20-69";
+const VERSION = "2026.11.20-70";
 const API = "https://script.google.com/macros/s/AKfycbzPtRGlYI4osS-xL-J_pAZ2A2HxTWUeuecjy9-13MgAdFIzkDnYuCr1qmLHqZvqWkQMWQ/exec";
 
 // Усі ігри порталу. sheet — назва аркуша з прогресом у таблиці вчительки.
@@ -113,6 +113,18 @@ async function api(body) {
   const r = await fetch(API, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(body), redirect: "follow" });
   return r.json();
 }
+// вхід: якщо таблиця зайнята чи зв'язок зірвався, пробуємо ще кілька разів з паузою
+const pause = ms => new Promise(ok => setTimeout(ok, ms));
+async function apiRetry(body, onWait) {
+  for (let i = 0; ; i++) {
+    let r = null;
+    try { r = await api(body); } catch (e) { if (i >= 3) throw e; }
+    if (r && (r.ok || r.error !== "сервер зайнятий")) return r;
+    if (i >= 3) return r || { ok: false, error: "сервер зайнятий" };
+    if (onWait) onWait(i + 1);
+    await pause(1500 + Math.random() * 2500 * (i + 1));
+  }
+}
 // лідерборд: зірки учнів (без учителів) — рахує скрипт таблиці
 let leadersCache = null;
 async function leaders(force) {
@@ -151,7 +163,7 @@ async function syncNow() {
     if (!r.ok) { failed = true; why = r.error || "server"; }
   } catch (e) { failed = true; why = "network"; }
   syncing = false;
-  if (failed) { dirty = true; setSync("fail", why); syncTimer = setTimeout(syncNow, 8000); }
+  if (failed) { dirty = true; setSync("fail", why); syncTimer = setTimeout(syncNow, 5000 + Math.random() * 6000); }
   else if (again || dirty) { dirty = true; syncTimer = setTimeout(syncNow, 300); }
   else setSync("ok");
 }
@@ -265,8 +277,8 @@ function renderLogin(msg) {
     if (!login || !pin) return;
     $("#lgo").disabled = true; $("#lmsg").textContent = "Перевіряю…";
     try {
-      const r = await api(loginBody(login, pin));
-      if (!r.ok) { $("#lgo").disabled = false; $("#lmsg").textContent = r.error === "auth" || !r.error ? "Невірний логін або PIN. Перевір і спробуй ще раз." : "Таблиця відповіла помилкою: " + r.error; return; }
+      const r = await apiRetry(loginBody(login, pin), () => { $("#lmsg").textContent = "Багато учнів входять одночасно. Пробую ще раз…"; });
+      if (!r.ok) { $("#lgo").disabled = false; $("#lmsg").textContent = r.error === "auth" || !r.error ? "Невірний логін або PIN. Перевір і спробуй ще раз." : r.error === "сервер зайнятий" ? "Зараз дуже багато учнів входять одночасно. Зачекай хвилинку і натисни «Увійти» ще раз." : "Таблиця відповіла помилкою: " + r.error; return; }
       session = { login, pin, name: r.name, cls: r.cls };
       lsSet(SKEY, session);
       access = r.access || null; lsSet("kv-access", access);
@@ -287,7 +299,7 @@ async function boot(opts) {
   if (!session) return renderLogin();
   if (store.owner === session.login) opts.onReady(); else app().innerHTML = `<div class="center"><p class="status">Завантажую твій прогрес…</p></div>`;
   try {
-    const r = await api(loginBody(session.login, session.pin));
+    const r = await apiRetry(loginBody(session.login, session.pin));
     if (!r.ok && r.error === "auth") { session = null; lsDel(SKEY); return renderLogin("Вхід застарів. Увійди ще раз."); }
     if (!r.ok) throw new Error(r.error || "server");
     session.name = r.name; session.cls = r.cls; lsSet(SKEY, session);

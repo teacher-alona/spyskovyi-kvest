@@ -7,7 +7,7 @@
  * Старий аркуш «Прогрес» сам перейменовується на «Прогрес: Списки».
  * Аркуш «Галерея»: ігри з пісочниці, які учні опублікували для інших. Зняти галочку «Показувати» — гру сховано.
  */
-const VERSION = "2026.11.20-13";
+const VERSION = "2026.11.20-14";
 const SPYSKY_SHEET = "Прогрес: Списки";
 const DATA_HEADER = "Дані гри (не змінювати)";
 
@@ -18,8 +18,14 @@ function doGet() {
 function doPost(e) {
   let req;
   try { req = JSON.parse(e.postData.contents); } catch (err) { return out({ ok: false, error: "bad_request" }); }
-  const lock = LockService.getScriptLock();
-  if (!lock.tryLock(20000)) return out({ ok: false, error: "сервер зайнятий" });
+  // Замок лише для запису. Вхід, лідерборд і галерея тільки читають — їх обслуговуємо паралельно,
+  // інакше коли весь клас входить одночасно, запити стоять у черзі й отримують «сервер зайнятий».
+  const writes = { save: 1, publish: 1, unpublish: 1 };
+  let lock = null;
+  if (writes[req.action]) {
+    lock = LockService.getScriptLock();
+    if (!lock.tryLock(30000)) return out({ ok: false, error: "сервер зайнятий" });
+  }
   try {
     const st = findStudent(req.login, req.pin);
     if (!st) return out({ ok: false, error: "auth" });
@@ -48,7 +54,7 @@ function doPost(e) {
   } catch (err) {
     return out({ ok: false, error: "помилка таблиці: " + (err && err.message ? err.message : err) });
   } finally {
-    lock.releaseLock();
+    if (lock) lock.releaseLock();
   }
 }
 
@@ -117,7 +123,10 @@ function accessSheet(extraCodes) {
   fresh.sort((a, b) => (parseInt(a) || 99) - (parseInt(b) || 99) || a.localeCompare(b, "uk"));
   fresh.forEach(c => { classes.push(c); games.forEach(g => { (marks[g[0]] = marks[g[0]] || {})[c] = true; }); });
   if (fresh.length) changed = true;
-  if (changed) {
+  // переписуємо аркуш лише під замком (буває рідко: нова гра чи новий клас)
+  const lk = changed ? LockService.getScriptLock() : null;
+  if (changed && lk.tryLock(15000)) try {
+    sh = book.getSheetByName("Доступ");
     if (!sh) sh = book.insertSheet("Доступ"); else sh.clear();
     const rows = [["Гра", "Код"].concat(classes)].concat(games.map(g => [g[1], g[0]].concat(classes.map(c => !!(marks[g[0]] || {})[c]))));
     sh.getRange(1, 1, rows.length, rows[0].length).setValues(rows);
@@ -125,7 +134,7 @@ function accessSheet(extraCodes) {
     if (classes.length && games.length) sh.getRange(2, 3, games.length, classes.length).insertCheckboxes();
     sh.getRange(1, 1).setNote("Постав галочку на перетині гри й класу — і клас бачитиме цю гру. Нові класи з аркуша «Учні» й нові ігри з'являються тут самі. Клас, якого тут немає, бачить усі ігри. Колонку «Код» не змінюй.");
     sh.setFrozenRows(1); sh.setFrozenColumns(2);
-  }
+  } finally { lk.releaseLock(); }
   return { sh, classes, games, marks };
 }
 function accessFor(cls, extraCodes) {
