@@ -512,6 +512,19 @@ function attemptWrong(it, revealHtml) {
   return false;
 }
 
+// відповідь відрізняється лише записом чисел (3 і 3.0): ті самі слова, а числа рівні за значенням
+function numNear(v, a) {
+  const tv = normOut(v).split(/\s+/), ta = normOut(a).split(/\s+/);
+  if (tv.length !== ta.length) return false;
+  let diff = false;
+  for (let i = 0; i < tv.length; i++) {
+    if (tv[i] === ta[i]) continue;
+    const x = Number(tv[i].replace(",", ".")), y = Number(ta[i]);
+    if (!/^-?\d+(\.\d+)?$/.test(ta[i]) || isNaN(x) || x !== y) return false;
+    diff = true;
+  }
+  return diff;
+}
 function rOutput(it) {
   const lines = it.a.split("\n").length;
   frame(it, `<div class="q">${md(it.q || "Що виведе ця програма?")}</div>${filesHtml(it)}${it.code ? pre(it.code) : ""}
@@ -530,6 +543,11 @@ function rOutput(it) {
         ? "Значення правильні, але `print` виводить список разом із квадратними дужками, наприклад `[1, 2]`. Допиши дужки й перевір ще раз."
         : "Значення правильні, але Python друкує їх трохи інакше. Перевір дужки та лапки: рядки всередині списку виводяться в лапках, наприклад `['а', 'б']`.";
       feedback(false, "Майже!", why);
+    } else if (numNear(v, it.a)) {
+      // те саме число, але інший запис: 3 замість 3.0 чи навпаки — підказуємо, без штрафу
+      feedback(false, "Майже!", /\.0\b/.test(it.a)
+        ? "Число правильне, але Python надрукує його як **дробове** — з `.0` в кінці, наприклад `3.0`. Так роблять ділення `/` і функції модуля math: `sqrt`, `pow`, `fabs`, `hypot`."
+        : "Число правильне, але тут результат **цілий** — Python надрукує його без `.0`.");
     } else if (attemptWrong(it, `<p>Правильна відповідь:</p><pre class="code">${esc(it.a)}</pre>`)) $("#ans").disabled = true;
   };
   setActs(`<button class="btn" id="ck">Перевірити</button>`, { ck: check });
