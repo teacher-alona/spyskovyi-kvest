@@ -24,7 +24,7 @@ $("#tiles").innerHTML = tiles.map(([k, n]) => `<button data-k="${k}" class="${k 
 $("#tiles").querySelectorAll("button").forEach(b => b.onclick = () => { tool = b.dataset.k; $("#tiles").querySelectorAll("button").forEach(x => x.classList.toggle("on", x === b)); });
 let painting = false;
 const drawScene = () => {
-  const st = $("#scene"); st.style.gridTemplateColumns = `repeat(${W}, 1fr)`;
+  const st = $("#scene"); st.style.gridTemplateColumns = `repeat(${W}, minmax(0, 1fr))`;
   st.innerHTML = S.scene.map((row, y) => row.split("").map((ch, x) => `<div class="ac${ch === "#" ? " wall" : ""}" data-x="${x}" data-y="${y}">${ch === "#" || ch === "." ? "" : ARC.TILES[ch].icon}</div>`).join("")).join("");
   st.querySelectorAll(".ac").forEach(c => {
     c.onpointerdown = e => { e.preventDefault(); painting = true; put(+c.dataset.x, +c.dataset.y); };

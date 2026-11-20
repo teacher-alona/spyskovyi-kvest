@@ -7,7 +7,10 @@
 .aover.win { background: #d8f5e1; color: #156b39; } .aover.lose { background: #ffe1e1; color: #a12626; }
 .astage { display: grid; gap: 2px; background: #cfe9c8; padding: 6px; border-radius: 12px; outline: none; border: 3px solid transparent; }
 .astage:focus { border-color: var(--ink, #2b6cd4); }
-.ac { aspect-ratio: 1; background: #e9f7e4; border-radius: 4px; display: grid; place-items: center; font-size: clamp(12px, 2.2vw, 22px); line-height: 1; user-select: none; }
+.ac { aspect-ratio: 1; min-width: 0; overflow: hidden; background: #e9f7e4; border-radius: 4px; display: grid; place-items: center; font-size: clamp(12px, 2.2vw, 22px); line-height: 1; user-select: none; }
+.ac.hit { background: #ffb3b3; }
+.astage { min-width: 0; }
+.amake > * { min-width: 0; }
 .ac.wall { background: #9a6b4f; box-shadow: inset 0 -3px 0 rgba(0,0,0,.18); }
 .ac.ghost { background: #c79a7e; outline: 2px dashed #e03b3b; }
 .apad { display: flex; flex-direction: column; align-items: center; gap: 4px; }

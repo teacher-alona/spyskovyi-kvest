@@ -101,14 +101,15 @@ function makeGame(box, scene, rules, onEnd) {
       let ic = "";
       const it = items.find(i => i.on && i.x === x && i.y === y); if (it) ic = TILES[it.k].icon;
       const en = enemies.find(e => e.x === x && e.y === y); if (en) ic = en.ic;
-      if (x === px && y === py) ic = TILES.P.icon + (en ? "💥" : "");
-      cells.push(`<div class="ac${isWall(x, y) ? " wall" : ""}${x === px && y === py && isWall(x, y) ? " ghost" : ""}">${ic}</div>`);
+      const me = x === px && y === py;
+      if (me) ic = TILES.P.icon;
+      cells.push(`<div class="ac${isWall(x, y) ? " wall" : ""}${me && isWall(x, y) ? " ghost" : ""}${me && en ? " hit" : ""}">${ic}</div>`);
     }
     box.querySelector(".astage").innerHTML = cells.join("");
     box.querySelector(".ahud").innerHTML = `<span>Очки: <b>${st.score}</b></span><span>Життя: <b>${st.lives == null ? "—" : "❤️".repeat(Math.min(st.lives, 8)) || "0"}</b></span>`
       + (st.over ? `<span class="aover ${st.over}">${st.over === "win" ? "🏆 Перемога!" : "💀 Програш"}</span>` : "");
   }
-  box.querySelector(".astage").style.gridTemplateColumns = `repeat(${W}, 1fr)`;
+  box.querySelector(".astage").style.gridTemplateColumns = `repeat(${W}, minmax(0, 1fr))`;
   fire("start");
   draw();
   timer = setInterval(tick, 450);
