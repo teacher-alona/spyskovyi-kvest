@@ -2,7 +2,7 @@
    змійка з гардеробом, заслона при виході з гри. Кожна гра підключає цей файл і додає свої рівні. */
 (function () {
 "use strict";
-const VERSION = "2026.11.20-66";
+const VERSION = "2026.11.20-67";
 const API = "https://script.google.com/macros/s/AKfycbzPtRGlYI4osS-xL-J_pAZ2A2HxTWUeuecjy9-13MgAdFIzkDnYuCr1qmLHqZvqWkQMWQ/exec";
 
 // Усі ігри порталу. sheet — назва аркуша з прогресом у таблиці вчительки.
@@ -185,6 +185,10 @@ function mergeProfile(local, remote) {
   m.bonus = Math.max(remote.bonus || 0, local.bonus || 0);
   m.spent = Math.max(remote.spent || 0, local.spent || 0);
   // ім'я змійки — те, яке змінили пізніше (учень у гардеробі або вчителька в таблиці)
+  // збережені ігри з пісочниці: кожну беремо за її власним часом збереження
+  const sa = remote.sandbox || {}, sb = local.sandbox || {}, sm = {};
+  ["adv", "run"].forEach(k => { const x = sa[k], y = sb[k]; const v = !x ? y : !y ? x : (x.at || 0) >= (y.at || 0) ? x : y; if (v) sm[k] = v; });
+  if (Object.keys(sm).length) m.sandbox = sm;
   if ((remote.nameAt || 0) || (local.nameAt || 0)) { const src = (remote.nameAt || 0) >= (local.nameAt || 0) ? remote : local; m.name = src.name; m.nameAt = src.nameAt; }
   return m;
 }
@@ -282,6 +286,16 @@ async function boot(opts) {
     if (store.owner === session.login) { if (opts.isIdle()) opts.onReady(); }
     else renderLogin("Не вдалося з'єднатися з сервером.");
   }
+}
+// підтягнути свіжий профіль із таблиці (для сторінок без boot, як-от пісочниця)
+async function pull() {
+  if (!session || offline) return false;
+  try { const r = await api(loginBody(session.login, session.pin)); if (!r.ok) return false; applyServer(r); return true; } catch (e) { return false; }
+}
+// довільний запит до таблиці від імені учня (галерея пісочниці тощо)
+async function call(action, body) {
+  if (!session) return { ok: false, error: "login" };
+  try { return await api(Object.assign({ action, login: session.login, pin: session.pin }, body || {})); } catch (e) { return { ok: false, error: "net" }; }
 }
 function logout() {
   if (dirty) syncNow();
@@ -841,7 +855,7 @@ function toast(text) {
 window.KV = {
   VERSION, GAMES, esc, md, shuffle, fmtTime, starStr, $, app,
   get session() { return session; }, get offline() { return offline; }, get access() { return access; },
-  profile, gameData, totalStars, save, scheduleSync, syncLabel, boot, logout, whoami, bindWhoami,
+  profile, gameData, totalStars, save, scheduleSync, pull, call, syncLabel, boot, logout, whoami, bindWhoami,
   useGame: (id, summaryFn, levelIds) => { currentGame = id; gameSummary = summaryFn; const G = GAMES.find(g => g.id === id); if (G) G.levelIds = levelIds; },
   N, SKINS, ACCS, isOpen, godTouch, godGift, GOD_EVERY, GOD_CAP, openIds, achieve, snakeSVG, renderWardrobe, hasAcc, leaders, bytesLeft, bytesWord, BYTES_PERFECT, streakTouch, streakNow, streakBadge, daysWord, STREAK_EVERY,
   leave: { configure: cfg => { leaveCfg = Object.assign({ isActive: () => false, onPenalty: () => {}, onPeek: null, onMouseOut: null }, cfg); }, GRACE, AWAY_STEP },

@@ -1,62 +1,86 @@
 /* Стрибалка: змійка-кубик сама біжить, гравець стрибає. Редактор рівнів і перевірка, чи рівень можна пройти */
 (function () {
 "use strict";
-// рівень — рядки згори вниз (нижній рядок стоїть на підлозі): . повітря, # блок, ^ шип, = батут
+// рівень — рядки згори вниз (нижній рядок стоїть на підлозі): . повітря, # блок, ^ шип, = батут, S портал-літак, C портал-кубик
 const ROWS = 5;
-const P = { vx: 0.125, g: 0.0125, jump: 0.222, pad: 0.3, size: 0.78 };
+const P = { vx: 0.125, g: 0.0125, jump: 0.222, pad: 0.3, size: 0.78, fly: 0.011, vmax: 0.11 };
 const cellAt = (lv, c, r) => { const row = lv[ROWS - 1 - r]; return row && c >= 0 && c < row.length ? row[c] : "."; };
 const lenOf = lv => Math.max(...lv.map(r => r.length));
 const blank = n => Array.from({ length: ROWS }, () => ".".repeat(n));
-const counts = lv => { const s = lv.join(""); return { spikes: (s.match(/\^/g) || []).length, blocks: (s.match(/#/g) || []).length, pads: (s.match(/=/g) || []).length }; };
+const counts = lv => { const s = lv.join(""); return { spikes: (s.match(/\^/g) || []).length, blocks: (s.match(/#/g) || []).length, pads: (s.match(/=/g) || []).length, portals: (s.match(/[SC]/g) || []).length }; };
+// портал діє на всю колонку, у якій стоїть
+const portalIn = (lv, c) => { for (let r = 0; r < ROWS; r++) { const ch = cellAt(lv, c, r); if (ch === "S" || ch === "C") return ch; } return ""; };
 
 // один крок фізики; повертає новий стан або { dead }
+// mode: "cube" — стрибає; "ship" — літачок: затиснув — летить угору, відпустив — опускається
 function step(lv, s, press) {
-  let { x, y, vy, ground } = s;
+  let { x, y, vy, ground } = s, mode = s.mode || "cube";
   const S = P.size, L = lenOf(lv);
-  if (press && ground) { vy = P.jump; ground = false; }
+  if (mode === "cube" && press && ground) { vy = P.jump; ground = false; }
   x += P.vx;
+  // портал: колонка порталу перетинає середину гравця
+  const pc = Math.floor(x + S / 2), pt = portalIn(lv, pc);
+  if (pt === "S" && mode !== "ship") { mode = "ship"; vy = Math.max(-0.03, Math.min(0.03, vy)); ground = false; }
+  if (pt === "C" && mode !== "cube") { mode = "cube"; }
   const overlaps = (x0, y0, f) => { for (let c = Math.floor(x0); c <= Math.floor(x0 + S - 1e-6); c++) for (let r = Math.max(0, Math.floor(y0)); r <= Math.floor(y0 + S - 1e-6); r++) if (f(cellAt(lv, c, r), c, r)) return { c, r }; return null; };
   // збоку в блок — розбився
-  if (overlaps(x, y, ch => ch === "#") ) {
-    const hit = overlaps(x, y, ch => ch === "#");
-    if (y >= hit.r + 1 - 0.06) y = hit.r + 1; else return { dead: true, x, y, why: "блок" };
+  const side = overlaps(x, y, ch => ch === "#");
+  if (side) { if (y >= side.r + 1 - 0.06) y = side.r + 1; else return { dead: true, x, y, mode, why: "блок" }; }
+  if (mode === "ship") {
+    vy += press ? P.fly : -P.fly;
+    vy = Math.max(-P.vmax, Math.min(P.vmax, vy));
+    y += vy; ground = false;
+    if (y <= 0) { y = 0; vy = 0; }
+    if (y >= ROWS - S) { y = ROWS - S; vy = 0; }   // стеля
+    const b = overlaps(x, y, ch => ch === "#");
+    if (b) { if (vy <= 0 && y > b.r + 0.5) { y = b.r + 1; vy = 0; } else if (vy > 0 && y + S < b.r + 0.5) { y = b.r - S; vy = 0; } else return { dead: true, x, y, mode, why: "блок" }; }
+  } else {
+    vy -= P.g; y += vy;
+    ground = false;
+    if (y <= 0) { y = 0; vy = 0; ground = true; }
+    const b = overlaps(x, y, ch => ch === "#");
+    if (b) {
+      if (vy <= 0 && y > b.r + 0.5) { y = b.r + 1; vy = 0; ground = true; }
+      else return { dead: true, x, y, mode, why: "голова" };
+    }
+    // батут під ногами — високий стрибок
+    if (ground) { const under = overlaps(x, y - 0.05, ch => ch === "="); if (under && y <= under.r + 0.5) { vy = P.pad; ground = false; } }
   }
-  vy -= P.g; y += vy;
-  ground = false;
-  if (y <= 0) { y = 0; vy = 0; ground = true; }
-  const b = overlaps(x, y, ch => ch === "#");
-  if (b) {
-    if (vy <= 0 && y > b.r + 0.5) { y = b.r + 1; vy = 0; ground = true; }
-    else return { dead: true, x, y, why: "голова" };
-  }
-  // батут під ногами — високий стрибок
-  if (ground) { const under = overlaps(x, y - 0.05, ch => ch === "="); if (under && y <= under.r + 0.5) { vy = P.pad; ground = false; } }
   // шип: менша зона, щоб було чесно
   for (let c = Math.floor(x); c <= Math.floor(x + S); c++) for (let r = Math.max(0, Math.floor(y)); r <= Math.floor(y + S); r++) {
     if (cellAt(lv, c, r) !== "^") continue;
-    if (x + S > c + 0.28 && x < c + 0.72 && y < r + 0.55 && y + S > r) return { dead: true, x, y, why: "шип" };
+    if (x + S > c + 0.28 && x < c + 0.72 && y < r + 0.55 && y + S > r) return { dead: true, x, y, mode, why: "шип" };
   }
-  return { x, y, vy, ground, win: x >= L };
+  return { x, y, vy, ground, mode, win: x >= L };
 }
 const presses = pr => { const a = []; for (; pr; pr = pr.up) a.push(pr.t); return new Set(a); };
-// пошук: чи можна пройти рівень (рішення «стрибати чи ні» лише коли стоїмо на чомусь)
+// пошук: чи можна пройти рівень. Кубик вирішує «стрибати чи ні», коли стоїть на опорі;
+// літачок — кожні кілька кроків «тримати чи відпустити»
+const HOLD = 3;
 function solve(lv) {
   const seen = new Set(), L = lenOf(lv); let far = 0;
-  const stack = [{ x: 0, y: 0, vy: 0, ground: true, t: 0, pr: null }];
+  const stack = [{ x: 0, y: 0, vy: 0, ground: true, mode: "cube", t: 0, pr: null }];
+  const keyOf = s => Math.round(s.x * 100) + ":" + (s.mode === "ship" ? "s" + Math.round(s.y * 12) + ":" + Math.round(s.vy * 60) : Math.round(s.y * 50) + ":" + (s.ground ? "g" : Math.round(s.vy * 1000)));
   while (stack.length) {
     let s = stack.pop();
-    // летимо без рішень, поки не станемо на опору
+    // кубик летить без рішень, поки не стане на опору
     for (;;) {
       if (s.x > far) far = s.x;
-      const key = Math.round(s.x * 100) + ":" + Math.round(s.y * 50) + ":" + (s.ground ? "g" : Math.round(s.vy * 1000));
+      const key = keyOf(s);
       if (seen.has(key)) { s = null; break; }
       seen.add(key);
-      if (s.ground) break;
+      if (s.ground || s.mode === "ship") break;
       const n = step(lv, s, false); if (n.dead) { s = null; break; } n.t = s.t + 1; n.pr = s.pr; if (n.win) return { ok: true, presses: presses(n.pr) }; s = n;
     }
     if (!s) continue;
-    for (const press of [false, true]) { const n = step(lv, s, press); n.t = s.t + 1; n.pr = press ? { t: s.t, up: s.pr } : s.pr; if (n.win) return { ok: true, presses: presses(n.pr) }; if (!n.dead) stack.push(n); }
-    if (seen.size > 400000) break;
+    if (s.mode === "ship") {
+      for (const press of [true, false]) {
+        let n = s, dead = false;
+        for (let k = 0; k < HOLD; k++) { const m = step(lv, n, press); m.t = n.t + 1; m.pr = press ? { t: n.t, up: n.pr } : n.pr; if (m.dead) { dead = true; break; } if (m.win) return { ok: true, presses: presses(m.pr) }; n = m; if (n.mode !== "ship") break; }
+        if (!dead) stack.push(n);
+      }
+    } else for (const press of [false, true]) { const n = step(lv, s, press); n.t = s.t + 1; n.pr = press ? { t: s.t, up: s.pr } : s.pr; if (n.win) return { ok: true, presses: presses(n.pr) }; if (!n.dead) stack.push(n); }
+    if (seen.size > 700000) break;
   }
   return { ok: false, col: Math.min(L - 1, Math.floor(far + 1)) };
 }
@@ -79,6 +103,14 @@ function drawScene(ctx, lv, st, camX, W, H, opt) {
     if (ch === "^") { ctx.fillStyle = "#11112a"; ctx.strokeStyle = "#fff"; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(X + 3, Y + CELL - 1); ctx.lineTo(X + CELL / 2, Y + 5); ctx.lineTo(X + CELL - 3, Y + CELL - 1); ctx.closePath(); ctx.fill(); ctx.stroke(); }
     if (ch === "=") { ctx.fillStyle = "#ffd23d"; ctx.fillRect(X + 3, Y + CELL - 8, CELL - 6, 7); ctx.fillStyle = "#ff9f1c"; ctx.fillRect(X + 8, Y + CELL - 12, CELL - 16, 4); }
   }
+  // портали — на всю висоту колонки
+  for (let c = c0; c < c1; c++) {
+    const pt = portalIn(lv, c); if (!pt) continue;
+    const X = (c - camX) * CELL, col = pt === "S" ? "#ff5fd2" : "#4cc77a";
+    ctx.save(); ctx.globalAlpha = .28; ctx.fillStyle = col; ctx.fillRect(X + 6, top, CELL - 12, ROWS * CELL); ctx.restore();
+    ctx.strokeStyle = col; ctx.lineWidth = 4; ctx.beginPath(); ctx.ellipse(X + CELL / 2, top + ROWS * CELL / 2, CELL / 2 - 4, ROWS * CELL / 2 - 4, 0, 0, 7); ctx.stroke();
+    ctx.font = "18px sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(pt === "S" ? "✈️" : "🟩", X + CELL / 2, top + ROWS * CELL / 2);
+  }
   // фініш
   const FX = (L - camX) * CELL; if (FX < W + CELL) { for (let i = 0; i < ROWS * 2; i++) for (let j = 0; j < 2; j++) { ctx.fillStyle = (i + j) % 2 ? "#fff" : "#222"; ctx.fillRect(FX + j * CELL / 2, top + i * CELL / 2, CELL / 2, CELL / 2); } }
   // підлога
@@ -88,6 +120,14 @@ function drawScene(ctx, lv, st, camX, W, H, opt) {
     const S = P.size * CELL, X = (st.x - camX) * CELL, Y = top + ROWS * CELL - st.y * CELL - S;
     ctx.save(); ctx.translate(X + S / 2, Y + S / 2); ctx.rotate(st.rot || 0);
     ctx.fillStyle = st.dead ? "#ff6b6b" : "#4cc77a"; ctx.strokeStyle = "#1f6f43"; ctx.lineWidth = 2.5;
+    if (st.mode === "ship") {   // літачок: корпус, крило, хвіст, змійка в кабіні
+      ctx.beginPath(); ctx.moveTo(-S / 2 - 4, -2); ctx.lineTo(-S / 2 - 6, -S / 2 + 2); ctx.lineTo(-S / 2 + 6, -4); ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(-S / 2 - 4, -4); ctx.quadraticCurveTo(0, -12, S / 2 + 8, 2); ctx.quadraticCurveTo(0, S / 2 + 2, -S / 2 - 4, 6); ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = "#ffd23d"; ctx.beginPath(); ctx.moveTo(-6, 4); ctx.lineTo(6, 4); ctx.lineTo(-4, S / 2 + 6); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = "#bfefff"; ctx.beginPath(); ctx.ellipse(4, -6, 7, 5, 0, 0, 7); ctx.fill();
+      ctx.fillStyle = "#111"; ctx.beginPath(); ctx.arc(6, -6, 2.2, 0, 7); ctx.fill();
+      ctx.restore(); return;
+    }
     ctx.beginPath(); ctx.roundRect ? ctx.roundRect(-S / 2, -S / 2, S, S, 6) : ctx.rect(-S / 2, -S / 2, S, S); ctx.fill(); ctx.stroke();
     ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.arc(-4, -4, 5, 0, 7); ctx.arc(7, -4, 5, 0, 7); ctx.fill();
     ctx.fillStyle = "#111"; ctx.beginPath(); ctx.arc(-3, -4, 2.4, 0, 7); ctx.arc(8, -4, 2.4, 0, 7); ctx.fill();
@@ -96,7 +136,7 @@ function drawScene(ctx, lv, st, camX, W, H, opt) {
 }
 // гра на canvas: натискання — пробіл, клік, дотик
 function player(el, getLevel, onEnd) {
-  el.innerHTML = `<div class="rplay"><canvas class="rcv" tabindex="0" aria-label="Гра. Пробіл, клік або дотик — стрибок"></canvas>
+  el.innerHTML = `<div class="rplay"><canvas class="rcv" tabindex="0" aria-label="Гра. Пробіл, клік або дотик — стрибок; у літачку тримай, щоб летіти вгору"></canvas>
     <div class="rbar"><button class="btn" data-go>▶ Грати</button><span class="rinfo"></span></div></div>`;
   const cv = el.querySelector("canvas"), ctx = cv.getContext("2d"), info = el.querySelector(".rinfo");
   let st = null, raf = 0, press = false, tries = 0, best = 0, lv = getLevel(), acc = 0, last = 0;
@@ -110,7 +150,7 @@ function player(el, getLevel, onEnd) {
       acc -= 1000 / 60;
       const n = step(lv, st, auto ? auto.has(st.t || 0) : press); n.t = (st.t || 0) + 1;
       if (n.dead) { st = Object.assign({}, st, n, { dead: true }); break; }
-      st = Object.assign(n, { rot: n.ground ? Math.round((st.rot || 0) / (Math.PI / 2)) * (Math.PI / 2) : (st.rot || 0) + 0.11 });
+      st = Object.assign(n, { rot: n.mode === "ship" ? -n.vy * 4 : st.mode === "ship" ? 0 : n.ground ? Math.round((st.rot || 0) / (Math.PI / 2)) * (Math.PI / 2) : (st.rot || 0) + 0.11 });
     }
     const pct = Math.min(100, Math.floor(st.x / lenOf(lv) * 100)); best = Math.max(best, pct);
     drawScene(ctx, lv, st, st.x - 3, W(), H());
@@ -119,7 +159,7 @@ function player(el, getLevel, onEnd) {
     raf = requestAnimationFrame(loop);
   };
   let auto = null;
-  const go = () => { lv = getLevel(); size(); tries++; auto = TEST && window.__runnerAuto ? (solve(lv).presses || null) : null; st = { x: 0, y: 0, vy: 0, ground: true, rot: 0, t: 0 }; acc = 0; last = 0; cancelAnimationFrame(raf); raf = requestAnimationFrame(loop); cv.focus(); };
+  const go = () => { lv = getLevel(); size(); tries++; auto = TEST && window.__runnerAuto ? (solve(lv).presses || null) : null; st = { x: 0, y: 0, vy: 0, ground: true, mode: "cube", rot: 0, t: 0 }; acc = 0; last = 0; cancelAnimationFrame(raf); raf = requestAnimationFrame(loop); cv.focus(); };
   el.querySelector("[data-go]").onclick = go;
   const down = e => { if (e.type === "keydown" && e.code !== "Space" && e.key !== "ArrowUp") return; e.preventDefault(); if (!st) go(); press = true; };
   const up = e => { if (e.type === "keyup" && e.code !== "Space" && e.key !== "ArrowUp") return; press = false; };
@@ -128,28 +168,45 @@ function player(el, getLevel, onEnd) {
   still();
   return { refresh: () => { lv = getLevel(); if (!st) still(); }, stop: () => { cancelAnimationFrame(raf); st = null; } };
 }
-// редактор: малюємо клітинки пензлем
+// редактор: малюємо клітинки пензлем або пересуваємо їх рукою
+const EK = { "#": "b", "^": "s", "=": "p", "S": "ps", "C": "pc", ".": "e" }, EI = { "#": "", "^": "▲", "=": "▬", "S": "✈", "C": "■", ".": "" };
 function editor(el, lv, onChange) {
-  const tools = [["#", "Блок"], ["^", "Шип"], ["=", "Батут"], [".", "Гумка"]];
-  let tool = "^", painting = false;
-  el.innerHTML = `<div class="redit"><div class="apal">${tools.map(([k, n]) => `<button data-t="${k}" class="${k === tool ? "on" : ""}">${n}</button>`).join("")}<span class="muted">Клацай або веди мишкою по клітинках</span></div>
+  const tools = [["#", "Блок"], ["^", "Шип"], ["=", "Батут"], ["S", "✈️ Портал-літак"], ["C", "🟩 Портал-кубик"], ["move", "✋ Пересунути"], [".", "Гумка"]];
+  let tool = "^", painting = false, held = null;
+  el.innerHTML = `<div class="redit"><div class="apal">${tools.map(([k, n]) => `<button data-t="${k}" class="${k === tool ? "on" : ""}">${n}</button>`).join("")}<span class="muted rhint"></span></div>
     <div class="rgridwrap"><div class="rgrid"></div></div></div>`;
-  const grid = el.querySelector(".rgrid");
-  el.querySelectorAll("[data-t]").forEach(b => b.onclick = () => { tool = b.dataset.t; el.querySelectorAll("[data-t]").forEach(x => x.classList.toggle("on", x === b)); });
-  const paint = (c, r) => { const row = lv[r].split(""); if (row[c] === tool) return; row[c] = tool; lv[r] = row.join(""); draw(); onChange && onChange(); };
+  const grid = el.querySelector(".rgrid"), hint = el.querySelector(".rhint");
+  const setHint = () => hint.textContent = tool === "move" ? (held ? "Тепер клацни клітинку, куди поставити (або відпусти мишку над нею)" : "Візьми блок, шип, батут чи портал і перетягни на нове місце") : tool === "S" || tool === "C" ? "Портал діє на всю колонку: пролетиш крізь нього — зміниш форму" : "Клацай або веди мишкою по клітинках";
+  el.querySelectorAll("[data-t]").forEach(b => b.onclick = () => { tool = b.dataset.t; held = null; el.querySelectorAll("[data-t]").forEach(x => x.classList.toggle("on", x === b)); setHint(); draw(); });
+  const changed = () => { draw(); onChange && onChange(); };
+  const setCell = (c, r, ch) => { const row = lv[r].split(""); row[c] = ch; lv[r] = row.join(""); };
+  const paint = (c, r) => { if (lv[r][c] === tool) return; setCell(c, r, tool); changed(); };
+  const drop = (c, r) => { if (!held) return; if (c !== held.c || r !== held.r) { setCell(held.c, held.r, "."); setCell(c, r, held.ch); held = null; changed(); } setHint(); };
+  const cellOf = e => { const d = document.elementFromPoint(e.clientX, e.clientY); return d && d.classList && d.classList.contains("rc") && grid.contains(d) ? d : null; };
   const draw = () => {
     const L = lenOf(lv);
     grid.style.gridTemplateColumns = `repeat(${L}, 22px)`;
-    grid.innerHTML = lv.map((row, r) => row.split("").map((ch, c) => `<div class="rc k${{ "#": "b", "^": "s", "=": "p", ".": "e" }[ch]}" data-r="${r}" data-c="${c}">${{ "#": "", "^": "▲", "=": "▬", ".": "" }[ch]}</div>`).join("")).join("")
+    grid.classList.toggle("moving", tool === "move");
+    grid.innerHTML = lv.map((row, r) => row.split("").map((ch, c) => `<div class="rc k${EK[ch] || "e"}${held && held.c === c && held.r === r ? " held" : ""}" data-r="${r}" data-c="${c}">${EI[ch] ?? ""}</div>`).join("")).join("")
       + Array.from({ length: L }, (_, c) => `<div class="rnum">${c % 5 === 0 ? c : ""}</div>`).join("");
     grid.querySelectorAll(".rc").forEach(d => {
-      d.onpointerdown = e => { e.preventDefault(); painting = true; paint(+d.dataset.c, +d.dataset.r); };
-      d.onpointerenter = e => { if (painting && (e.buttons & 1)) paint(+d.dataset.c, +d.dataset.r); else if (!(e.buttons & 1)) painting = false; };
+      const c = +d.dataset.c, r = +d.dataset.r;
+      d.onpointerdown = e => {
+        e.preventDefault();
+        if (tool !== "move") { painting = true; paint(c, r); return; }
+        if (held) { if (held.c === c && held.r === r) { held = null; setHint(); draw(); } else drop(c, r); return; }
+        if (lv[r][c] !== ".") { held = { c, r, ch: lv[r][c], drag: true }; setHint(); draw(); }
+      };
+      d.onpointerenter = e => { if (tool === "move") return; if (painting && (e.buttons & 1)) paint(c, r); else if (!(e.buttons & 1)) painting = false; };
     });
   };
-  ["pointerup", "pointercancel", "blur"].forEach(ev => window.addEventListener(ev, () => painting = false));
+  window.addEventListener("pointerup", e => {
+    painting = false;
+    if (tool === "move" && held && held.drag) { held.drag = false; const d = cellOf(e); if (d) drop(+d.dataset.c, +d.dataset.r); }
+  });
+  ["pointercancel", "blur"].forEach(ev => window.addEventListener(ev, () => painting = false));
   grid.addEventListener("dragstart", e => e.preventDefault());
-  draw();
+  setHint(); draw();
   return { draw };
 }
 

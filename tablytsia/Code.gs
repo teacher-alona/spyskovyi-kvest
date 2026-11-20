@@ -5,8 +5,9 @@
  * Аркуш «Профілі»: змійка учня (спільна для всіх ігор) — заповнюється сам.
  * Аркуші «Прогрес: <гра>»: прогрес у кожній грі — заповнюються самі.
  * Старий аркуш «Прогрес» сам перейменовується на «Прогрес: Списки».
+ * Аркуш «Галерея»: ігри з пісочниці, які учні опублікували для інших. Зняти галочку «Показувати» — гру сховано.
  */
-const VERSION = "2026.11.20-11";
+const VERSION = "2026.11.20-12";
 const SPYSKY_SHEET = "Прогрес: Списки";
 const DATA_HEADER = "Дані гри (не змінювати)";
 
@@ -40,6 +41,9 @@ function doPost(e) {
       return out({ ok: true });
     }
     if (req.action === "leaders") return out(Object.assign({ ok: true }, leaders(st)));
+    if (req.action === "publish") return out(publish(st, req));
+    if (req.action === "unpublish") return out(unpublish(st, req.kind));
+    if (req.action === "gallery") return out(gallery(st));
     return out({ ok: false, error: "unknown_action" });
   } catch (err) {
     return out({ ok: false, error: "помилка таблиці: " + (err && err.message ? err.message : err) });
@@ -280,4 +284,70 @@ function buildLeaders() {
     });
   }
   return Object.keys(people).map(k => people[k]).sort((a, b) => b.stars - a.stars || b.streak - a.streak || a.name.localeCompare(b.name, "uk"));
+}
+
+// ---------- галерея ігор із пісочниці ----------
+// Одна опублікована гра кожного виду на учня; нова публікація замінює стару.
+const GAL_HEAD = ["Логін", "Ім'я", "Клас", "Змійка", "Вид", "Назва", "Опубліковано", "Показувати", "ID", "Гра (не змінювати)"];
+const GAL_KINDS = { adv: "Пригодницька", run: "Стрибалка" };
+function gallerySheet() {
+  let sh = ss().getSheetByName("Галерея");
+  if (!sh) {
+    sh = ss().insertSheet("Галерея");
+    sh.getRange(1, 1, 1, GAL_HEAD.length).setValues([GAL_HEAD]).setFontWeight("bold");
+    sh.setFrozenRows(1);
+  }
+  return sh;
+}
+function galRow(sh, login, kind) {
+  const last = sh.getLastRow(); if (last < 2) return 0;
+  const v = sh.getRange(2, 1, last - 1, 5).getDisplayValues();
+  for (let i = 0; i < v.length; i++) if (norm(v[i][0]) === login && v[i][4] === GAL_KINDS[kind]) return i + 2;
+  return 0;
+}
+// перевіряємо, що прийшла саме сцена чи рівень, а не щось довільне
+function cleanGame(kind, g) {
+  g = g || {};
+  if (kind === "adv") {
+    const scene = (g.scene || []).slice(0, 12).map(r => String(r).replace(/[^.#PcevFh]/g, ".").slice(0, 16));
+    const rules = (g.rules || []).slice(0, 30);
+    if (!scene.length || JSON.stringify(rules).length > 6000) return null;
+    return { scene: scene, rules: rules };
+  }
+  const level = (g.level || []).slice(0, 5).map(r => String(r).replace(/[^.#^=SC]/g, ".").slice(0, 200));
+  return level.length === 5 ? { level: level } : null;
+}
+function publish(st, req) {
+  if (!GAL_KINDS[req.kind]) return { ok: false, error: "bad_kind" };
+  const game = cleanGame(req.kind, req.game);
+  if (!game) return { ok: false, error: "bad_game" };
+  const title = String(req.title || "").replace(/\s+/g, " ").trim().slice(0, 40) || "Без назви";
+  const sh = gallerySheet(), prof = readProfile(st.login) || {};
+  const old = galRow(sh, st.login, req.kind), r = old || sh.getLastRow() + 1;
+  const id = old ? String(sh.getRange(r, 9).getValue()) : Math.random().toString(36).slice(2, 10);
+  const show = old ? sh.getRange(r, 8).getValue() : true;
+  sh.getRange(r, 1, 1, GAL_HEAD.length).setValues([[st.login, st.name, st.cls, prof.name || "", GAL_KINDS[req.kind], title, new Date(), show === false ? false : true, id, JSON.stringify(game)]]);
+  sh.getRange(r, 8).insertCheckboxes();
+  return { ok: true, id: id, hidden: show === false };
+}
+function unpublish(st, kind) {
+  const sh = gallerySheet(), r = galRow(sh, st.login, kind);
+  if (r) sh.getRange(r, 1, 1, GAL_HEAD.length).setValues([GAL_HEAD.map(() => "")]);
+  return { ok: true };
+}
+function gallery(me) {
+  const sh = gallerySheet(), last = sh.getLastRow();
+  if (last < 2) return { ok: true, items: [] };
+  const items = [];
+  sh.getRange(2, 1, last - 1, GAL_HEAD.length).getValues().forEach(r => {
+    if (!r[0] || r[7] === false || String(r[7]).toUpperCase() === "FALSE") return;
+    const kind = r[4] === GAL_KINDS.adv ? "adv" : r[4] === GAL_KINDS.run ? "run" : "";
+    let game = null; try { game = JSON.parse(r[9] || "null"); } catch (e) {}
+    if (!kind || !game) return;
+    const at = r[6] instanceof Date ? r[6].getTime() : Number(new Date(r[6])) || 0;
+    // логіни іншим не показуємо — лише змійку й клас
+    items.push({ id: String(r[8]), kind: kind, title: String(r[5]), snake: String(r[3] || "Змійка"), cls: String(r[2]), at: at, game: game, mine: norm(r[0]) === me.login });
+  });
+  items.sort((a, b) => b.at - a.at);
+  return { ok: true, items: items };
 }
