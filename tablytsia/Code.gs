@@ -7,7 +7,7 @@
  * Старий аркуш «Прогрес» сам перейменовується на «Прогрес: Списки».
  * Аркуш «Галерея»: ігри з пісочниці, які учні опублікували для інших. Зняти галочку «Показувати» — гру сховано.
  */
-const VERSION = "2026.11.20-12";
+const VERSION = "2026.11.20-13";
 const SPYSKY_SHEET = "Прогрес: Списки";
 const DATA_HEADER = "Дані гри (не змінювати)";
 
@@ -314,8 +314,8 @@ function cleanGame(kind, g) {
     if (!scene.length || JSON.stringify(rules).length > 6000) return null;
     return { scene: scene, rules: rules };
   }
-  const level = (g.level || []).slice(0, 5).map(r => String(r).replace(/[^.#^=SC]/g, ".").slice(0, 200));
-  return level.length === 5 ? { level: level } : null;
+  const level = (g.level || []).slice(0, 8).map(r => String(r).replace(/[^.#^=SC<>|]/g, ".").slice(0, 200));
+  return level.length >= 5 ? { level: level } : null;
 }
 function publish(st, req) {
   if (!GAL_KINDS[req.kind]) return { ok: false, error: "bad_kind" };

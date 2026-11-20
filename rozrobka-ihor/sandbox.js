@@ -4,12 +4,15 @@
 const KEY = "kv-sandbox";
 const load = () => { try { return JSON.parse(localStorage.getItem(KEY) || "null"); } catch (e) { return null; } };
 const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} };
-const W = 12, H = 8;
+const W = 12, H = 8, RH = 7;   // RH — висота рівня стрибалки: рівно стільки, скільки видно в грі
+// старі рівні були на 5 рядків — доповнюємо порожніми рядками згори
+const tall = lv => { lv = lv.slice(); const n = RUN.lenOf(lv); while (lv.length < RH) lv.unshift(".".repeat(n)); return lv; };
 const S = load() || {
   scene: ["P...........", "....c.......", "..####......", "......e..c..", "c...........", ".....####...", "..c.......h.", "..........F."],
   rules: [{ w: "coin", a: [{ k: "addScore", n: 1 }, { k: "remove" }] }, { w: "wall", a: [{ k: "stop" }] }, { w: "flag", a: [{ k: "win" }] }],
-  level: RUN.blank(40),
+  level: RUN.blank(40, RH),
 };
+S.level = tall(S.level);
 const $ = s => document.querySelector(s);
 // вкладки
 document.querySelectorAll("[data-tab]").forEach(b => b.onclick = () => {
@@ -78,7 +81,7 @@ const mkEd = () => RUN.editor($("#redit"), S.level, () => { save(); rp.refresh()
 let ed = mkEd();
 const rp = RUN.player($("#rplay"), () => S.level, () => {});
 lenInp.oninput = () => { setLen(+lenInp.value); $("#rlenv").textContent = lenInp.value; ed.draw(); rp.refresh(); };
-$("#rclr").onclick = () => { S.level = RUN.blank(RUN.lenOf(S.level)); save(); ed = mkEd(); rp.refresh(); };
+$("#rclr").onclick = () => { S.level = RUN.blank(RUN.lenOf(S.level), RH); save(); ed = mkEd(); rp.refresh(); };
 $("#rck").onclick = () => { const r = RUN.solve(S.level); $("#rres").textContent = r.ok ? "✅ Так, рівень можна пройти!" : `❌ Ні — застрягаєш біля колонки ${r.col}.`; };
 // ---- збереження в акаунт: по одній грі кожного виду ----
 const clone = x => JSON.parse(JSON.stringify(x));
@@ -103,7 +106,7 @@ const open = k => {
   if (!v) return showSaved(k);
   confirmBox(k, "Відкрити збережену гру? Те, що зараз на екрані, заміниться.", () => {
     if (k === "adv") { S.scene = clone(v.scene); S.rules.splice(0, S.rules.length, ...clone(v.rules)); held = null; save(); drawScene(); mkRules(); area.reset(); $("#toedit").click(); }
-    else { S.level = clone(v.level); save(); lenInp.value = RUN.lenOf(S.level); $("#rlenv").textContent = lenInp.value; ed = mkEd(); rp.refresh(); $("#rres").textContent = ""; }
+    else { S.level = tall(clone(v.level)); save(); lenInp.value = RUN.lenOf(S.level); $("#rlenv").textContent = lenInp.value; ed = mkEd(); rp.refresh(); $("#rres").textContent = ""; }
     status(k, `📂 Відкрито гру від ${when(v.at)}.`);
   });
 };
@@ -175,7 +178,7 @@ function copyMine(x) {
   el.querySelector("[data-no]").onclick = () => el.textContent = "";
   el.querySelector("[data-yes]").onclick = () => {
     if (x.kind === "adv") { S.scene = clone(x.game.scene); S.rules.splice(0, S.rules.length, ...clone(x.game.rules)); held = null; save(); drawScene(); mkRules(); area.reset(); }
-    else { S.level = clone(x.game.level); save(); lenInp.value = RUN.lenOf(S.level); $("#rlenv").textContent = lenInp.value; ed = mkEd(); rp.refresh(); }
+    else { S.level = tall(clone(x.game.level)); save(); lenInp.value = RUN.lenOf(S.level); $("#rlenv").textContent = lenInp.value; ed = mkEd(); rp.refresh(); }
     el.textContent = "📥 Готово! Копія вже у вкладці «" + (x.kind === "adv" ? "Пригодницька гра" : "Стрибалка") + "». Твоя збережена в акаунті гра не змінилась.";
   };
 }

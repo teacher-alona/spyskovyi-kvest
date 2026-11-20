@@ -46,6 +46,9 @@
 .rc.kp { color: #ffd23d; }
 .rc.kps { background: #8a3a8a; color: #fff; }
 .rc.kpc { background: #2f7a4e; color: #bfffcf; }
+.rc.kvf { background: #9a5a12; color: #ffd9a0; font-weight: 800; }
+.rc.kvs { background: #2a5a8a; color: #cfe6ff; font-weight: 800; }
+.rc.kvn { background: #6a6a8a; color: #fff; font-weight: 800; }
 .rgrid.moving .rc { cursor: grab; }
 .rc.held { outline: 2px dashed #ffd23d; outline-offset: -2px; opacity: .6; }
 .rnum { height: 14px; font-size: 9px; color: #c9c3ff; text-align: left; }
