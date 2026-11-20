@@ -168,32 +168,30 @@ print(gender == "д" ___ age < 12 ___ months >= 6)`, [["and"], ["and"]], "Маю
 print(n ___ 1 and n ___ 9)`, [[">="], ["<="]], "Обидві межі включно: `>=` і `<=`."),
     ),
     V(
-      C({ q: "**Щасливий квиток.** Користувач вводить чотирицифровий номер квитка. Квиток щасливий, коли сума перших двох цифр дорівнює сумі останніх двох. Виведи `True` або `False`.",
-        starter: `n = input()
+      C({ q: "Користувач вводить ціле число. Виведи `True`, якщо воно двоцифрове (від 10 до 99 включно), інакше `False`.",
+        starter: `n = int(input())
 `,
-        tests: [{ input: ["1230"], expect: "True" }, { input: ["1234"], expect: "False" }, { input: ["5544"], expect: "False" }, { input: ["7254"], expect: "True" }],
-        hint: "Якщо n — рядок, то `int(n[0])` — перша цифра. Порівняй `int(n[0]) + int(n[1])` з сумою двох останніх.",
-        solution: `n = input()
-print(int(n[0]) + int(n[1]) == int(n[2]) + int(n[3]))` }),
-      C({ q: "**Футбольна команда.** Користувач вводить стать (`д` — дівчинка, `х` — хлопчик), вік і скільки місяців тренується. Виведи `True`, якщо це дівчинка до 12 років із досвідом щонайменше 6 місяців, інакше `False`.",
-        starter: `gender = input()
-age = int(input())
-months = int(input())
+        tests: [{ input: ["42"], expect: "True" }, { input: ["7"], expect: "False" }, { input: ["99"], expect: "True" }, { input: ["100"], expect: "False" }],
+        hint: "`n >= 10 and n <= 99`.",
+        solution: `n = int(input())
+print(n >= 10 and n <= 99)` }),
+      C({ q: "Користувач вводить два цілі числа. Виведи `True`, якщо **хоча б одне** з них від'ємне.",
+        starter: `a = int(input())
+b = int(input())
 `,
-        tests: [{ input: ["д", "10", "8"], expect: "True" }, { input: ["х", "10", "8"], expect: "False" }, { input: ["д", "12", "8"], expect: "False" }, { input: ["д", "9", "5"], expect: "False" }, { input: ["д", "11", "6"], expect: "True" }],
-        hint: "Три умови через `and`: `gender == \"д\"`, `age < 12`, `months >= 6`.",
-        solution: `gender = input()
-age = int(input())
-months = int(input())
-print(gender == "д" and age < 12 and months >= 6)` }),
+        tests: [{ input: ["-3", "5"], expect: "True" }, { input: ["4", "8"], expect: "False" }, { input: ["2", "-1"], expect: "True" }],
+        hint: "«Хоча б одне» — це `or`.",
+        solution: `a = int(input())
+b = int(input())
+print(a < 0 or b < 0)` }),
     ),
-    C({ q: "Користувач вводить свій вік. Виведи `True`, якщо вік **не** шкільний (не від 6 до 17 включно), інакше `False`.",
-      starter: `age = int(input())
+    C({ q: "Користувач вводить температуру повітря. Виведи `True`, якщо **не** варто йти гуляти без куртки — тобто температура **не** в межах від 18 до 30 включно.",
+      starter: `t = int(input())
 `,
-      tests: [{ input: ["5"], expect: "True" }, { input: ["6"], expect: "False" }, { input: ["17"], expect: "False" }, { input: ["18"], expect: "True" }],
-      hint: "`not (age >= 6 and age <= 17)` або `age < 6 or age > 17`.",
-      solution: `age = int(input())
-print(not (age >= 6 and age <= 17))` }),
+      tests: [{ input: ["10"], expect: "True" }, { input: ["22"], expect: "False" }, { input: ["31"], expect: "True" }],
+      hint: "`not (t >= 18 and t <= 30)`.",
+      solution: `t = int(input())
+print(not (t >= 18 and t <= 30))` }),
   ],
 });
 
@@ -269,74 +267,57 @@ else:
     print("Непарне")`, "", "Остача від ділення на 2 дорівнює 0 у парних чисел."),
     ),
     V(
-      C({ q: "**Високосний рік.** Рік високосний, якщо він кратний 4, але не кратний 100, або якщо він кратний 400. Користувач вводить рік — виведи `Високосний` або `Не високосний`.",
-        starter: `year = int(input())
+      C({ q: "Користувач вводить ціле число. Виведи `додатне`, `від'ємне` або `нуль`.",
+        starter: `n = int(input())
 `,
-        tests: [{ input: ["2024"], expect: "Високосний" }, { input: ["1900"], expect: "Не високосний" }, { input: ["2000"], expect: "Високосний" }, { input: ["2023"], expect: "Не високосний" }],
-        hint: "Кратний 4 — це `year % 4 == 0`. Склади умову з `and` і `or`.",
-        solution: `year = int(input())
-if year % 4 == 0 and year % 100 != 0 or year % 400 == 0:
-    print("Високосний")
+        tests: [{ input: ["5"], expect: "додатне" }, { input: ["-2"], expect: "від'ємне" }, { input: ["0"], expect: "нуль" }],
+        hint: "`if n > 0:` … `elif n < 0:` … `else:`.",
+        solution: `n = int(input())
+if n > 0:
+    print("додатне")
+elif n < 0:
+    print("від'ємне")
 else:
-    print("Не високосний")` }),
-      C({ q: "**Перевірка прикладу.** Користувач вводить числа a і b, а потім свою відповідь — скільки буде a + b. Якщо правильно, виведи `Правильно!`, інакше — `Ні, правильна відповідь: ` і суму.",
+    print("нуль")` }),
+      C({ q: "Користувач вводить два числа. Виведи більше з них, а якщо вони рівні — слово `рівні`.",
         starter: `a = int(input())
 b = int(input())
-answer = int(input())
 `,
-        tests: [{ input: ["5", "7", "12"], expect: "Правильно!" }, { input: ["6", "9", "14"], expect: "Ні, правильна відповідь: 15" }],
-        hint: "`if answer == a + b:` … `else: print(\"Ні, правильна відповідь:\", a + b)`.",
+        tests: [{ input: ["3", "8"], expect: "8" }, { input: ["9", "2"], expect: "9" }, { input: ["4", "4"], expect: "рівні" }],
+        hint: "Три гілки: `a > b`, `b > a` і `else`.",
         solution: `a = int(input())
 b = int(input())
-answer = int(input())
-if answer == a + b:
-    print("Правильно!")
+if a > b:
+    print(a)
+elif b > a:
+    print(b)
 else:
-    print("Ні, правильна відповідь:", a + b)` }),
+    print("рівні")` }),
     ),
-    C({ q: "**Рівень знань.** Користувач вводить 6 оцінок (алгебра, геометрія, інформатика, фізика, хімія, біологія) — кожну з нового рядка. Виведи середній бал, округлений до цілого, а з нового рядка — рівень: 1–3 `початковий`, 4–6 `середній`, 7–9 `достатній`, 10–12 `високий`.\n\nФормат:\n`Середній бал: 10`\n`Рівень: високий`",
-      starter: ``,
-      tests: [{ input: ["10", "11", "12", "9", "10", "10"], expect: "Середній бал: 10\nРівень: високий" }, { input: ["7", "8", "9", "6", "7", "7"], expect: "Середній бал: 7\nРівень: достатній" }, { input: ["5", "6", "4", "5", "6", "4"], expect: "Середній бал: 5\nРівень: середній" }, { input: ["3", "2", "3", "4", "3", "2"], expect: "Середній бал: 3\nРівень: початковий" }],
-      hint: "Склади 6 оцінок, поділи на 6 і округли `round(...)`. Потім `if` / `elif` / `else` за рівнями.",
-      solution: `total = 0
-total += int(input())
-total += int(input())
-total += int(input())
-total += int(input())
-total += int(input())
-total += int(input())
-avg = round(total / 6)
-print("Середній бал:", avg)
-if avg >= 10:
-    print("Рівень: високий")
-elif avg >= 7:
-    print("Рівень: достатній")
-elif avg >= 4:
-    print("Рівень: середній")
-else:
-    print("Рівень: початковий")` }),
-    C({ q: "**Піцерія «elPizza».** Ціни: Рондо — 70 грн, Сирна — 40, Богатир — 80, Бриз — 120. Користувач вводить назву піци і кількість. Знижка: від 200 до 500 грн включно — 10%, понад 500 — 20%. Виведи `До сплати: ` і суму цілим числом та `грн`.",
-      starter: `pizza = input()
-count = int(input())
+    C({ q: "Користувач вводить заряд телефона у відсотках. Менше 20 — виведи `Під'єднай зарядку`, від 20 до 79 — `Нормально`, від 80 — `Майже повна`.",
+      starter: `charge = int(input())
 `,
-      tests: [{ input: ["Сирна", "2"], expect: "До сплати: 80 грн" }, { input: ["Рондо", "3"], expect: "До сплати: 189 грн" }, { input: ["Бриз", "5"], expect: "До сплати: 480 грн" }, { input: ["Богатир", "1"], expect: "До сплати: 80 грн" }],
-      hint: "Ціну знайди через `if` / `elif` за назвою. Потім `total = price * count`, знижка: `total = total * 0.9` чи `* 0.8`. Наприкінці `round(total)`.",
-      solution: `pizza = input()
-count = int(input())
-if pizza == "Рондо":
-    price = 70
-elif pizza == "Сирна":
-    price = 40
-elif pizza == "Богатир":
-    price = 80
+      tests: [{ input: ["5"], expect: "Під'єднай зарядку" }, { input: ["20"], expect: "Нормально" }, { input: ["79"], expect: "Нормально" }, { input: ["95"], expect: "Майже повна" }],
+      hint: "Перевіряй по черзі: `if charge < 20:` … `elif charge < 80:` … `else:`.",
+      solution: `charge = int(input())
+if charge < 20:
+    print("Під'єднай зарядку")
+elif charge < 80:
+    print("Нормально")
 else:
-    price = 120
-total = price * count
-if total > 500:
-    total = total * 0.8
-elif total >= 200:
-    total = total * 0.9
-print("До сплати:", round(total), "грн")` }),
+    print("Майже повна")` }),
+    C({ q: "Користувач вводить вік. До 6 років виведи `дошкільник`, від 6 до 17 — `школяр`, від 18 — `дорослий`.",
+      starter: `age = int(input())
+`,
+      tests: [{ input: ["4"], expect: "дошкільник" }, { input: ["6"], expect: "школяр" }, { input: ["17"], expect: "школяр" }, { input: ["30"], expect: "дорослий" }],
+      hint: "`if age < 6:` … `elif age <= 17:` … `else:`.",
+      solution: `age = int(input())
+if age < 6:
+    print("дошкільник")
+elif age <= 17:
+    print("школяр")
+else:
+    print("дорослий")` }),
   ],
 });
 
@@ -394,32 +375,29 @@ while n = 0:
     n = n - 1`, 1, "У умові потрібне порівняння: `==`, `!=`, `>` тощо, а не присвоєння `=`."),
     ),
     V(
-      C({ q: "Користувач вводить ціле число. Програма ділить його на 2 і друкує результат (кожен з нового рядка), доки воно ділиться націло. Якщо число одразу непарне, виведи `Число непарне` і цикл не запускай.",
+      C({ q: "**Зворотний відлік.** Користувач вводить n. Виведи числа від n до 1, кожне з нового рядка, а потім `Старт!`. Використай `while`.",
         need: ["while"],
         starter: `n = int(input())
 `,
-        tests: [{ input: ["40"], expect: "20\n10\n5" }, { input: ["7"], expect: "Число непарне" }, { input: ["12"], expect: "6\n3" }],
-        hint: "Спершу `if n % 2 != 0:` — повідомлення. Інакше `while n % 2 == 0:` ділимо `n = n // 2` і друкуємо.",
+        tests: [{ input: ["3"], expect: "3\n2\n1\nСтарт!" }, { input: ["1"], expect: "1\nСтарт!" }],
+        hint: "`while n > 0:` — друкуй n і зменшуй на 1.",
         solution: `n = int(input())
-if n % 2 != 0:
-    print("Число непарне")
-else:
-    while n % 2 == 0:
-        n = n // 2
-        print(n)` }),
-      C({ q: "Користувач вводить ціле n. Виведи суму всіх непарних додатних чисел, менших за n. Використай `while`.",
+while n > 0:
+    print(n)
+    n -= 1
+print("Старт!")` }),
+      C({ q: "Користувач вводить ціле додатне число. Виведи, скільки в ньому цифр. Використай `while`.",
         need: ["while"],
         starter: `n = int(input())
 `,
-        tests: [{ input: ["10"], expect: "25" }, { input: ["1"], expect: "0" }, { input: ["8"], expect: "16" }],
-        hint: "Почни з `i = 1` і додавай до суми, доки `i < n`, збільшуючи `i` на 2.",
+        tests: [{ input: ["2026"], expect: "4" }, { input: ["7"], expect: "1" }, { input: ["100500"], expect: "6" }],
+        hint: "Поки `n > 0`, відкидай останню цифру `n = n // 10` і рахуй кроки.",
         solution: `n = int(input())
-s = 0
-i = 1
-while i < n:
-    s += i
-    i += 2
-print(s)` }),
+count = 0
+while n > 0:
+    n = n // 10
+    count += 1
+print(count)` }),
     ),
     C({ q: "Користувач вводить числа, кожне з нового рядка, доки не введе `0`. Виведи їхню суму (нуль не рахуємо).",
       need: ["while"],
@@ -432,31 +410,18 @@ while x != 0:
     total += x
     x = int(input())
 print(total)` }),
-    C({ q: "**Опитування.** Користувач вводить роки народження, доки не введе `0`. Рік має бути від 1900 до 2026 включно — інакше виведи `Неправильний рік` і не враховуй його. Наприкінці виведи три рядки (поточний рік — 2026):\n`Середній вік: …` (округли до 1 знака)\n`Наймолодшому: …`\n`Найстаршому: …`",
+    C({ q: "Користувач вводить пароль, доки не введе `python`. Тоді виведи `Доступ відкрито` і з нового рядка — з якої спроби вдалося.",
       need: ["while"],
       starter: ``,
-      tests: [{ input: ["2010", "2012", "1890", "2011", "0"], expect: "Неправильний рік\nСередній вік: 15.0\nНаймолодшому: 14\nНайстаршому: 16" }, { input: ["2000", "2015", "0"], expect: "Середній вік: 18.5\nНаймолодшому: 11\nНайстаршому: 26" }],
-      hint: "Вік — це `2026 - year`. Тримай змінні: сума, кількість, найменший і найбільший вік. Оновлюй їх у циклі.",
-      solution: `total = 0
-count = 0
-young = 200
-old = 0
-year = int(input())
-while year != 0:
-    if year < 1900 or year > 2026:
-        print("Неправильний рік")
-    else:
-        age = 2026 - year
-        total += age
-        count += 1
-        if age < young:
-            young = age
-        if age > old:
-            old = age
-    year = int(input())
-print("Середній вік:", round(total / count, 1))
-print("Наймолодшому:", young)
-print("Найстаршому:", old)` }),
+      tests: [{ input: ["qwerty", "1234", "python"], expect: "Доступ відкрито\n3" }, { input: ["python"], expect: "Доступ відкрито\n1" }],
+      hint: "Прочитай перший пароль до циклу. `while password != \"python\":` — нова спроба й лічильник + 1.",
+      solution: `tries = 1
+password = input()
+while password != "python":
+    password = input()
+    tries += 1
+print("Доступ відкрито")
+print(tries)` }),
   ],
 });
 
@@ -507,19 +472,15 @@ for i in range(n):
     print(i)`, 1, "`input()` дає рядок, а `range` потрібне число. Треба `int(input())`."),
     ),
     V(
-      C({ q: "Користувач вводить два числа: a і b. Додай до a одиницю b разів, щоразу виводячи результат, а в кінці виведи `Результат: ` і фінальне число. Розв'язок — обов'язково циклом `for`.",
+      C({ q: "Користувач вводить слово. Виведи кожну його літеру з нового рядка. Використай `for`.",
         need: ["for"],
-        starter: `a = int(input())
-b = int(input())
+        starter: `word = input()
 `,
-        tests: [{ input: ["5", "3"], expect: "6\n7\n8\nРезультат: 8" }, { input: ["10", "1"], expect: "11\nРезультат: 11" }],
-        hint: "`for i in range(b):` — у тілі `a = a + 1` і `print(a)`.",
-        solution: `a = int(input())
-b = int(input())
-for i in range(b):
-    a = a + 1
-    print(a)
-print("Результат:", a)` }),
+        tests: [{ input: ["кіт"], expect: "к\nі\nт" }, { input: ["ok"], expect: "o\nk" }],
+        hint: "`for letter in word: print(letter)`.",
+        solution: `word = input()
+for letter in word:
+    print(letter)` }),
       C({ q: "Користувач вводить n. Виведи квадрати чисел від 1 до n, кожен з нового рядка. Використай `for`.",
         need: ["for"],
         starter: `n = int(input())
@@ -531,30 +492,26 @@ for i in range(1, n + 1):
     print(i * i)` }),
     ),
     V(
-      C({ q: "**Таблиця множення.** Користувач вводить число k і множник m. Виведи таблицю множення k від 1 до m у форматі `3 x 1 = 3`. Використай `for`.",
+      C({ q: "Користувач вводить n. Виведи «сходинки» з n рядків: у першому одна `*`, у другому дві, і так далі. Використай `for`.",
         need: ["for"],
-        starter: `k = int(input())
-m = int(input())
+        starter: `n = int(input())
 `,
-        tests: [{ input: ["3", "4"], expect: "3 x 1 = 3\n3 x 2 = 6\n3 x 3 = 9\n3 x 4 = 12" }, { input: ["7", "2"], expect: "7 x 1 = 7\n7 x 2 = 14" }],
-        hint: "`for i in range(1, m + 1): print(k, \"x\", i, \"=\", k * i)`.",
-        solution: `k = int(input())
-m = int(input())
-for i in range(1, m + 1):
-    print(k, "x", i, "=", k * i)` }),
-      C({ q: "**Таблиця множення через while.** Те саме, але циклом `while`: користувач вводить k і m, виведи рядки `k x i = …` для i від 1 до m.",
-        need: ["while"],
-        starter: `k = int(input())
-m = int(input())
+        tests: [{ input: ["3"], expect: "*\n**\n***" }, { input: ["1"], expect: "*" }],
+        hint: "Рядок можна множити на число: `\"*\" * i`.",
+        solution: `n = int(input())
+for i in range(1, n + 1):
+    print("*" * i)` }),
+      C({ q: "Користувач вводить n. Виведи добуток усіх чисел від 1 до n. Використай `for`.",
+        need: ["for"],
+        starter: `n = int(input())
 `,
-        tests: [{ input: ["3", "4"], expect: "3 x 1 = 3\n3 x 2 = 6\n3 x 3 = 9\n3 x 4 = 12" }, { input: ["5", "1"], expect: "5 x 1 = 5" }],
-        hint: "Почни з `i = 1`, `while i <= m:` і не забудь `i += 1`.",
-        solution: `k = int(input())
-m = int(input())
-i = 1
-while i <= m:
-    print(k, "x", i, "=", k * i)
-    i += 1` }),
+        tests: [{ input: ["4"], expect: "24" }, { input: ["1"], expect: "1" }, { input: ["6"], expect: "720" }],
+        hint: "Почни з `p = 1` і множ: `p = p * i`.",
+        solution: `n = int(input())
+p = 1
+for i in range(1, n + 1):
+    p = p * i
+print(p)` }),
     ),
     C({ q: "Користувач вводить n. Порахуй і виведи суму всіх чисел від 1 до n, кратних 3. Використай `range` з кроком.",
       need: ["for"],
@@ -609,21 +566,14 @@ print(x, a)`, `${p} ${pyList(b)}`, "`pop` видаляє елемент за і�
       Q("Що повертає `sorted([3, 1, 2])`?", ["Новий список `[1, 2, 3]`", "`[3, 2, 1]`", "Нічого, сортує на місці", "Найменше число"], 0, "`sorted` не змінює старий список, а дає новий."),
     ),
     V(
-      C({ q: "**Температури.** Дано список середньодобових температур. Виведи кожне з нового рядка: найвищу, найнижчу, середню (округли до 1 знака), кількість днів вище 20°C і відсортований список.",
-        starter: `TEMPERATURES = [17, 19, 21, 23, 16, 15, 18, 22, 25, 19, 17, 16, 20, 21]
+      C({ q: "Користувач вводить слова через пробіл. Виведи, скільки слів, а з нового рядка — останнє слово.",
+        starter: `words = input().split()
 `,
-        tests: [{ input: [], expect: "25\n15\n19.2\n5\n[15, 16, 16, 17, 17, 18, 19, 19, 20, 21, 21, 22, 23, 25]" }],
-        hint: "`max`, `min`, `sum(...) / len(...)`, цикл з умовою `> 20` і `sorted`.",
-        solution: `TEMPERATURES = [17, 19, 21, 23, 16, 15, 18, 22, 25, 19, 17, 16, 20, 21]
-print(max(TEMPERATURES))
-print(min(TEMPERATURES))
-print(round(sum(TEMPERATURES) / len(TEMPERATURES), 1))
-hot = 0
-for t in TEMPERATURES:
-    if t > 20:
-        hot += 1
-print(hot)
-print(sorted(TEMPERATURES))` }),
+        tests: [{ input: ["я люблю python"], expect: "3\npython" }, { input: ["привіт"], expect: "1\nпривіт" }],
+        hint: "`len(words)` і `words[-1]` (або `words[len(words) - 1]`).",
+        solution: `words = input().split()
+print(len(words))
+print(words[-1])` }),
       C({ q: "Користувач вводить, скільки чисел буде у списку, а потім самі числа — кожне з нового рядка. Склади з них список і виведи його.",
         starter: `n = int(input())
 nums = []
@@ -637,38 +587,35 @@ for i in range(n):
 print(nums)` }),
     ),
     V(
-      C({ q: "**Улюблені тварини.** Користувач вводить чотирьох тварин (кожну з нового рядка). Збережи їх у список. Потім він вводить, яку тварину замінити, і нову. Виведи оновлений список.",
-        starter: ``,
-        tests: [{ input: ["кіт", "пес", "папуга", "рибка", "пес", "кролик"], expect: "['кіт', 'кролик', 'папуга', 'рибка']" }, { input: ["лев", "тигр", "вовк", "лис", "лев", "ведмідь"], expect: "['ведмідь', 'тигр', 'вовк', 'лис']" }],
-        hint: "Знайди індекс старої тварини через `.index()` і запиши на це місце нову.",
-        solution: `pets = []
-for i in range(4):
-    pets.append(input())
-old = input()
-new = input()
-pets[pets.index(old)] = new
-print(pets)` }),
-      C({ q: "Користувач вводить слова через пробіл. Виведи список тих слів, індекси яких діляться на 3 (0, 3, 6, …).",
-        starter: `words = input().split()
+      C({ q: "Користувач вводить числа через пробіл. Виведи список без першого й останнього елемента.",
+        starter: `nums = input().split()
 `,
-        tests: [{ input: ["а б в г ґ д е"], expect: "['а', 'г', 'е']" }, { input: ["кіт пес"], expect: "['кіт']" }],
-        hint: "Зріз з кроком: `words[::3]`. Або цикл по `range(0, len(words), 3)`.",
-        solution: `words = input().split()
-print(words[::3])` }),
+        tests: [{ input: ["1 2 3 4 5"], expect: "['2', '3', '4']" }, { input: ["7 8"], expect: "[]" }],
+        hint: "Зріз: `nums[1:-1]` або `nums[1:len(nums) - 1]`.",
+        solution: `nums = input().split()
+print(nums[1:-1])` }),
+      C({ q: "Користувач вводить імена через пробіл, а з нового рядка — ще одне ім'я. Виведи `True`, якщо це ім'я є у списку, і з нового рядка — скільки разів воно трапляється.",
+        starter: `names = input().split()
+name = input()
+`,
+        tests: [{ input: ["Оля Тарас Оля", "Оля"], expect: "True\n2" }, { input: ["Соня Марко", "Іра"], expect: "False\n0" }],
+        hint: "`name in names` і `names.count(name)`.",
+        solution: `names = input().split()
+name = input()
+print(name in names)
+print(names.count(name))` }),
     ),
-    C({ q: "**Список покупок.** Дано `shopping`. Користувач вводить товар, який треба докупити, і товар, який уже куплено. Додай перший, видали другий. Виведи: список, скільки товарів залишилось купити, і чи є в списку `сир` (`True`/`False`).",
-      starter: `shopping = ["хліб", "молоко", "яблука", "сир"]
+    C({ q: "Дано порожній список `todo`. Користувач вводить три справи, кожну з нового рядка. Додай їх у список, а потім видали **першу** (вона вже зроблена). Виведи список.",
+      starter: `todo = []
 `,
-      tests: [{ input: ["банани", "молоко"], expect: "['хліб', 'яблука', 'сир', 'банани']\n4\nTrue" }, { input: ["чай", "сир"], expect: "['хліб', 'молоко', 'яблука', 'чай']\n4\nFalse" }],
-      hint: "`append`, `remove`, `len` і `\"сир\" in shopping`.",
-      solution: `shopping = ["хліб", "молоко", "яблука", "сир"]
-new = input()
-bought = input()
-shopping.append(new)
-shopping.remove(bought)
-print(shopping)
-print(len(shopping))
-print("сир" in shopping)` }),
+      tests: [{ input: ["уроки", "спорт", "читання"], expect: "['спорт', 'читання']" }],
+      hint: "Тричі `todo.append(input())`, потім `del todo[0]` або `todo.pop(0)`.",
+      solution: `todo = []
+todo.append(input())
+todo.append(input())
+todo.append(input())
+del todo[0]
+print(todo)` }),
   ],
 });
 
@@ -736,55 +683,35 @@ print(add(2, 3))`, 1, "Тіло функції пишемо з відступо�
 ___("Оля")`, [["hello"]], "Функцію викликаємо за назвою з дужками."),
     ),
     V(
-      C({ q: "Напиши функцію `digit_sum(n)`, яка за допомогою циклу рахує і **повертає** суму цифр числа n (n — ціле додатне, будь-якої довжини).",
-        starter: `def digit_sum(n):
+      C({ q: "Напиши функцію `max3(a, b, c)`, яка **повертає** найбільше з трьох чисел.",
+        starter: `def max3(a, b, c):
     `,
-        tests: [{ call: "digit_sum(123)", expect: "6" }, { call: "digit_sum(9)", expect: "9" }, { call: "digit_sum(90517)", expect: "22" }],
-        hint: "Поки `n > 0`: додай `n % 10` до суми і зроби `n = n // 10`. Наприкінці `return`.",
-        solution: `def digit_sum(n):
-    s = 0
-    while n > 0:
-        s += n % 10
-        n = n // 10
-    return s` }),
-      C({ q: "Напиши функцію `is_leap(year)`, яка **повертає** `True`, якщо рік високосний, і `False`, якщо ні.",
-        starter: `def is_leap(year):
+        tests: [{ call: "max3(1, 5, 3)", expect: "5" }, { call: "max3(9, 2, 4)", expect: "9" }, { call: "max3(-1, -5, -2)", expect: "-1" }],
+        hint: "Можна через `if`, а можна `return max(a, b, c)`.",
+        solution: `def max3(a, b, c):
+    return max(a, b, c)` }),
+      C({ q: "Напиши функцію `is_even(n)`, яка **повертає** `True`, якщо число парне, і `False`, якщо ні.",
+        starter: `def is_even(n):
     `,
-        tests: [{ call: "is_leap(2024)", expect: "True" }, { call: "is_leap(1900)", expect: "False" }, { call: "is_leap(2000)", expect: "True" }, { call: "is_leap(2026)", expect: "False" }],
-        hint: "`return year % 4 == 0 and year % 100 != 0 or year % 400 == 0`.",
-        solution: `def is_leap(year):
-    return year % 4 == 0 and year % 100 != 0 or year % 400 == 0` }),
+        tests: [{ call: "is_even(4)", expect: "True" }, { call: "is_even(7)", expect: "False" }, { call: "is_even(0)", expect: "True" }],
+        hint: "`return n % 2 == 0`.",
+        solution: `def is_even(n):
+    return n % 2 == 0` }),
     ),
-    C({ q: "Напиши процедуру `dec2bin(n)`, яка **виводить** число n у двійковому вигляді. Якщо n менше 256 — рівно 8 бітів, інакше 16 бітів (n до 65535). Програма вже читає число і викликає процедуру.",
-      starter: `def dec2bin(n):
-    
-
-dec2bin(int(input()))`,
-      tests: [{ input: ["5"], expect: "00000101" }, { input: ["255"], expect: "11111111" }, { input: ["300"], expect: "0000000100101100" }],
-      hint: "Бітів `bits = 8 if n < 256 else 16`. Збирай рядок: `str(n % 2)` додавай на початок і ділі `n //= 2` — стільки разів, скільки бітів.",
-      solution: `def dec2bin(n):
-    bits = 8 if n < 256 else 16
-    s = ""
-    for i in range(bits):
-        s = str(n % 2) + s
-        n = n // 2
-    print(s)
-
-dec2bin(int(input()))` }),
-    C({ q: "**Хрестики-нолики.** Поле — список з 9 клітинок (`\"x\"`, `\"o\"` або `\" \"`), рядками зліва направо. Напиши функцію `wins(board, s)`, яка повертає `True`, якщо символ s зібрав рядок, стовпчик або діагональ.",
-      starter: `LINES = [(0, 1, 2), (3, 4, 5), (6, 7, 8), (0, 3, 6), (1, 4, 7), (2, 5, 8), (0, 4, 8), (2, 4, 6)]
-
-def wins(board, s):
+    C({ q: "Напиши функцію `greet(name)`, яка **повертає** рядок `Привіт, <ім'я>!`. Наприклад, `greet(\"Оля\")` повертає `Привіт, Оля!`.",
+      starter: `def greet(name):
     `,
-      tests: [{ call: `wins(["x","x","x"," ","o"," ","o"," "," "], "x")`, expect: "True" }, { call: `wins(["x","o"," ","x","o"," "," ","o","x"], "o")`, expect: "True" }, { call: `wins(["x","o","x","o","x","o","o","x","o"], "x")`, expect: "False" }, { call: `wins(["o"," ","x"," ","x"," ","x"," ","o"], "x")`, expect: "True" }],
-      hint: "Пройди циклом по `LINES`: якщо `board[a] == board[b] == board[c] == s`, поверни True. Після циклу — False.",
-      solution: `LINES = [(0, 1, 2), (3, 4, 5), (6, 7, 8), (0, 3, 6), (1, 4, 7), (2, 5, 8), (0, 4, 8), (2, 4, 6)]
-
-def wins(board, s):
-    for a, b, c in LINES:
-        if board[a] == s and board[b] == s and board[c] == s:
-            return True
-    return False` }),
+      tests: [{ call: `greet("Оля")`, expect: "'Привіт, Оля!'" }, { call: `greet("Марко")`, expect: "'Привіт, Марко!'" }],
+      hint: "Рядки склеюються через `+`: `\"Привіт, \" + name + \"!\"`.",
+      solution: `def greet(name):
+    return "Привіт, " + name + "!"` }),
+    C({ q: "Напиши функцію `average(nums)`, яка **повертає** середнє арифметичне чисел зі списку nums.",
+      starter: `def average(nums):
+    `,
+      tests: [{ call: "average([2, 4, 6])", expect: "4.0" }, { call: "average([5])", expect: "5.0" }, { call: "average([1, 2])", expect: "1.5" }],
+      hint: "`sum(nums) / len(nums)`.",
+      solution: `def average(nums):
+    return sum(nums) / len(nums)` }),
   ],
 });
 
@@ -837,24 +764,13 @@ print(text)`, 0, "Після `with … as f` потрібна двокрапка
       F("Допиши, щоб програма дописала рядок у кінець файлу.", `with open("log.txt", "___", encoding="utf-8") as f:
     f.___("новий рядок\\n")`, [["a"], ["write"]], "Режим `a` дописує в кінець, а пише метод `write`."),
     ),
-    C({ q: "Користувач вводить назву текстового файлу. Виведи кількість слів у ньому, а з нового рядка — кількість цифр. Якщо файлу немає, виведи `Файл не знайдено` замість краху програми.",
-      files: { "story.txt": STORY, "list.txt": "1 2 3\nтри слова тут" },
-      starter: `name = input()
-`,
-      tests: [{ input: ["story.txt"], expect: "14\n7" }, { input: ["list.txt"], expect: "6\n3" }, { input: ["nema.txt"], expect: "Файл не знайдено" }],
-      hint: "Слова — `len(text.split())`. Цифри — цикл по символах з `.isdigit()`. Усе в `try`, а `except FileNotFoundError:` — повідомлення.",
-      solution: `name = input()
-try:
-    with open(name, "r", encoding="utf-8") as f:
-        text = f.read()
-    print(len(text.split()))
-    digits = 0
-    for ch in text:
-        if ch.isdigit():
-            digits += 1
-    print(digits)
-except FileNotFoundError:
-    print("Файл не знайдено")` }),
+    C({ q: "Виведи, скільки рядків у файлі `names.txt`.",
+      files: { "names.txt": "Оля\nТарас\nСоня\nМарко" },
+      starter: ``,
+      tests: [{ input: [], expect: "4" }, { input: [], files: { "names.txt": "Іра\nДен" }, expect: "2" }],
+      hint: "`len(f.readlines())`.",
+      solution: `with open("names.txt", "r", encoding="utf-8") as f:
+    print(len(f.readlines()))` }),
     V(
       C({ q: "Файл `log.txt` уже має записи. Користувач вводить новий запис — допиши його в кінець файлу з нового рядка, а потім прочитай файл і виведи весь вміст.",
         files: { "log.txt": "понеділок: 3 задачі\n" },
@@ -903,23 +819,17 @@ for x in nums:
         count += 1
 print(count)`, String(a.filter(x => x > t).length), `Рахуємо числа, більші за ${t}.`); }),
     V(
-      C({ q: "**Вгадай число.** Програма загадала число `secret`. Користувач вводить спроби, доки не вгадає. Після кожної неправильної виведи `Більше` або `Менше`, а коли вгадав — `Вгадано за N спроб`.",
-        need: ["while"],
-        starter: `secret = int(input())
+      C({ q: "Користувач вводить числа через пробіл. Виведи, скільки серед них додатних.",
+        starter: `nums = input().split()
 `,
-        tests: [{ input: ["7", "5", "9", "7"], expect: "Більше\nМенше\nВгадано за 3 спроб" }, { input: ["3", "3"], expect: "Вгадано за 1 спроб" }],
-        hint: "Тримай лічильник спроб. `while guess != secret:` — підказка й нова спроба.",
-        solution: `secret = int(input())
-tries = 1
-guess = int(input())
-while guess != secret:
-    if guess < secret:
-        print("Більше")
-    else:
-        print("Менше")
-    guess = int(input())
-    tries += 1
-print("Вгадано за", tries, "спроб")` }),
+        tests: [{ input: ["3 -1 0 5 -7"], expect: "2" }, { input: ["-2 -4"], expect: "0" }],
+        hint: "Цикл по списку, `int(x) > 0` — лічильник + 1.",
+        solution: `nums = input().split()
+count = 0
+for x in nums:
+    if int(x) > 0:
+        count += 1
+print(count)` }),
       C({ q: "Напиши функцію `count_even(nums)`, яка повертає, скільки парних чисел у списку.",
         starter: `def count_even(nums):
     `,
@@ -945,24 +855,15 @@ for x in input().split():
 print(max(nums))
 print(min(nums))
 print(round(sum(nums) / len(nums), 1))` }),
-    C({ q: "У файлі `marks.txt` оцінки учнів — по одній у рядку. Виведи середній бал, округлений до цілого, і рівень: 1–3 `початковий`, 4–6 `середній`, 7–9 `достатній`, 10–12 `високий` (через пробіл).",
-      files: { "marks.txt": "10\n11\n9\n12\n10" },
-      tests: [{ input: [], expect: "10 високий" }, { input: [], files: { "marks.txt": "5\n6\n4" }, expect: "5 середній" }, { input: [], files: { "marks.txt": "7\n8\n9\n7" }, expect: "8 достатній" }],
+    C({ q: "У файлі `numbers.txt` числа — по одному в рядку. Виведи їхню суму.",
+      files: { "numbers.txt": "5\n10\n15" },
+      tests: [{ input: [], expect: "30" }, { input: [], files: { "numbers.txt": "1\n2" }, expect: "3" }],
       starter: ``,
-      hint: "Прочитай рядки `readlines()`, кожен переведи в `int`. Середнє — `round(sum / кількість)`.",
-      solution: `with open("marks.txt", "r", encoding="utf-8") as f:
-    marks = []
+      hint: "Цикл по рядках файлу: `total += int(line)`.",
+      solution: `total = 0
+with open("numbers.txt", "r", encoding="utf-8") as f:
     for line in f:
-        marks.append(int(line))
-avg = round(sum(marks) / len(marks))
-if avg >= 10:
-    level = "високий"
-elif avg >= 7:
-    level = "достатній"
-elif avg >= 4:
-    level = "середній"
-else:
-    level = "початковий"
-print(avg, level)` }),
+        total += int(line)
+print(total)` }),
   ],
 });
