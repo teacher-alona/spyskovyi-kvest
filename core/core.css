@@ -242,6 +242,10 @@ textarea { resize: vertical; line-height: 1.6; }
 .game .gbar { height: 8px; background: var(--ink-soft); border-radius: 99px; overflow: hidden; }
 .game .gbar > div { height: 100%; background: var(--gold); }
 .game .gstat { font-size: .9rem; color: var(--muted); }
+.cathead { display: flex; flex-direction: column; gap: 6px; margin: 4px 0 14px; }
+.cathead h2 { font-size: 1.5rem; color: var(--ink); }
+.game.cat { position: relative; }
+.game.cat .caticon { font-size: 2rem; line-height: 1; }
 .empty-games { color: var(--muted); }
 
 .wtile.shop:not([disabled]) { border-style: dashed; }

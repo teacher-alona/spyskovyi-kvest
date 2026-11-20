@@ -4,6 +4,8 @@
 const LEVELS = window.LEVELS;
 const GI = Object.assign({ id: "spysky", title: "Списковий квест", eyebrow: "Python · списки", intro: "Кожен рівень починається з розминки з основ. На рівнях «нова тема» спершу коротке пояснення, потім задачі. Наступний рівень відкривається, коли пройдено попередній." }, window.GAME_INFO || {});
 const GAME = GI.id;
+// кнопка «назад» веде в розділ порталу, де лежить ця гра
+const backCat = (() => { const g = KV.GAMES.find(x => x.id === GAME); return g && KV.CATS ? KV.CATS.find(c => c.id === g.cat) : null; })();
 const MAX_HEARTS = KV.N;
 const KIND = Object.assign({ practice: "закріплення", learn: "нова тема", boss: "фінал" }, GI.kinds || {});
 const TYPE = Object.assign({ quiz: "Питання", output: "Що виведе?", bug: "Знайди помилку", order: "Збери код", fill: "Встав пропущене", code: "Напиши код", lesson: "Нове" }, window.GAME_TYPE_LABELS || {}, GI.types || {});
@@ -70,12 +72,96 @@ function loadPy() {
     .catch(e => { skPromise = null; throw e; });
   return skPromise;
 }
-async function runPy(code, inputs) {
+// Віртуальні файли: у Skulpt справжнього open() майже немає, тож підміняємо його своїм —
+// з режимами r/w/a/+, encoding, read/readline/readlines, циклом по рядках, with і FileNotFoundError
+const VFS_PY = `
+class FileNotFoundError(Exception):
+    pass
+class UnsupportedOperation(Exception):
+    pass
+class _VFile:
+    def __init__(self, name, mode):
+        self.name = name
+        self.mode = mode
+        self.closed = False
+        self.pos = 0
+        m = mode.replace("t", "")
+        if m in ("r", "r+"):
+            if name not in _FS:
+                raise FileNotFoundError("[Errno 2] No such file or directory: '" + name + "'")
+        elif m in ("w", "w+"):
+            _FS[name] = ""
+        elif m in ("a", "a+"):
+            if name not in _FS:
+                _FS[name] = ""
+            self.pos = len(_FS[name])
+        else:
+            raise ValueError("invalid mode: '" + mode + "'")
+    def _chk(self):
+        if self.closed:
+            raise ValueError("I/O operation on closed file.")
+    def read(self, n=-1):
+        self._chk()
+        if self.mode[0] != "r" and "+" not in self.mode:
+            raise UnsupportedOperation("not readable")
+        t = _FS[self.name]
+        s = t[self.pos:] if n is None or n < 0 else t[self.pos:self.pos + n]
+        self.pos += len(s)
+        return s
+    def readline(self):
+        self._chk()
+        if self.mode[0] != "r" and "+" not in self.mode:
+            raise UnsupportedOperation("not readable")
+        t = _FS[self.name]
+        i = t.find("\\n", self.pos)
+        e = len(t) if i < 0 else i + 1
+        s = t[self.pos:e]
+        self.pos = e
+        return s
+    def readlines(self):
+        out = []
+        while True:
+            line = self.readline()
+            if line == "":
+                break
+            out.append(line)
+        return out
+    def __iter__(self):
+        return iter(self.readlines())
+    def write(self, s):
+        self._chk()
+        if self.mode[0] == "r" and "+" not in self.mode:
+            raise UnsupportedOperation("not writable")
+        if not isinstance(s, str):
+            raise TypeError("write() argument must be str, not " + type(s).__name__)
+        t = _FS[self.name]
+        if self.mode[0] == "a":
+            self.pos = len(t)
+        _FS[self.name] = t[:self.pos] + s + t[self.pos + len(s):]
+        self.pos += len(s)
+        return len(s)
+    def close(self):
+        self.closed = True
+    def __enter__(self):
+        return self
+    def __exit__(self, a, b, c):
+        self.close()
+        return False
+def open(name, mode="r", encoding=None):
+    return _VFile(name, mode)
+`;
+let vfsN = 0;
+async function runPy(code, inputs, files) {
   await loadPy();
   let out = ""; const q = (inputs || []).slice();
+  // файли задачі: окремий модуль, який підключаємо першим рядком (номери рядків у помилках потім виправляємо)
+  const vfs = files ? "_FS = " + JSON.stringify(files) + "\n" + VFS_PY : null;
+  // щоразу нове ім'я модуля: Skulpt кешує імпорти, а файли в кожному запуску мають бути свіжі
+  const mod = "vfs" + (++vfsN);
+  if (vfs) code = "from " + mod + " import open, FileNotFoundError, UnsupportedOperation\n" + code;
   Sk.configure({
     output: s => { out += s; },
-    read: x => { if (Sk.builtinFiles && Sk.builtinFiles.files[x] !== undefined) return Sk.builtinFiles.files[x]; throw new Error("Немає модуля " + x); },
+    read: x => { if (vfs && x.replace(/^.*\//, "") === mod + ".py") return vfs; if (Sk.builtinFiles && Sk.builtinFiles.files[x] !== undefined) return Sk.builtinFiles.files[x]; throw new Error("Немає модуля " + x); },
     inputfun: () => { if (!q.length) throw new Error("NOINPUT"); return q.shift(); },
     inputfunTakesPrompt: true,
     execLimit: 4000,
@@ -85,7 +171,10 @@ async function runPy(code, inputs) {
     await Sk.misceval.asyncToPromise(() => Sk.importMainWithBody("<stdin>", false, code, true));
     return { out, err: null };
   } catch (e) {
-    return { out, err: explainErr(e) };
+    const err = explainErr(e);
+    // помилка всередині віртуального файлу має номер рядка модуля — його не показуємо; решту зсуваємо на 1
+    if (vfs) err.raw = /FileNotFoundError|UnsupportedOperation|closed file|invalid mode|write\(\) argument/.test(err.raw) ? err.raw.replace(/ on line \d+/g, "") : err.raw.replace(/on line (\d+)/g, (m, n) => "on line " + Math.max(1, n - 1));
+    return { out, err };
   }
 }
 function explainErr(e) {
@@ -102,6 +191,8 @@ function explainErr(e) {
     [/ZeroDivisionError/, "Ділення на нуль."],
     [/AttributeError/, "У цього об'єкта немає такого методу. Перевір назву, наприклад append, а не add."],
     [/KeyError/, "Немає такого ключа."],
+    [/FileNotFoundError/, "Файл не знайдено. Перевір назву файлу або обробку помилки через try/except."],
+    [/not readable|not writable/, "Файл відкрито не в тому режимі: «w» і «a» — для запису, «r» — для читання."],
   ];
   const tip = (tips.find(([r]) => r.test(raw)) || [null, "Під час виконання сталася помилка."])[1];
   return { tip, raw: raw.replace("ExternalError: Error: NOINPUT", "input()").replace(/^ExternalError: Error: /, "") };
@@ -134,7 +225,7 @@ async function prepareItems(items) {
   for (let k = 0; k < items.length; k++) {
     let it = items[k], tries = 0;
     while ((it.t === "output" && it.a == null) || (it.t === "order" && it.out == null)) {
-      const r = await runPy(it.code, []);
+      const r = await runPy(it.code, [], it.files);
       if (!r.err && r.out.trim()) {
         if (it.t === "output") it.a = r.out.replace(/\s+$/, ""); else it.out = r.out.replace(/\s+$/, "");
         break;
@@ -253,7 +344,7 @@ function renderMap() {
   const n = LEVELS.length;
   app.innerHTML = `
   <header class="hero maphero">
-    <div class="topnav"><a class="link" href="../">← Усі ігри</a>${KV.whoami()}</div>
+    <div class="topnav"><a class="link" href="../${backCat ? "#" + backCat.id : ""}">← ${backCat ? esc(backCat.title) : "Усі ігри"}</a>${KV.whoami()}</div>
     <div class="intro">
       <div class="eyebrow">${esc(GI.eyebrow)}</div>
       <h1>${esc(GI.title)}</h1>
@@ -320,6 +411,8 @@ function renderIntro(li) {
 }
 
 // ---------- задача ----------
+// файли, з якими працює програма в задачі: показуємо їх учню як «аркуш» з назвою
+const filesHtml = it => it.files ? `<div class="vfiles">${Object.entries(it.files).map(([n, t]) => `<div class="vfile"><div class="vfname">📄 ${esc(n)}</div><pre>${esc(t)}</pre></div>`).join("")}</div>` : "";
 function frame(it, body) {
   const lv = LEVELS[run.li];
   const pct = Math.round(run.idx / run.items.length * 100);
@@ -391,7 +484,7 @@ function rLesson(it) {
 
 function rQuiz(it) {
   const order = shuffle(it.options.map((_, i) => i));
-  frame(it, `<div class="q">${md(it.q)}</div>${it.code ? pre(it.code) : ""}
+  frame(it, `<div class="q">${md(it.q)}</div>${filesHtml(it)}${it.code ? pre(it.code) : ""}
     <div class="options">${order.map(i => `<button class="opt" data-i="${i}">${md(it.options[i])}</button>`).join("")}</div>`);
   app.querySelectorAll(".opt").forEach(b => b.onclick = () => {
     const i = +b.dataset.i, ok = i === it.a;
@@ -421,7 +514,7 @@ function attemptWrong(it, revealHtml) {
 
 function rOutput(it) {
   const lines = it.a.split("\n").length;
-  frame(it, `<div class="q">${md(it.q || "Що виведе ця програма?")}</div>${it.code ? pre(it.code) : ""}
+  frame(it, `<div class="q">${md(it.q || "Що виведе ця програма?")}</div>${filesHtml(it)}${it.code ? pre(it.code) : ""}
     <label class="answer-label" for="ans">Твоя відповідь${lines > 1 ? ` (${lines} рядки, кожен з нового рядка)` : ""}:</label>
     <textarea id="ans" rows="${Math.max(2, lines + 1)}" spellcheck="false" autocomplete="off"></textarea>
     ${!PLAIN && /[\[(']/.test(it.a) ? `<div class="status">Пиши точно так, як надрукує Python: список — у квадратних дужках, рядки всередині списку — в лапках.</div>` : ""}`);
@@ -542,7 +635,7 @@ function editorKeys(ta) {
 }
 function rCode(it) {
   if (run.st.code === undefined) run.st.code = it.starter || "";
-  frame(it, `<div class="q">${md(it.q)}</div>
+  frame(it, `<div class="q">${md(it.q)}</div>${filesHtml(it)}
     <label class="answer-label" for="ed">Твій код:</label>
     <textarea id="ed" class="editor" rows="10" spellcheck="false" autocomplete="off" autocapitalize="off"></textarea>
     <div id="hintbox"></div>
@@ -580,17 +673,24 @@ function rCode(it) {
       $("#tests").innerHTML = `<div class="test fail"><div class="head">Заборонено</div>У цій задачі не можна використовувати ${it.forbid.map(f => `<code>${esc(f)}()</code>`).join(", ")}. Напиши алгоритм сам.</div>`;
       return;
     }
+    // обов'язкова конструкція: наприклад, задача саме на цикл while
+    const noCom = src.replace(/#.*$/gm, "");
+    const miss = (it.need || []).filter(w => !new RegExp("(^|[^A-Za-z0-9_])" + w.replace(/[.()]/g, "\\$&") + "($|[^A-Za-z0-9_])").test(noCom));
+    if (miss.length) {
+      $("#tests").innerHTML = `<div class="test fail"><div class="head">Не та конструкція</div>У цій задачі треба використати ${miss.map(f => `<code>${esc(f)}</code>`).join(", ")}.</div>`;
+      return;
+    }
     setActs(`<span class="status">Перевіряю…</span>`);
     let results = [];
     try {
       for (const t of it.tests) {
         if (t.call) {
-          const r = await runPy(src + "\n__r = repr(" + t.call + ")\nprint('@@R@@' + __r)\n", []);
+          const r = await runPy(src + "\n__r = repr(" + t.call + ")\nprint('@@R@@' + __r)\n", [], t.files || it.files);
           const [printed, got] = r.out.split("@@R@@");
           const ok = !r.err && got !== undefined && got.trim() === t.expect;
           results.push({ ok, label: t.label || t.call, expect: t.expect, got: got !== undefined ? got.trim() : null, printed: (printed || "").trim(), err: r.err, call: t.call });
         } else {
-          const r = await runPy(src, t.input);
+          const r = await runPy(src, t.input, t.files || it.files);
           const norm = s => s.replace(/\r/g, "").split("\n").map(l => l.replace(/\s+$/, "")).join("\n").trim();
           const ok = !r.err && norm(r.out) === norm(t.expect);
           results.push({ ok, label: "Введення: " + t.input.join(" ↵ "), expect: t.expect, got: norm(r.out), err: r.err });

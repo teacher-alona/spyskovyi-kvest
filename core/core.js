@@ -2,7 +2,7 @@
    змійка з гардеробом, заслона при виході з гри. Кожна гра підключає цей файл і додає свої рівні. */
 (function () {
 "use strict";
-const VERSION = "2026.11.20-68";
+const VERSION = "2026.11.20-69";
 const API = "https://script.google.com/macros/s/AKfycbzPtRGlYI4osS-xL-J_pAZ2A2HxTWUeuecjy9-13MgAdFIzkDnYuCr1qmLHqZvqWkQMWQ/exec";
 
 // Усі ігри порталу. sheet — назва аркуша з прогресом у таблиці вчительки.
@@ -25,9 +25,21 @@ const GAMES = [
     levelIds: ["blocks", "rules", "line", "branch", "loops", "t_shape", "t_fill", "t_bug", "boss"] },
   { id: "graphs", title: "Графи", sub: "Python · 10 клас", path: "grafy/", sheet: "Прогрес: Графи", max: 30,
     levelIds: ["basics", "directed", "paths", "edges", "matrix", "adj", "bfs", "dfs", "dijkstra", "boss"] },
+  { id: "pybase", title: "Основи Python", sub: "Python · умови, цикли, списки, функції, файли", path: "python-osnovy/", sheet: "Прогрес: Основи Python", max: 27,
+    levelIds: ["mathmod", "logic", "ifelse", "while", "for", "lists", "funcs", "files", "boss"] },
   { id: "gamedev", title: "Майстерня ігор", sub: "Розробка ігор · 5 клас", path: "rozrobka-ihor/", sheet: "Прогрес: Майстерня ігор", max: 18,
     levelIds: ["rules", "lives", "goals", "bugs", "runner", "levels"] },
 ];
+// розділи порталу: на головній — плитки розділів, у розділі — його ігри
+const CATS = [
+  { id: "python", title: "Python", icon: "🐍", games: ["python6", "pybase", "spysky", "graphs"] },
+  { id: "swift", title: "Swift", icon: "🍎", games: ["swift"] },
+  { id: "prog", title: "Основи програмування", icon: "🧩", games: ["flow"] },
+  { id: "gamedev", title: "Розробка ігор", icon: "🎮", games: ["gamedev"] },
+  { id: "digital", title: "Цифрова грамотність", icon: "💻", games: ["fajly", "klavishi", "trenazhery"] },
+  { id: "robo", title: "Робототехніка", icon: "🤖", games: ["robo"] },
+];
+GAMES.forEach(g => { const c = CATS.find(c => c.games.includes(g.id)); g.cat = c ? c.id : "other"; });
 
 // ---------- утиліти ----------
 const esc = s => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
@@ -853,7 +865,7 @@ function toast(text) {
 }
 
 window.KV = {
-  VERSION, GAMES, esc, md, shuffle, fmtTime, starStr, $, app,
+  VERSION, GAMES, CATS, esc, md, shuffle, fmtTime, starStr, $, app,
   get session() { return session; }, get offline() { return offline; }, get access() { return access; },
   profile, gameData, totalStars, save, scheduleSync, pull, call, syncLabel, boot, logout, whoami, bindWhoami,
   useGame: (id, summaryFn, levelIds) => { currentGame = id; gameSummary = summaryFn; const G = GAMES.find(g => g.id === id); if (G) G.levelIds = levelIds; },

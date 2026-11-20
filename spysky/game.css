@@ -435,3 +435,9 @@ kbd { display: inline-block; min-width: 2.2em; padding: 3px 8px; border: 2px sol
 .bin-in .fchip { max-width: 100%; } .bin-in .fchip > span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* у сортуванні колір типу файлу не підказує: нерозкладені файли сірі, колір з'являється в правильному кошику */
 .pool .fchip .fi:not(.dir) { background: #8a93a5; }
+
+/* файли в задачах про open() */
+.vfiles { display: flex; flex-wrap: wrap; gap: 10px; margin: 10px 0; }
+.vfile { border: 2px solid var(--line); border-radius: 10px; overflow: hidden; min-width: 0; flex: 1 1 220px; max-width: 100%; background: var(--card); }
+.vfname { font-family: var(--f-code); font-size: .8rem; padding: 4px 10px; background: var(--ink-soft); color: var(--ink); }
+.vfile pre { margin: 0; padding: 8px 10px; font-family: var(--f-code); font-size: .85rem; white-space: pre-wrap; overflow-wrap: anywhere; }

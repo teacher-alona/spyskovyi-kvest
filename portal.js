@@ -8,6 +8,12 @@ function renderHome() {
   document.body.classList.add("is-portal");
   const access = KV.access, p = KV.profile();
   const games = KV.GAMES.filter(g => !access || access.includes(g.id) || access.includes(g.title.toLowerCase()));
+  // розділи, у яких учню доступна хоч одна гра; якщо розділ один — одразу показуємо його ігри
+  const cats = KV.CATS.map(c => Object.assign({}, c, { list: c.games.map(id => games.find(g => g.id === id)).filter(Boolean) })).filter(c => c.list.length);
+  const other = games.filter(g => !KV.CATS.some(c => c.id === g.cat));
+  if (other.length) cats.push({ id: "other", title: "Інше", icon: "✨", list: other });
+  const want = decodeURIComponent(location.hash.slice(1));
+  const cat = cats.length === 1 ? cats[0] : cats.find(c => c.id === want) || null;
   const total = KV.totalStars(), maxAll = KV.GAMES.reduce((s, g) => s + g.max, 0);
   const first = (KV.session && KV.session.name || "").split(" ").slice(-1)[0];
   app.innerHTML = `
@@ -16,7 +22,7 @@ function renderHome() {
     <div class="intro">
       <div class="eyebrow">Python, цифрова грамотність і не тільки</div>
       <h1>ІТ-квести</h1>
-      <p>${first ? `Привіт, ${esc(first)}! ` : ""}Вибери гру. Зірки з усіх ігор рахуються разом і відкривають нові скіни для змійки.</p>
+      <p>${first ? `Привіт, ${esc(first)}! ` : ""}Вибери розділ, а в ньому — гру. Зірки з усіх ігор рахуються разом і відкривають нові скіни для змійки.</p>
     </div>
     <section class="pcard" aria-label="Твоя змійка">
       ${KV.snakeSVG({ len: KV.N, cls: "big" })}
@@ -30,8 +36,18 @@ function renderHome() {
     </section>
     <aside class="lboard" id="lb"><h2>Лідерборд</h2><div class="lbody status">Завантажую…</div></aside>
   </header>
-  <div class="games">
-    ${games.length ? games.map(g => {
+  ${cat ? `<div class="cathead">${cats.length > 1 ? `<a class="link" href="#">← Усі розділи</a>` : ""}<h2>${cat.icon} ${esc(cat.title)}</h2></div>` : ""}
+  ${!cat && cats.length ? `<div class="games cats">${cats.map(c => {
+      const s = c.list.reduce((a, g) => a + sum(KV.gameData(g.id).stars), 0), m = c.list.reduce((a, g) => a + g.max, 0);
+      return `<a class="game cat" href="#${c.id}">
+        <span class="caticon" aria-hidden="true">${c.icon}</span>
+        <h3>${esc(c.title)}</h3>
+        <span class="gsub">${c.list.length} ${c.list.length === 1 ? "гра" : c.list.length < 5 ? "гри" : "ігор"}</span>
+        <div class="gbar"><div style="width:${m ? Math.round(s / m * 100) : 0}%"></div></div>
+        <span class="gstat">★ ${s} / ${m}</span>
+      </a>`; }).join("")}</div>` : ""}
+  <div class="games"${cat || !cats.length ? "" : " hidden"}>
+    ${(cat ? cat.list : games).length ? (cat ? cat.list : games).map(g => {
       const d = KV.gameData(g.id), s = sum(d.stars), att = sum(d.attempts);
       return `<a class="game" href="${g.path}">
         <span class="gsub">${esc(g.sub)}</span>
@@ -85,5 +101,7 @@ async function fillBoard() {
       <span class="lstars">${fire ? `🔥 ${x.streak}<small>${KV.daysWord(x.streak)}</small>` : `★ ${x.stars}${x.streak ? `<small>🔥 ${x.streak}</small>` : ""}`}</span></li>`).join("")}</ol>` : `<p class="status">${fire ? "Зараз ні в кого немає серії. Пройди рівень сьогодні — і будеш першим (-ою)!" : "Тут поки нікого немає."}</p>`}`;
   body.querySelectorAll(".ltab").forEach(b => b.onclick = () => { lbTab = b.dataset.k; fillBoard(); });
 }
+// перехід між розділами — без перезавантаження сторінки; працює й кнопка «назад» у браузері
+window.addEventListener("hashchange", () => { if (app.querySelector(".hero")) { renderHome(); window.scrollTo(0, 0); } });
 KV.boot({ title: "ІТ-квести", eyebrow: "Python, цифрова грамотність і не тільки", onReady: renderHome, isIdle: () => !app.firstElementChild || !!app.querySelector(".hero") });
 })();
