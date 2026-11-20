@@ -43,3 +43,4 @@
 .rc.kp { color: #ffd23d; }
 .rnum { height: 14px; font-size: 9px; color: #c9c3ff; text-align: left; }
 .sbtabs { margin: 10px 0 14px; } .sbcard { padding: 16px 18px; } .sbcard h2 { margin-top: 0; }
+.aedit, .aedit .ac, .rgrid { user-select: none; -webkit-user-select: none; -webkit-user-drag: none; }

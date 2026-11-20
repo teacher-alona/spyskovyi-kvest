@@ -28,7 +28,8 @@ const drawScene = () => {
   st.innerHTML = S.scene.map((row, y) => row.split("").map((ch, x) => `<div class="ac${ch === "#" ? " wall" : ""}" data-x="${x}" data-y="${y}">${ch === "#" || ch === "." ? "" : ARC.TILES[ch].icon}</div>`).join("")).join("");
   st.querySelectorAll(".ac").forEach(c => {
     c.onpointerdown = e => { e.preventDefault(); painting = true; put(+c.dataset.x, +c.dataset.y); };
-    c.onpointerenter = () => { if (painting && tool !== "P") put(+c.dataset.x, +c.dataset.y); };
+    // малюємо, лише поки кнопку справді затиснуто (e.buttons), — інакше пензель «прилипав» після відпускання
+    c.onpointerenter = e => { if (painting && (e.buttons & 1) && tool !== "P") put(+c.dataset.x, +c.dataset.y); else if (!(e.buttons & 1)) painting = false; };
   });
 };
 const put = (x, y) => {
@@ -37,7 +38,8 @@ const put = (x, y) => {
   if (!S.scene.join("").includes("P")) { const r0 = S.scene[0].split(""); r0[0] = "P"; S.scene[0] = r0.join(""); }
   save(); drawScene(); area.reset();
 };
-window.addEventListener("pointerup", () => painting = false);
+["pointerup", "pointercancel", "blur"].forEach(ev => window.addEventListener(ev, () => painting = false));
+$("#scene").addEventListener("dragstart", e => e.preventDefault());
 $("#clr").onclick = () => { S.scene = Array.from({ length: H }, (_, y) => (y === 0 ? "P" : ".") + ".".repeat(W - 1)); save(); drawScene(); area.reset(); };
 const area = ARC.playArea($("#aplay"), () => S.scene, () => S.rules, () => {});
 // редагуємо або граємо — одне поле на екрані, без дублікатів

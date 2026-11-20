@@ -144,10 +144,11 @@ function editor(el, lv, onChange) {
       + Array.from({ length: L }, (_, c) => `<div class="rnum">${c % 5 === 0 ? c : ""}</div>`).join("");
     grid.querySelectorAll(".rc").forEach(d => {
       d.onpointerdown = e => { e.preventDefault(); painting = true; paint(+d.dataset.c, +d.dataset.r); };
-      d.onpointerenter = () => { if (painting) paint(+d.dataset.c, +d.dataset.r); };
+      d.onpointerenter = e => { if (painting && (e.buttons & 1)) paint(+d.dataset.c, +d.dataset.r); else if (!(e.buttons & 1)) painting = false; };
     });
   };
-  window.addEventListener("pointerup", () => painting = false);
+  ["pointerup", "pointercancel", "blur"].forEach(ev => window.addEventListener(ev, () => painting = false));
+  grid.addEventListener("dragstart", e => e.preventDefault());
   draw();
   return { draw };
 }
