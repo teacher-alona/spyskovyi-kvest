@@ -145,13 +145,22 @@ function ruleEditor(el, rules, onChange) {
 function playArea(el, getScene, getRules, onEnd) {
   el.innerHTML = `<div class="aplay"><div class="ahud"></div><div class="astage" tabindex="0" aria-label="Ігрове поле. Керуй стрілками"></div>
     <div class="apad"><button data-d="up" aria-label="Вгору">▲</button><div><button data-d="left" aria-label="Ліворуч">◀</button><button data-d="down" aria-label="Вниз">▼</button><button data-d="right" aria-label="Праворуч">▶</button></div></div>
-    <div class="arow"><button class="btn" data-run>▶ Грати</button><span class="muted">Стрілки на клавіатурі або кнопки</span></div></div>`;
+    <div class="arow"><button class="btn" data-run>▶ Грати</button><span class="muted">Керуй стрілками ← ↑ → ↓ або клавішами <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> (працює на будь-якій розкладці), або кнопками на екрані</span></div></div>`;
   let g = null;
   const D = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1], ArrowLeft: [-1, 0], ArrowRight: [1, 0] };
   const run = () => { if (g) g.stop(); g = makeGame(el, getScene(), getRules(), (how, st) => onEnd && onEnd(how, st)); el.querySelector("[data-run]").textContent = "⟲ Заново"; el.querySelector(".astage").focus(); };
   el.querySelector("[data-run]").onclick = run;
   el.querySelectorAll(".apad button").forEach(b => b.onclick = () => { if (!g) run(); const d = D[b.dataset.d]; g.move(d[0], d[1]); });
-  el.querySelector(".astage").addEventListener("keydown", e => { if (!D[e.key]) return; e.preventDefault(); if (!g) run(); g.move(D[e.key][0], D[e.key][1]); });
+  // стрілки і WASD; e.code не залежить від розкладки, тож і з українською працює (Ц Ф І В)
+  const KEY = { ArrowUp: "up", ArrowDown: "down", ArrowLeft: "left", ArrowRight: "right", KeyW: "up", KeyS: "down", KeyA: "left", KeyD: "right" };
+  const onKey = e => {
+    const d = KEY[e.code] || KEY[e.key]; if (!d) return;
+    if (!el.isConnected || el.closest("[hidden]")) return;                       // гри вже немає на екрані
+    if (e.target.closest && e.target.closest("input, select, textarea")) return;   // пишемо в правилах — не заважаємо
+    if (!g || g.st.over) { if (!e.target.closest || !e.target.closest(".astage")) return; }   // до старту — лише коли поле в фокусі
+    e.preventDefault(); if (!g) run(); g.move(D[d][0], D[d][1]);
+  };
+  document.addEventListener("keydown", onKey);
   // показуємо поле одразу, але гра стоїть, поки не натиснуть «Грати»
   const preview = () => { const tmp = makeGame(el, getScene(), [], null); tmp.stop(); el.querySelector(".ahud").innerHTML = `<span class="muted">Натисни «Грати», щоб перевірити свою гру</span>`; };
   preview();

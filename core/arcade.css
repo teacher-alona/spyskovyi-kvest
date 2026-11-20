@@ -51,3 +51,4 @@
 .sbcard, #redit, #rplay, #re, #rp, .redit, .rplay { min-width: 0; max-width: 100%; box-sizing: border-box; }
 .sbcard { overflow: hidden; }
 .rgridwrap { width: 100%; max-width: 100%; overflow-x: auto; }
+.arow kbd { font: 700 .78rem var(--f-code, monospace); padding: 1px 5px; border: 1.5px solid var(--line, #c9ced6); border-bottom-width: 3px; border-radius: 5px; background: var(--card, #fff); }
