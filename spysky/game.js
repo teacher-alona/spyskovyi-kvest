@@ -285,6 +285,7 @@ function renderMap() {
     }).join("")}
   </div>
   <div class="listclose">${PLAIN ? "" : "]"}</div>
+  ${(GI.links || []).map(l => `<a class="maplink" href="${esc(l.href)}"><b>${esc(l.label)}</b><span>${esc(l.about)}</span></a>`).join("")}
   <div class="version">версія ${KV.VERSION}</div>
   <div class="legend"><span>★★★ — не більше однієї помилки на рівні</span><span>У змійки ${N} сегментів. Кожна помилка — ${PLAIN ? "мінус сегмент з хвоста" : "<code>pop()</code> з хвоста"}</span>${PLAIN ? "" : "<span>Задачі з кодом сегментів не забирають</span>"}<span>Зірки відкривають нові скіни</span><span>Байти дають за правильні відповіді з першої спроби (тільки поки рівень ще не пройдено). За них купують речі в гардеробі</span><span>Вийшов(-ла) з гри на іншу вкладку чи в інший застосунок — мінус сегмент</span></div>
   `;

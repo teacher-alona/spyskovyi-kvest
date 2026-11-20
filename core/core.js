@@ -2,7 +2,7 @@
    змійка з гардеробом, заслона при виході з гри. Кожна гра підключає цей файл і додає свої рівні. */
 (function () {
 "use strict";
-const VERSION = "2026.11.20-60";
+const VERSION = "2026.11.20-62";
 const API = "https://script.google.com/macros/s/AKfycbzPtRGlYI4osS-xL-J_pAZ2A2HxTWUeuecjy9-13MgAdFIzkDnYuCr1qmLHqZvqWkQMWQ/exec";
 
 // Усі ігри порталу. sheet — назва аркуша з прогресом у таблиці вчительки.
@@ -25,6 +25,8 @@ const GAMES = [
     levelIds: ["blocks", "rules", "line", "branch", "loops", "t_shape", "t_fill", "t_bug", "boss"] },
   { id: "graphs", title: "Графи", sub: "Python · 10 клас", path: "grafy/", sheet: "Прогрес: Графи", max: 30,
     levelIds: ["basics", "directed", "paths", "edges", "matrix", "adj", "bfs", "dfs", "dijkstra", "boss"] },
+  { id: "gamedev", title: "Майстерня ігор", sub: "Розробка ігор · 5 клас", path: "rozrobka-ihor/", sheet: "Прогрес: Майстерня ігор", max: 18,
+    levelIds: ["rules", "lives", "goals", "bugs", "runner", "levels"] },
 ];
 
 // ---------- утиліти ----------

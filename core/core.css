@@ -391,3 +391,6 @@ textarea { resize: vertical; line-height: 1.6; }
 .lnote { font-size: .82rem; color: var(--muted, #5a6170); margin: 4px 2px 8px; }
 
 .honest { max-width: none; margin: 24px auto 14px; padding: 0 16px; text-align: center; font-size: .7rem; line-height: 1.4; color: var(--muted, #6a7180); }
+.maplink { display: flex; flex-direction: column; gap: 2px; margin: 14px 0 0; padding: 14px 16px; border: 2px dashed var(--ink, #2b6cd4); border-radius: 14px; text-decoration: none; color: var(--fg, #222); background: var(--card, #fff); }
+.maplink b { font-size: 1.05rem; color: var(--ink, #2b6cd4); } .maplink span { color: var(--muted, #6a7180); font-size: .9rem; }
+.maplink:hover { border-style: solid; }
