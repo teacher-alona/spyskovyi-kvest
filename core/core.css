@@ -390,4 +390,4 @@ textarea { resize: vertical; line-height: 1.6; }
 @media (prefers-reduced-motion: reduce) { .godbox, .godsnake { display: flex; justify-content: center; margin: 4px 0 8px; animation: none; } }
 .lnote { font-size: .82rem; color: var(--muted, #5a6170); margin: 4px 2px 8px; }
 
-.honest { max-width: 760px; margin: 28px auto 18px; padding: 0 16px; text-align: center; font-size: .82rem; color: var(--muted, #6a7180); }
+.honest { max-width: none; margin: 24px auto 14px; padding: 0 16px; text-align: center; font-size: .7rem; line-height: 1.4; color: var(--muted, #6a7180); }
