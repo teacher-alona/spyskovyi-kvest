@@ -21,6 +21,8 @@ KV.useGame(GAME, g => ({
   levelTitles: LEVELS.map(l => l.title),
   total: LEVELS.reduce((a, l) => a + ((g.stars || {})[l.id] || 0), 0),
   bytes: g.bytes || 0, leaves: g.leaves || 0, peeks: g.peeks || 0, mouseOut: g.mouseOut || 0,
+  secAvg: g.secN ? Math.round(g.secSum / g.secN) : "",
+  secLevels: LEVELS.map(l => (g.secLv || {})[l.id] ?? ""),
   awayMin: Math.round((g.awayMs || 0) / 6000) / 10,
   attemptsTotal: LEVELS.reduce((a, l) => a + ((g.attempts || {})[l.id] || 0), 0),
   attempts: LEVELS.map(l => (g.attempts || {})[l.id] || 0),
@@ -340,6 +342,8 @@ function frame(it, body) {
 }
 const $ = s => app.querySelector(s);
 function feedback(good, title, text, extra) {
+  // час до першої відповіді на завдання (понад 10 хвилин — дитина, мабуть, відійшла, не рахуємо)
+  if (run.st.t0 && !run.st.timed) { run.st.timed = true; const dt = (Date.now() - run.st.t0) / 1000; if (dt < 600) { run.secs = (run.secs || 0) + dt; run.nAns = (run.nAns || 0) + 1; } }
   // байт — за правильну відповідь з першої спроби
   if (!good) run.st.bad = true;
   else if (!run.st.bad && !run.st.paid && run.mistakes === run.st.m0 && run.items[run.idx].t !== "lesson") {
@@ -366,6 +370,7 @@ const praise = () => PRAISE[Math.floor(Math.random() * PRAISE.length)];
 function renderItem() {
   const it = run.items[run.idx];
   if (run.st.m0 === undefined) run.st.m0 = run.mistakes;   // для байтів: чи були помилки в цьому завданні
+  if (run.st.t0 === undefined && it.t !== "lesson") run.st.t0 = Date.now();   // для таблиці: скільки часу пішло на відповідь
   checkAcid();
   if (run.idx === run.evIdx) { if (!run.evShown) { run.evShown = true; run.evM0 = run.mistakes; showEvent(run.ev, run.replay); } } else showEvent("");
   const base = { lesson: rLesson, quiz: rQuiz, output: rOutput, bug: rBug, order: rOrder, fill: rFill, code: rCode };
@@ -607,7 +612,17 @@ function rCode(it) {
 }
 
 // ---------- кінець рівня ----------
+// середній час на питання за цю спробу рівня — у дані гри (для вчительки в таблиці)
+function saveTiming() {
+  if (!run || !run.nAns || run.timingSaved) return;
+  run.timingSaved = true;
+  const g = gd(), id = LEVELS[run.li].id;
+  g.secSum = (g.secSum || 0) + run.secs; g.secN = (g.secN || 0) + run.nAns;
+  g.secLv = g.secLv || {}; g.secLv[id] = Math.round(run.secs / run.nAns);
+  save();
+}
 function renderDone() {
+  saveTiming();
   run.over = true; hideGuard(); leaveFullscreen();
   const lv = LEVELS[run.li];
   const s = run.mistakes <= 1 ? 3 : run.mistakes <= 3 ? 2 : 1;
@@ -690,6 +705,7 @@ function godVisit() {
   });
 }
 function renderFail() {
+  saveTiming();
   run.over = true; hideGuard(); leaveFullscreen();
   KV.godTouch(false);
   const li = run.li;

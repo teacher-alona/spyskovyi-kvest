@@ -2,7 +2,7 @@
    змійка з гардеробом, заслона при виході з гри. Кожна гра підключає цей файл і додає свої рівні. */
 (function () {
 "use strict";
-const VERSION = "2026.11.19-58";
+const VERSION = "2026.11.20-59";
 const API = "https://script.google.com/macros/s/AKfycbzPtRGlYI4osS-xL-J_pAZ2A2HxTWUeuecjy9-13MgAdFIzkDnYuCr1qmLHqZvqWkQMWQ/exec";
 
 // Усі ігри порталу. sheet — назва аркуша з прогресом у таблиці вчительки.
@@ -166,7 +166,7 @@ function mergeGame(local, remote) {
   m.stars = mx(local.stars, remote.stars);
   m.attempts = mx(local.attempts, remote.attempts);
   m.lvLeaves = mx(local.lvLeaves, remote.lvLeaves);
-  ["leaves", "bytes", "awayMs", "peeks", "mouseOut"].forEach(k => { m[k] = Math.max(local[k] || 0, remote[k] || 0); });
+  ["leaves", "bytes", "awayMs", "peeks", "mouseOut", "secSum", "secN"].forEach(k => { m[k] = Math.max(local[k] || 0, remote[k] || 0); });
   return m;
 }
 function mergeProfile(local, remote) {
@@ -845,4 +845,15 @@ window.KV = {
   leave: { configure: cfg => { leaveCfg = Object.assign({ isActive: () => false, onPenalty: () => {}, onPeek: null, onMouseOut: null }, cfg); }, GRACE, AWAY_STEP },
   get guardOpen() { return guardOpen; }, showGuard, hideGuard, goFullscreen, leaveFullscreen, toast,
 };
+})();
+
+// ---------- нагадування про чесність: унизу кожної сторінки ----------
+(function honestNote() {
+  const add = () => {
+    if (document.querySelector(".honest")) return;
+    const p = document.createElement("p"); p.className = "honest";
+    p.textContent = "Виконуй усі завдання самостійно: без сторонньої допомоги і без використання ШІ. Зірки й байти мають показувати саме твої знання.";
+    document.body.appendChild(p);
+  };
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", add); else add();
 })();
