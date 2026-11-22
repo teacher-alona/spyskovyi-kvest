@@ -1,0 +1,30 @@
+/* SwiftUI-пісочниця і практичні: редактор ліворуч, телефон праворуч */
+.sheet.wide { max-width: 1180px; }
+.sl-bar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 14px 0; }
+.sl-ex select { font: inherit; padding: 6px 10px; border-radius: 10px; border: 1.5px solid var(--line); background: var(--card); color: var(--ink); }
+.sl-work { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 18px; align-items: start; }
+.sl-work.lab { margin-top: 12px; }
+.sl-code { min-width: 0; display: flex; flex-direction: column; gap: 10px; }
+.sl-file { font-family: var(--f-code); font-size: .8rem; color: var(--muted); }
+.sl-code .CodeMirror { height: auto; min-height: 420px; border: 2px solid var(--line); border-radius: 12px; font-family: var(--f-code); font-size: 14px; line-height: 1.5; }
+.sl-work.lab .sl-code .CodeMirror { min-height: 340px; }
+.sl-code textarea { width: 100%; min-height: 420px; font-family: var(--f-code); font-size: 14px; border: 2px solid var(--line); border-radius: 12px; padding: 10px; }
+.sl-errline { background: rgba(255, 59, 48, .14); }
+.sl-err { background: #fff1f0; color: #b3261e; border: 2px solid #ffb4ab; border-radius: 12px; padding: 10px 12px; font-size: .95rem; }
+.sl-err b { margin-right: 6px; }
+.sl-console { border: 2px solid var(--line); border-radius: 12px; overflow: hidden; }
+.sl-chead { font-size: .8rem; padding: 4px 10px; background: var(--ink-soft); color: var(--ink); }
+.sl-console pre { margin: 0; padding: 8px 10px; max-height: 160px; overflow: auto; font-family: var(--f-code); font-size: .85rem; white-space: pre-wrap; }
+.sl-prev { width: 340px; display: flex; flex-direction: column; align-items: center; gap: 8px; position: sticky; top: 12px; }
+.sl-prev > div[id] { width: 100%; }
+.sl-tabs { display: flex; gap: 6px; }
+.sl-note { font-size: .85rem; text-align: center; min-height: 1em; margin: 0; }
+.sl-help { margin-top: 16px; }
+.sl-help summary { cursor: pointer; font-weight: 700; }
+.sl-help li { margin: 4px 0; }
+@media (max-width: 860px) {
+  .sl-work { grid-template-columns: minmax(0, 1fr); }
+  .sl-prev { width: 100%; position: static; }
+  .sl-prev > div[id] { max-width: 360px; }
+  .sl-code .CodeMirror, .sl-work.lab .sl-code .CodeMirror { min-height: 260px; }
+}

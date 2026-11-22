@@ -1,0 +1,125 @@
+/* Симулятор SwiftUI: телефон і елементи екрана (розміри — у точках iPhone) */
+.sx-host { width: 100%; display: flex; justify-content: center; }
+.sx-scale { position: relative; flex: 0 0 auto; }
+.sx-phone {
+  position: absolute; top: 0; left: 0; width: 390px; height: 844px; padding: 12px; box-sizing: content-box;
+  background: #1c1c1e; border-radius: 64px; transform-origin: 0 0;
+  box-shadow: 0 0 0 2px #3a3a3c, 0 18px 40px rgba(0, 0, 0, .25);
+}
+.sx-screen {
+  --accent: #007aff;
+  position: relative; width: 390px; height: 844px; border-radius: 52px; overflow: hidden; background: #fff; color: #000;
+  font: 17px/1.25 -apple-system, "SF Pro Text", "Helvetica Neue", "Segoe UI", Roboto, Nunito, system-ui, sans-serif;
+  letter-spacing: -.01em; -webkit-font-smoothing: antialiased; text-align: left;
+}
+.sx-screen *, .sx-screen *::before, .sx-screen *::after { box-sizing: border-box; }
+.sx-status { position: absolute; top: 0; left: 0; right: 0; height: 54px; display: flex; align-items: center; justify-content: space-between; padding: 6px 34px 0 50px; font-weight: 600; font-size: 17px; z-index: 5; pointer-events: none; }
+.sx-isl { position: absolute; left: 50%; top: 11px; width: 124px; height: 36px; margin-left: -62px; border-radius: 20px; background: #000; }
+.sx-stat-r { display: flex; gap: 5px; align-items: center; }
+.sx-stat-r .sx-sym { font-size: 19px; }
+.sx-home { position: absolute; bottom: 8px; left: 50%; width: 140px; height: 5px; margin-left: -70px; border-radius: 3px; background: #000; z-index: 5; pointer-events: none; }
+.sx-safe { position: absolute; top: 54px; bottom: 34px; left: 0; right: 0; display: grid; grid-template: minmax(0, 1fr) / minmax(0, 1fr); place-items: center; }
+.sx-errbox { position: absolute; left: 14px; right: 14px; bottom: 44px; z-index: 9; background: #fff1f0; color: #b3261e; border: 2px solid #ff3b30; border-radius: 16px; padding: 12px 14px; font-size: 15px; line-height: 1.35; box-shadow: 0 6px 20px rgba(0,0,0,.15); }
+.sx-errbox b { display: block; margin-bottom: 4px; }
+
+/* значки (SF Symbols → Material Symbols) */
+.sx-sym { font-family: "Material Symbols Rounded"; font-style: normal; font-weight: 400; font-size: 1.15em; line-height: 1; letter-spacing: normal; text-transform: none; white-space: nowrap; direction: ltr;
+  display: inline-block; width: 1em; height: 1em; text-align: center; -webkit-font-feature-settings: "liga"; font-feature-settings: "liga"; font-variation-settings: "FILL" 0, "wght" 400, "opsz" 24; user-select: none; overflow: hidden; }
+.sx-die { font-style: normal; font-size: 1.4em; line-height: 1; display: inline-block; font-family: "Segoe UI Symbol", "Apple Symbols", "DejaVu Sans", sans-serif; }
+.sx-sym.fill { font-variation-settings: "FILL" 1, "wght" 400, "opsz" 24; }
+.sx-nosym { outline: 1.5px dashed #ff9500; border-radius: 4px; color: #ff9500; }
+
+/* текст і контейнери */
+.sx-text { white-space: pre-wrap; overflow-wrap: anywhere; min-width: 0; }
+.sx-vstack, .sx-hstack { display: flex; gap: 8px; min-width: 0; min-height: 0; }
+.sx-vstack { flex-direction: column; align-items: center; }
+.sx-vstack[data-align="leading"] { align-items: flex-start; }
+.sx-vstack[data-align="trailing"] { align-items: flex-end; }
+.sx-vstack[data-align="leading"] > .sx-text { text-align: left; }
+.sx-vstack[data-align="trailing"] > .sx-text { text-align: right; }
+.sx-hstack { flex-direction: row; align-items: center; }
+.sx-hstack[data-align="top"] { align-items: flex-start; }
+.sx-hstack[data-align="bottom"] { align-items: flex-end; }
+.sx-hstack[data-align="firstTextBaseline"], .sx-hstack[data-align="lastTextBaseline"] { align-items: baseline; }
+.sx-zstack, .sx-w { display: grid; grid-template: minmax(0, 1fr) / minmax(0, 1fr); place-items: center; min-width: 0; min-height: 0; }
+.sx-zstack > *, .sx-w > * { grid-area: 1 / 1; }
+.sx-zstack[data-align="leading"] { justify-items: start; } .sx-zstack[data-align="trailing"] { justify-items: end; }
+.sx-zstack[data-align="top"] { align-items: start; } .sx-zstack[data-align="bottom"] { align-items: end; }
+.sx-zstack[data-align="topLeading"] { place-items: start; } .sx-zstack[data-align="topTrailing"] { align-items: start; justify-items: end; }
+.sx-zstack[data-align="bottomLeading"] { align-items: end; justify-items: start; } .sx-zstack[data-align="bottomTrailing"] { place-items: end; }
+.sx-layer { position: absolute; inset: 0; display: grid; grid-template: minmax(0, 1fr) / minmax(0, 1fr); border-radius: inherit; }
+.sx-layer.bg { z-index: 0; } .sx-layer.ov { z-index: 2; }
+.sx-w > :not(.sx-layer):not(.sx-border) { position: relative; z-index: 1; }
+.sx-border { position: absolute; inset: 0; pointer-events: none; z-index: 3; border-radius: inherit; }
+.sx-spacer { min-width: 0; min-height: 0; }
+.sx-divider { background: rgba(60, 60, 67, .29); min-height: 1px; min-width: 1px; }
+.sx-color { min-width: 0; min-height: 0; }
+.sx-asset { display: grid; place-items: center; gap: 4px; width: 140px; height: 100px; border-radius: 12px; background: #e5e5ea; color: #8e8e93; font-size: 13px; }
+.sx-asset .sx-sym { font-size: 34px; }
+.sx-label { display: inline-flex; align-items: center; gap: 8px; }
+.sx-label .sx-sym { color: var(--accent); }
+
+/* фігури: за замовчуванням зафарбовані основним кольором */
+.sx-shape { background: currentColor; min-width: 0; min-height: 0; }
+.sx-circle { border-radius: 50%; aspect-ratio: 1; max-width: 100%; max-height: 100%; justify-self: center !important; align-self: center !important; width: auto; height: 100%; }
+.sx-frame > .sx-circle, .sx-w > .sx-circle { height: 100%; width: auto; }
+.sx-capsule { border-radius: 9999px; }
+.sx-ellipse { border-radius: 50%; }
+
+/* кнопки */
+.sx-btn { all: unset; box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; gap: 6px; color: var(--accent); cursor: pointer; text-align: center; min-width: 0; }
+.sx-btn:active { opacity: .55; }
+.bs-borderedProminent .sx-btn, .sx-btn.bs-borderedProminent, .sx-w.bs-borderedProminent > .sx-btn { background: var(--accent); color: #fff; padding: 7px 14px; border-radius: 10px; font-weight: 600; }
+.bs-bordered .sx-btn, .sx-btn.bs-bordered, .sx-w.bs-bordered > .sx-btn { background: color-mix(in srgb, var(--accent) 15%, transparent); padding: 7px 14px; border-radius: 10px; }
+.cs-large .sx-btn, .sx-btn.cs-large { padding: 14px 20px; border-radius: 14px; }
+.sx-disabled, .sx-disabled .sx-btn { opacity: .35; pointer-events: none; }
+.sx-tap { cursor: pointer; }
+
+/* елементи керування */
+.sx-toggle, .sx-stepper { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 31px; }
+.sx-tlabel { min-width: 0; display: flex; align-items: center; gap: 6px; }
+.sx-switch { all: unset; position: relative; flex: 0 0 51px; width: 51px; height: 31px; border-radius: 16px; background: #e9e9eb; cursor: pointer; transition: background .2s; }
+.sx-switch span { position: absolute; top: 2px; left: 2px; width: 27px; height: 27px; border-radius: 50%; background: #fff; box-shadow: 0 2px 6px rgba(0,0,0,.18); transition: left .2s; }
+.sx-switch.on { background: #34c759; }
+.sx-switch.on span { left: 22px; }
+.sx-stepctl { display: flex; align-items: center; background: #eeeef0; border-radius: 9px; height: 32px; flex: 0 0 auto; }
+.sx-stepctl button { all: unset; width: 46px; height: 32px; text-align: center; font-size: 22px; line-height: 32px; cursor: pointer; color: #000; }
+.sx-stepctl button:disabled { color: #c7c7cc; cursor: default; }
+.sx-stepctl i { width: 1px; height: 18px; background: #c7c7cc; }
+.sx-field { font: inherit; color: inherit; border: 0; outline: 0; background: transparent; padding: 4px 0; width: 100%; min-width: 0; }
+.sx-field::placeholder { color: rgba(60, 60, 67, .3); }
+.tf-rounded.sx-field, .tf-rounded .sx-field, .sx-w.tf-rounded > .sx-field { border: 1px solid #d1d1d6; border-radius: 6px; padding: 5px 8px; background: #fff; }
+.sx-slider { width: 100%; min-width: 0; accent-color: var(--accent); }
+.sx-progress { height: 4px; border-radius: 2px; background: #e5e5ea; overflow: hidden; min-width: 60px; }
+.sx-progress > div { height: 100%; background: var(--accent); }
+.sx-progress.spin { width: 22px; height: 22px; min-width: 0; border-radius: 50%; border: 3px solid #d1d1d6; border-top-color: #8e8e93; animation: sxspin 1s linear infinite; }
+@keyframes sxspin { to { transform: rotate(360deg); } }
+
+/* список */
+.sx-list { background: #f2f2f7; overflow: auto; padding: 6px 16px 20px; display: flex; flex-direction: column; align-self: stretch; justify-self: stretch; min-height: 0; }
+.sx-lhead { font-size: 13px; color: rgba(60, 60, 67, .6); text-transform: uppercase; margin: 18px 16px 7px; }
+.sx-lgroup { background: #fff; border-radius: 10px; overflow: hidden; margin-top: 14px; }
+.sx-lhead + .sx-lgroup { margin-top: 0; }
+.sx-row { display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 10px 16px; position: relative; }
+.sx-row + .sx-row::before { content: ""; position: absolute; top: 0; left: 16px; right: 0; height: .5px; background: rgba(60, 60, 67, .29); }
+.sx-row > .sx-text { flex: 1 1 auto; }
+.sx-link.in-list { color: inherit; justify-content: flex-start; }
+.sx-link.in-list > :first-child { flex: 1 1 auto; }
+.sx-chev { color: #c4c4c7; font-size: 22px; margin-left: auto; }
+.sx-scroll { overflow: auto; display: flex; flex-direction: column; align-items: stretch; min-height: 0; }
+.sx-scroll > .sx-vstack { padding: 0 0 12px; align-items: center; }
+.sx-scroll.hz { flex-direction: row; }
+.sx-scroll.hz > .sx-vstack { flex-direction: row; }
+
+/* навігація */
+.sx-nav { display: flex; flex-direction: column; min-height: 0; align-self: stretch; justify-self: stretch; background: #fff; }
+.sx-nav:has(.sx-list) { background: #f2f2f7; }
+.sx-navbar { min-height: 8px; display: flex; align-items: center; position: relative; flex: 0 0 auto; }
+.sx-navbar:has(> *) { height: 44px; }
+.sx-back { all: unset; color: var(--accent); display: flex; align-items: center; cursor: pointer; padding: 0 8px 0 4px; font-size: 17px; z-index: 2; }
+.sx-back .sx-sym { font-size: 30px; margin-right: -4px; }
+.sx-navinline { position: absolute; left: 0; right: 0; text-align: center; font-weight: 600; pointer-events: none; }
+.sx-largetitle { font-size: 34px; font-weight: 700; padding: 2px 16px 8px; letter-spacing: .01em; flex: 0 0 auto; }
+.sx-navbody { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.sx-navbody.top { justify-content: flex-start; }
+.sx-navbody > .sx-list { flex: 1 1 0; align-self: stretch; }

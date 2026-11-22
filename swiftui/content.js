@@ -3,6 +3,8 @@ window.GAME_INFO = {
   id: "swift", title: "SwiftUI", eyebrow: "Swift · SwiftUI", plain: true, lang: "swift", openAll: true,
   intro: "Повторюємо уроки зі SwiftUI: з чого складається файл, елементи й стеки, модифікатори, кнопки й @State. Усі рівні відкриті: обирай тему, яку зараз проходите на уроці. Спершу коротке пояснення, потім завдання.",
   types: { look: "Який вигляд?", output: "Що покаже?" },
+  links: [{ href: "pisochnytsia.html", label: "🧪 SwiftUI-пісочниця", about: "Пиши код і одразу бач екран iPhone — прямо в браузері, Mac не потрібен." },
+    { href: "../swiftui-praktyka/", label: "🛠 SwiftUI: практичні", about: "Практичні роботи з автоматичною перевіркою: зроби екран — гра перевірить." }],
 };
 const S = String.raw;
 const L = (title, text, code) => ({ t: "lesson", title, text, code });

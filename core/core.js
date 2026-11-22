@@ -2,7 +2,7 @@
    змійка з гардеробом, заслона при виході з гри. Кожна гра підключає цей файл і додає свої рівні. */
 (function () {
 "use strict";
-const VERSION = "2026.11.20-73";
+const VERSION = "2026.11.20-74";
 const API = "https://script.google.com/macros/s/AKfycbzPtRGlYI4osS-xL-J_pAZ2A2HxTWUeuecjy9-13MgAdFIzkDnYuCr1qmLHqZvqWkQMWQ/exec";
 
 // Усі ігри порталу. sheet — назва аркуша з прогресом у таблиці вчительки.
@@ -30,10 +30,12 @@ const GAMES = [
   { id: "gamedev", title: "Майстерня ігор", sub: "Розробка ігор · 5 клас", path: "rozrobka-ihor/", sheet: "Прогрес: Майстерня ігор", max: 18,
     levelIds: ["rules", "lives", "goals", "bugs", "runner", "levels"] },
 ];
+GAMES.push({ id: "swiftlab", title: "SwiftUI: практичні", sub: "Swift · практичні в браузері, без Mac", path: "swiftui-praktyka/", sheet: "Прогрес: SwiftUI практичні", max: 33,
+  levelIds: ["stacks", "mods", "symbols", "shapes", "card", "views", "state", "input", "lists", "nav", "project"] });
 // розділи порталу: на головній — плитки розділів, у розділі — його ігри
 const CATS = [
   { id: "python", title: "Python", icon: "🐍", games: ["python6", "pybase", "spysky", "graphs"] },
-  { id: "swift", title: "Swift", icon: "🍎", games: ["swift"] },
+  { id: "swift", title: "Swift", icon: "🍎", games: ["swift", "swiftlab"] },
   { id: "prog", title: "Основи програмування", icon: "🧩", games: ["flow"] },
   { id: "gamedev", title: "Розробка ігор", icon: "🎮", games: ["gamedev"] },
   { id: "digital", title: "Цифрова грамотність", icon: "💻", games: ["fajly", "klavishi", "trenazhery"] },
@@ -211,7 +213,7 @@ function mergeProfile(local, remote) {
   // ім'я змійки — те, яке змінили пізніше (учень у гардеробі або вчителька в таблиці)
   // збережені ігри з пісочниці: кожну беремо за її власним часом збереження
   const sa = remote.sandbox || {}, sb = local.sandbox || {}, sm = {};
-  ["adv", "run"].forEach(k => { const x = sa[k], y = sb[k]; const v = !x ? y : !y ? x : (x.at || 0) >= (y.at || 0) ? x : y; if (v) sm[k] = v; });
+  ["adv", "run", "swift"].forEach(k => { const x = sa[k], y = sb[k]; const v = !x ? y : !y ? x : (x.at || 0) >= (y.at || 0) ? x : y; if (v) sm[k] = v; });
   if (Object.keys(sm).length) m.sandbox = sm;
   if ((remote.nameAt || 0) || (local.nameAt || 0)) { const src = (remote.nameAt || 0) >= (local.nameAt || 0) ? remote : local; m.name = src.name; m.nameAt = src.nameAt; }
   return m;
