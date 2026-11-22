@@ -14,7 +14,7 @@ function editor(ta, onChange) {
     cm.on("change", () => onChange && onChange(cm.getValue()));
     return {
       get: () => cm.getValue(), set: v => cm.setValue(v), cm,
-      mark(line) { cm.eachLine(l => cm.removeLineClass(l, "background", "sl-errline")); if (line) cm.addLineClass(line - 1, "background", "sl-errline"); },
+      mark(line) { for (let i = 0; i < cm.lineCount(); i++) cm.removeLineClass(i, "background", "sl-errline"); if (line) cm.addLineClass(line - 1, "background", "sl-errline"); },
       lock() { cm.setOption("readOnly", "nocursor"); }, refresh() { cm.refresh(); },
     };
   }

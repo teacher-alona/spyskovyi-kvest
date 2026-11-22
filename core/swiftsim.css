@@ -41,8 +41,10 @@
 .sx-hstack[data-align="top"] { align-items: flex-start; }
 .sx-hstack[data-align="bottom"] { align-items: flex-end; }
 .sx-hstack[data-align="firstTextBaseline"], .sx-hstack[data-align="lastTextBaseline"] { align-items: baseline; }
-.sx-zstack, .sx-w { display: grid; grid-template: minmax(0, 1fr) / minmax(0, 1fr); place-items: center; min-width: 0; min-height: 0; }
+.sx-zstack, .sx-w { isolation: isolate; display: grid; grid-template: minmax(0, 1fr) / minmax(0, 1fr); place-items: center; min-width: 0; min-height: 0; }
 .sx-zstack > *, .sx-w > * { grid-area: 1 / 1; }
+/* у ZStack пізніший у коді елемент лежить зверху: усі шари позиціоновані, тож малюються в порядку коду */
+.sx-zstack > * { position: relative; }
 .sx-zstack[data-align="leading"] { justify-items: start; } .sx-zstack[data-align="trailing"] { justify-items: end; }
 .sx-zstack[data-align="top"] { align-items: start; } .sx-zstack[data-align="bottom"] { align-items: end; }
 .sx-zstack[data-align="topLeading"] { place-items: start; } .sx-zstack[data-align="topTrailing"] { align-items: start; justify-items: end; }
