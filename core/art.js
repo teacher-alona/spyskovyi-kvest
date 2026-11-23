@@ -176,11 +176,26 @@ function rOrder(it, A) {
   A.$("#vcan").addEventListener("keydown", e => { const m = { Home: "top", End: "bottom", PageUp: "up", PageDown: "down" }[e.key]; if (m) { e.preventDefault(); move(m); } });
   draw();
   st.tries = st.tries || 0;
-  // правильно, якщо кожні дві фігури, що перекриваються, лежать у тому ж порядку, що й на зразку
-  // (порядок фігур, які не торкаються, на малюнок не впливає)
-  const overlap = (a, b) => { const g = id => A.$(`#vcan g[data-id="${id}"]`).getBBox(); const p = g(a), q = g(b); return p.x < q.x + q.width - 1 && q.x < p.x + p.width - 1 && p.y < q.y + q.height - 1 && q.y < p.y + p.height - 1; };
-  const same = () => { const ids = it.goal; for (let i = 0; i < ids.length; i++) for (let j = i + 1; j < ids.length; j++) { const a = ids[i], b = ids[j]; if (overlap(a, b) && st.order.indexOf(a) > st.order.indexOf(b)) return false; } return true; };
+  // правильно, якщо малюнок виглядає так само, як зразок: у кожній точці зверху та сама фігура
+  // (тож порядок фігур, які не торкаються, не має значення)
+  const topAt = (order, pts) => {
+    const svg = A.$("#vcan svg"), sm = svg.getScreenCTM();
+    const shapes = order.map(id => [id, [...A.$(`#vcan g[data-id="${id}"]`).querySelectorAll("rect,circle,ellipse,polygon,path")]]);
+    return pts.map(([x, y]) => {
+      for (let k = shapes.length - 1; k >= 0; k--) for (const el of shapes[k][1]) {
+        const sp = svg.createSVGPoint(); sp.x = x; sp.y = y;
+        const lp = sp.matrixTransform(sm).matrixTransform(el.getScreenCTM().inverse());
+        if (el.isPointInFill(lp)) return shapes[k][0];
+      }
+      return "";
+    }).join();
+  };
+  const PTS = []; for (let y = 2; y < 180; y += 4) for (let x = 2; x < 200; x += 4) PTS.push([x, y]);
+  const same = () => topAt(st.order, PTS) === topAt(it.goal, PTS);
+  // якщо випадковий початок уже виглядає як зразок — перемішуємо ще
+  for (let n = 0; n < 20 && same() && !st.checked; n++) { const o = st.order; for (let i = o.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [o[i], o[j]] = [o[j], o[i]]; } draw(); }
   const check = () => {
+    st.checked = true;
     if (same()) { A.feedback(true, A.praise(), it.why || "Порядок правильний.", ""); A.nextBtn(); return; }
     st.tries++; A.lose(); A.frame0Hearts();
     if (st.tries >= 2) { A.feedback(false, "Правильний порядок", `Згори вниз: ${it.goal.slice().reverse().map(id => byId(id).name).join(" → ")}.`); A.nextBtn(); return; }
