@@ -805,8 +805,8 @@ function godVisit() {
     <div class="eyebrow">З'явилася бог-змійка</div>
     <h2>Три рівні поспіль на три зірки!</h2>
     <p>Відповіси правильно — і я подвою твої байти (до +${KV.GOD_CAP})${first ? ", а ще подарую свій скін" : ""}. Помилишся — нічого не втратиш.</p>
-    <div class="q">${md(it.q)}</div>${it.code ? pre(it.code) : ""}
-    <div class="options">${order.map(i => `<button class="opt" data-i="${i}">${md(it.options[i])}</button>`).join("")}</div>
+    <div class="q">${md(it.q)}</div>${it.html || ""}${it.code ? pre(it.code) : ""}
+    <div class="options${it.raw ? " pics" : ""}">${order.map(i => `<button class="opt" data-i="${i}">${it.raw ? it.options[i] : md(it.options[i])}</button>`).join("")}</div>
     <div id="godfb"></div></div>`;
   document.body.appendChild(box);
   box.querySelectorAll(".opt").forEach(b => b.onclick = () => {
@@ -846,6 +846,6 @@ function renderFail() {
 
 
 // хід для автоматичних перевірок — лише на локальному тестовому сервері, не на сайті
-if (/^(localhost|127\.0\.0\.1)$/.test(location.hostname)) window.__game = { runPy, LEVELS, startLevel, items: () => run && run.items, run: () => run, goto: async (li, k) => { await startLevel(li); run.idx = k; run.st = {}; renderItem(); } };
+if (/^(localhost|127\.0\.0\.1)$/.test(location.hostname)) window.__game = { runPy, LEVELS, startLevel, godVisit, items: () => run && run.items, run: () => run, goto: async (li, k) => { await startLevel(li); run.idx = k; run.st = {}; renderItem(); } };
 KV.boot({ title: GI.title, eyebrow: GI.eyebrow, onReady: renderMap, isIdle: () => !run && (!app.firstElementChild || !!app.querySelector(".hero") || !!app.querySelector(".bootwait")) });
 })();
