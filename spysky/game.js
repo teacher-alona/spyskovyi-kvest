@@ -484,8 +484,9 @@ function rLesson(it) {
 
 function rQuiz(it) {
   const order = shuffle(it.options.map((_, i) => i));
-  frame(it, `<div class="q">${md(it.q)}</div>${filesHtml(it)}${it.code ? pre(it.code) : ""}
-    <div class="options">${order.map(i => `<button class="opt" data-i="${i}">${md(it.options[i])}</button>`).join("")}</div>`);
+  // html — картинка під питанням; raw — варіанти відповіді є готовим HTML (наприклад, SVG-малюнки)
+  frame(it, `<div class="q">${md(it.q)}</div>${it.html || ""}${filesHtml(it)}${it.code ? pre(it.code) : ""}
+    <div class="options${it.raw ? " pics" : ""}">${order.map(i => `<button class="opt" data-i="${i}">${it.raw ? it.options[i] : md(it.options[i])}</button>`).join("")}</div>`);
   app.querySelectorAll(".opt").forEach(b => b.onclick = () => {
     const i = +b.dataset.i, ok = i === it.a;
     app.querySelectorAll(".opt").forEach(o => { o.disabled = true; if (+o.dataset.i === it.a) o.classList.add("right"); });

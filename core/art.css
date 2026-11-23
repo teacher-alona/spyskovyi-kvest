@@ -1,0 +1,47 @@
+/* Цифрове мистецтво: піксельні й векторні тренажери */
+.px-svg { display: block; max-width: 100%; height: auto; image-rendering: pixelated; }
+.px-show, .px-answer, .q-pic { display: flex; justify-content: center; margin: 12px 0; }
+.px-code { margin: 10px 0; font-size: 1.05rem; overflow-wrap: anywhere; }
+.px-code code { font-family: var(--f-code); background: var(--ink-soft); padding: 3px 8px; border-radius: 8px; line-height: 1.8; }
+.px-pal { display: flex; flex-wrap: wrap; gap: 6px 12px; margin: 8px 0 12px; font-size: .9rem; }
+.px-sw { display: inline-flex; align-items: center; gap: 5px; }
+.px-sw i { width: 18px; height: 18px; border-radius: 4px; border: 1.5px solid #c9c9d6; display: inline-block; }
+.px-work { display: flex; gap: 16px; align-items: flex-start; flex-wrap: wrap; }
+.px-brushes { display: flex; flex-direction: column; gap: 6px; }
+.px-brush { display: flex; align-items: center; gap: 6px; font: inherit; font-weight: 700; padding: 4px 10px 4px 4px; border-radius: 10px; border: 2px solid var(--line); background: var(--card); color: var(--ink); cursor: pointer; }
+.px-brush i { width: 24px; height: 24px; border-radius: 6px; background: var(--c); border: 1.5px solid #c9c9d6; }
+.px-brush.on { border-color: var(--ink); box-shadow: 0 0 0 2px var(--ink) inset; }
+.px-grid { --px: 34px; display: grid; gap: 0; border: 2px solid var(--ink); user-select: none; touch-action: none; max-width: 100%; }
+.px-cell { width: var(--px); height: var(--px); border: 1px solid #c9c9d6; cursor: crosshair; }
+@media (max-width: 560px) { .px-grid { --px: 26px; } .px-brushes { flex-direction: row; flex-wrap: wrap; } }
+.options.pics { grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); }
+.options.pics .opt { display: flex; justify-content: center; align-items: center; padding: 10px; }
+.options.pics .opt svg { max-width: 100%; height: auto; }
+.v-pair { display: flex; gap: 16px; flex-wrap: wrap; margin: 12px 0; }
+.v-pair figure { margin: 0; flex: 1 1 200px; min-width: 0; text-align: center; }
+.v-pair figcaption { font-size: .85rem; color: var(--muted); margin-bottom: 4px; }
+.v-board { width: 100%; max-width: 260px; height: auto; background: #fff; border: 2px solid var(--line); border-radius: 12px;
+  background-image: linear-gradient(45deg, #f3f3f6 25%, transparent 25%, transparent 75%, #f3f3f6 75%), linear-gradient(45deg, #f3f3f6 25%, transparent 25%, transparent 75%, #f3f3f6 75%); background-size: 16px 16px; background-position: 0 0, 8px 8px; }
+.v-board.can .v-obj { cursor: pointer; }
+.v-obj.sel > * { filter: drop-shadow(0 0 2px #2f6fe4) drop-shadow(0 0 1px #2f6fe4); }
+#vcan { outline: none; }
+.v-dlg, .v-layers { border: 2px solid var(--line); border-radius: 12px; overflow: hidden; margin-top: 8px; }
+.v-dlgtitle { font-weight: 700; padding: 6px 12px; background: var(--ink-soft); color: var(--ink); }
+.v-tabs { display: flex; gap: 2px; padding: 6px 8px 0; border-bottom: 1.5px solid var(--line); flex-wrap: wrap; }
+.v-tabs button { font: inherit; padding: 6px 12px; border: 0; background: none; cursor: pointer; color: var(--muted); border-bottom: 3px solid transparent; }
+.v-tabs button.on { color: var(--ink); border-bottom-color: var(--ink); font-weight: 700; }
+.v-tabbody { padding: 12px; }
+.v-swatches { display: flex; flex-wrap: wrap; gap: 8px; }
+.v-chip { width: 36px; height: 36px; border-radius: 8px; border: 2px solid #c9c9d6; background: var(--c); cursor: pointer; font-weight: 800; color: #e53935; }
+.v-chip.on { box-shadow: 0 0 0 3px var(--ink); }
+.v-sw { display: flex; align-items: center; gap: 10px; }
+.v-sw b { min-width: 2ch; text-align: center; font-size: 1.2rem; }
+.v-zbtns, .v-lbtns { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.v-lbtns { padding: 8px; }
+.v-zbtns kbd { font-family: var(--f-code); font-size: .75rem; background: var(--ink-soft); border-radius: 5px; padding: 1px 5px; margin-left: 4px; }
+.v-layer { display: flex; align-items: center; gap: 10px; width: 100%; font: inherit; text-align: left; padding: 6px 10px; border: 0; border-bottom: 1px solid var(--line); background: var(--card); color: var(--ink); cursor: pointer; }
+.v-layer.on { background: #dbe7ff; font-weight: 700; }
+.v-thumb .v-board { width: 46px; border-radius: 6px; border-width: 1px; }
+.v-objs { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 8px; }
+.v-ochip { font: inherit; font-size: .9rem; padding: 4px 10px; border-radius: 999px; border: 1.5px solid var(--line); background: var(--card); color: var(--ink); cursor: pointer; }
+.v-ochip.on { background: #dbe7ff; border-color: #2f6fe4; font-weight: 700; }

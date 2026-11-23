@@ -2,7 +2,7 @@
    змійка з гардеробом, заслона при виході з гри. Кожна гра підключає цей файл і додає свої рівні. */
 (function () {
 "use strict";
-const VERSION = "2026.11.20-75";
+const VERSION = "2026.11.20-76";
 const API = "https://script.google.com/macros/s/AKfycbzPtRGlYI4osS-xL-J_pAZ2A2HxTWUeuecjy9-13MgAdFIzkDnYuCr1qmLHqZvqWkQMWQ/exec";
 
 // Усі ігри порталу. sheet — назва аркуша з прогресом у таблиці вчительки.
@@ -32,6 +32,10 @@ const GAMES = [
 ];
 GAMES.push({ id: "swiftlab", title: "SwiftUI: практичні", sub: "Swift · практичні в браузері, без Mac", path: "swiftui-praktyka/", sheet: "Прогрес: SwiftUI практичні", max: 33,
   levelIds: ["stacks", "mods", "symbols", "shapes", "card", "views", "state", "input", "lists", "nav", "project"] });
+GAMES.push({ id: "rastr", title: "Растрова графіка", sub: "Цифрове мистецтво · 5 клас", path: "rastrova-hrafika/", sheet: "Прогрес: Растрова графіка", max: 21,
+  levelIds: ["intro", "pixels", "code", "res", "formats", "photopea", "boss"] });
+GAMES.push({ id: "vektor", title: "Векторна графіка", sub: "Цифрове мистецтво · 6 клас", path: "vektorna-hrafika/", sheet: "Прогрес: Векторна графіка", max: 21,
+  levelIds: ["vs", "tools", "fill", "order", "nodes", "bool", "boss"] });
 // розділи порталу: на головній — плитки розділів, у розділі — його ігри
 const CATS = [
   { id: "python", title: "Python", icon: "🐍", games: ["python6", "pybase", "spysky", "graphs"] },
@@ -39,6 +43,7 @@ const CATS = [
   { id: "prog", title: "Основи програмування", icon: "🧩", games: ["flow"] },
   { id: "gamedev", title: "Розробка ігор", icon: "🎮", games: ["gamedev"] },
   { id: "digital", title: "Цифрова грамотність", icon: "💻", games: ["fajly", "klavishi", "trenazhery"] },
+  { id: "art", title: "Цифрове мистецтво", icon: "🎨", games: ["rastr", "vektor"] },
   { id: "robo", title: "Робототехніка", icon: "🤖", games: ["robo"] },
 ];
 GAMES.forEach(g => { const c = CATS.find(c => c.games.includes(g.id)); g.cat = c ? c.id : "other"; });
