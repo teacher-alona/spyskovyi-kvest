@@ -38,7 +38,7 @@ function renderHome() {
   </header>
   ${cat ? `<div class="cathead">${cats.length > 1 ? `<a class="link" href="#">← Усі розділи</a>` : ""}<h2>${cat.icon} ${esc(cat.title)}</h2></div>` : ""}
   ${!cat && cats.length ? `<div class="games cats">${cats.map(c => {
-      const s = c.list.reduce((a, g) => a + sum(KV.gameData(g.id).stars), 0), m = c.list.reduce((a, g) => a + g.max, 0);
+      const s = c.list.reduce((a, g) => a + sum(KV.gameData(g.id).stars), 0), m = c.list.reduce((a, g) => a + (g.max || 0), 0);
       return `<a class="game cat" href="#${c.id}">
         <span class="caticon" aria-hidden="true">${c.icon}</span>
         <h3>${esc(c.title)}</h3>
@@ -48,6 +48,8 @@ function renderHome() {
       </a>`; }).join("")}</div>` : ""}
   <div class="games"${cat || !cats.length ? "" : " hidden"}>
     ${(cat ? cat.list : games).length ? (cat ? cat.list : games).map(g => {
+      // настільна гра — без зірок і рівнів
+      if (g.board) return `<a class="game" href="${g.path}"><span class="gsub">${esc(g.sub)}</span><h3>${esc(g.title)}</h3><span class="gstat">🎲 ${esc(g.board)}</span></a>`;
       const d = KV.gameData(g.id), s = sum(d.stars), att = sum(d.attempts);
       return `<a class="game" href="${g.path}">
         <span class="gsub">${esc(g.sub)}</span>

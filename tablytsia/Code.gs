@@ -7,7 +7,7 @@
  * Старий аркуш «Прогрес» сам перейменовується на «Прогрес: Списки».
  * Аркуш «Галерея»: ігри з пісочниці, які учні опублікували для інших. Зняти галочку «Показувати» — гру сховано.
  */
-const VERSION = "2026.11.20-14";
+const VERSION = "2026.11.24-15";
 const SPYSKY_SHEET = "Прогрес: Списки";
 const DATA_HEADER = "Дані гри (не змінювати)";
 
@@ -27,6 +27,8 @@ function doPost(e) {
     if (!lock.tryLock(30000)) return out({ ok: false, error: "сервер зайнятий" });
   }
   try {
+    // настільна гра: часті короткі запити — окремо, через швидку пам'ять скрипта (CacheService)
+    if (String(req.action || "").indexOf("room_") === 0) return out(roomAction(req));
     const st = findStudent(req.login, req.pin);
     if (!st) return out({ ok: false, error: "auth" });
 
@@ -359,4 +361,103 @@ function gallery(me) {
   });
   items.sort((a, b) => b.at - a.at);
   return { ok: true, items: items };
+}
+
+// ---------- настільна гра «Python-роботи»: кімнати на 2–4 гравців ----------
+// Стан кімнати лежить у CacheService (не в аркушах), живе до 3 годин без ходів.
+// Сервер лише зберігає гравців і їхні програми по раундах; хід гри кожен комп'ютер рахує сам однаково.
+const ROOM_TTL = 3 * 60 * 60, ROUND_SEC = 90, ROOM_MAX = 4, ROUNDS = 8;
+function cache() { return CacheService.getScriptCache(); }
+// вхід із кешем на 10 хвилин, щоб не читати аркуш «Учні» на кожну перевірку
+function roomStudent(login, pin) {
+  const key = "auth:" + norm(login) + ":" + String(pin).trim();
+  const hit = cache().get(key);
+  if (hit) return JSON.parse(hit);
+  const st = findStudent(login, pin);
+  if (st) cache().put(key, JSON.stringify(st), 600);
+  return st;
+}
+const roomKey = code => "room:" + String(code || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+function roomGet(code) { const r = cache().get(roomKey(code)); return r ? JSON.parse(r) : null; }
+function roomPut(room) { room.v = (room.v || 0) + 1; room.at = Date.now(); cache().put(roomKey(room.code), JSON.stringify(room), ROOM_TTL); return room; }
+function roomCode() { const A = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; for (let t = 0; t < 20; t++) { let c = ""; for (let i = 0; i < 4; i++) c += A[Math.floor(Math.random() * A.length)]; if (!roomGet(c)) return c; } return null; }
+// що бачить гравець (без PIN і зайвого)
+function roomView(room, me) { return { ok: true, room: room, me: me.login, now: Date.now() }; }
+// якщо час раунду вийшов — хто не здав програму, стоїть на місці
+function roomExpire(room) {
+  if (room.status !== "play") return false;
+  const r = room.rounds[room.round];
+  if (Date.now() < room.deadline) return false;
+  room.players.forEach(p => { if (!r[p.login]) r[p.login] = { prog: [], late: true }; });
+  return true;
+}
+function roomAdvance(room) {
+  const r = room.rounds[room.round];
+  if (room.players.every(p => r[p.login])) {
+    if (room.round + 1 >= ROUNDS) { room.status = "done"; return; }
+    room.round++; room.rounds.push({}); room.deadline = Date.now() + ROUND_SEC * 1000;
+  }
+}
+function roomAction(req) {
+  const st = roomStudent(req.login, req.pin);
+  if (!st) return { ok: false, error: "auth" };
+  const a = req.action;
+  if (a === "room_state") {
+    let room = roomGet(req.code);
+    if (!room) return { ok: false, error: "no_room" };
+    if (req.v && room.v === req.v && !(room.status === "play" && Date.now() >= room.deadline)) return { ok: true, same: true, now: Date.now() };
+    if (room.status === "play" && Date.now() >= room.deadline) {
+      const lock = LockService.getScriptLock();
+      if (lock.tryLock(5000)) try { room = roomGet(req.code); if (roomExpire(room)) { roomAdvance(room); roomPut(room); } } finally { lock.releaseLock(); }
+    }
+    return roomView(room, st);
+  }
+  // решта — запис: коротко під замком
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(10000)) return { ok: false, error: "сервер зайнятий" };
+  try {
+    const nick = String(req.nick || st.name || st.login).slice(0, 24);
+    if (a === "room_create") {
+      const code = roomCode();
+      if (!code) return { ok: false, error: "no_code" };
+      const room = { code: code, host: st.login, status: "lobby", players: [{ login: st.login, nick: nick, cls: st.cls }], rounds: [], round: 0, seed: 0 };
+      return roomView(roomPut(room), st);
+    }
+    const room = roomGet(req.code);
+    if (!room) return { ok: false, error: "no_room" };
+    const inRoom = room.players.some(p => p.login === st.login);
+    if (a === "room_join") {
+      if (inRoom) return roomView(room, st);
+      if (room.status !== "lobby") return { ok: false, error: "started" };
+      if (room.players.length >= ROOM_MAX) return { ok: false, error: "full" };
+      room.players.push({ login: st.login, nick: nick, cls: st.cls });
+      return roomView(roomPut(room), st);
+    }
+    if (!inRoom) return { ok: false, error: "not_in_room" };
+    if (a === "room_leave") {
+      room.players = room.players.filter(p => p.login !== st.login);
+      if (room.host === st.login && room.players.length) room.host = room.players[0].login;
+      if (room.status === "play" && room.players.length < 2) room.status = "done";
+      else if (room.status === "play") roomAdvance(room);
+      roomPut(room);
+      return { ok: true };
+    }
+    if (a === "room_start") {
+      if (room.host !== st.login) return { ok: false, error: "not_host" };
+      if (room.status !== "lobby") return roomView(room, st);
+      if (room.players.length < 2) return { ok: false, error: "few" };
+      room.order = room.players.map(p => p.login);   // порядок гравців фіксуємо: від нього залежать старт і карти
+      room.status = "play"; room.seed = Math.floor(Math.random() * 2e9); room.round = 0; room.rounds = [{}]; room.deadline = Date.now() + ROUND_SEC * 1000;
+      return roomView(roomPut(room), st);
+    }
+    if (a === "room_move") {
+      if (room.status !== "play") return roomView(room, st);
+      if (Number(req.round) !== room.round) return roomView(room, st);
+      const prog = (req.prog || []).slice(0, 5).map(c => String(c).slice(0, 12));
+      room.rounds[room.round][st.login] = { prog: prog };
+      roomAdvance(room);
+      return roomView(roomPut(room), st);
+    }
+    return { ok: false, error: "unknown_action" };
+  } finally { lock.releaseLock(); }
 }
