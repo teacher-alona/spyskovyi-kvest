@@ -2,7 +2,7 @@
    змійка з гардеробом, заслона при виході з гри. Кожна гра підключає цей файл і додає свої рівні. */
 (function () {
 "use strict";
-const VERSION = "2026.11.24-79";
+const VERSION = "2026.11.24-80";
 const API = "https://script.google.com/macros/s/AKfycbzPtRGlYI4osS-xL-J_pAZ2A2HxTWUeuecjy9-13MgAdFIzkDnYuCr1qmLHqZvqWkQMWQ/exec";
 
 // Усі ігри порталу. sheet — назва аркуша з прогресом у таблиці вчительки.
@@ -36,7 +36,7 @@ GAMES.push({ id: "rastr", title: "Растрова графіка", sub: "Циф
   levelIds: ["intro", "pixels", "code", "res", "formats", "photopea", "boss"] });
 GAMES.push({ id: "vektor", title: "Векторна графіка", sub: "Цифрове мистецтво · 6 клас", path: "vektorna-hrafika/", sheet: "Прогрес: Векторна графіка", max: 21,
   levelIds: ["vs", "tools", "fill", "order", "nodes", "bool", "boss"] });
-GAMES.push({ id: "roboty", title: "Python-роботи", sub: "Python · настільна гра", path: "python-roboty/", sheet: "Прогрес: Python-роботи", max: 0, levelIds: [], board: "мережева гра на 2–4 гравців" });
+GAMES.push({ id: "roboty", title: "Python-роботи", sub: "Python · настільна гра", path: "python-roboty/", sheet: "Прогрес: Python-роботи", max: 0, levelIds: [], board: "з однокласниками або проти комп'ютера" });
 // розділи порталу: на головній — плитки розділів, у розділі — його ігри
 const CATS = [
   { id: "python", title: "Python", icon: "🐍", games: ["python6", "pybase", "spysky", "graphs", "roboty"] },

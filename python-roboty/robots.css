@@ -39,3 +39,8 @@
 .rb-log { display: grid; gap: 3px; margin-top: 10px; font-size: .9rem; max-height: 180px; overflow: auto; }
 .rb-rank { padding-left: 1.4em; display: grid; gap: 6px; }
 @media (max-width: 820px) { .rb-main { grid-template-columns: minmax(0, 1fr); } .rb-bigcode { font-size: 2.3rem; } }
+.rb-lobby + .rb-lobby, .card + .rb-lobby, .rb-lobby + .card { margin-top: 16px; }
+.rb-nb { align-items: center; gap: 8px; }
+.rb-nb .btn { min-width: 48px; }
+.rb-nb .btn.on { background: var(--ink); color: #fff; }
+.rb-x { font: inherit; border: 0; background: transparent; color: #c62828; cursor: pointer; padding: 0 6px; font-weight: 800; }

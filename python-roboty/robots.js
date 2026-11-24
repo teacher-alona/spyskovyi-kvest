@@ -116,6 +116,53 @@ function playRound(g, progs, round) {
   return ev;
 }
 
+// ---------- робот-комп'ютер (сильний) ----------
+// перебирає всі програми, які можна скласти зі своїх карт, і програє кожну «в голові»:
+// скільки балів збере і наскільки близько потім буде до наступної монети
+function allProgs(h) {
+  const out = new Map(), pre = [], used = [];
+  (function rec() {
+    if (pre.length) { const k = pre.join(" "); if (!out.has(k) && !validate(pre)) out.set(k, pre.slice()); }
+    if (pre.length >= SLOTS) return;
+    for (let i = 0; i < h.length; i++) if (!used[i]) { used[i] = 1; pre.push(h[i]); rec(); pre.pop(); used[i] = 0; }
+  })();
+  return [...out.values()];
+}
+// найкоротший шлях (у діях) від робота до найближчої монети; самоцвіт вартий трохи довшої дороги
+function coinDist(g, b) {
+  if (!g.coins.size) return 0;
+  const inside = (x, y) => x >= 0 && y >= 0 && x < N && y < N, seen = new Set(), q = [[b.x, b.y, b.d, 0]];
+  let best = 99;
+  seen.add(b.x + "," + b.y + "," + b.d);
+  for (let qi = 0; qi < q.length; qi++) {
+    const [x, y, d, c] = q[qi];
+    if (c >= best) break;
+    const v = g.coins.get(K(x, y));
+    if (v && c > 0) best = Math.min(best, c - (v > 1 ? 4 : 0));
+    const [dx, dy] = DIRS[d], nx = [];
+    nx.push([x, y, (d + 1) % 4], [x, y, (d + 3) % 4]);
+    if (inside(x + dx, y + dy) && !g.walls.has(K(x + dx, y + dy))) nx.push([x + dx, y + dy, d]);
+    if (inside(x + 2 * dx, y + 2 * dy) && !g.walls.has(K(x + 2 * dx, y + 2 * dy))) nx.push([x + 2 * dx, y + 2 * dy, d]);
+    for (const [a, bb, dd] of nx) { const k = a + "," + bb + "," + dd; if (!seen.has(k)) { seen.add(k); q.push([a, bb, dd, c + 1]); } }
+  }
+  return best === 99 ? 30 : Math.max(0, best);
+}
+const botCache = new Map();
+function botProg(g, i, round, seed) {
+  const key = [seed, round, i, g.coins.size, g.bots.map(b => b.x + "," + b.y + "," + b.d).join(";")].join("|");
+  if (botCache.has(key)) return botCache.get(key);
+  let best = [], bestScore = -1e9;
+  for (const p of allProgs(hand(seed, round, i))) {
+    const t = { walls: g.walls, coins: new Map(g.coins), bots: g.bots.map(b => Object.assign({}, b)) };
+    playRound(t, t.bots.map((_, j) => j === i ? p : []), round);
+    const sc = (t.bots[i].score - g.bots[i].score) * 100 - 3 * coinDist(t, t.bots[i]) - p.length * 0.01;
+    if (sc > bestScore) { bestScore = sc; best = p; }
+  }
+  botCache.set(key, best);
+  return best;
+}
+const isBot = id => String(id).indexOf("~bot") === 0;
+
 // ---------- мережа ----------
 const API_ERR = { no_room: "Такої кімнати немає (або вона вже закінчилася).", full: "У кімнаті вже 4 гравці.", started: "Гра в цій кімнаті вже почалася.", few: "Потрібно щонайменше 2 гравці.", not_host: "Почати гру може лише той, хто створив кімнату.", net: "Немає зв'язку з сервером. Пробую ще раз…", auth: "Увійди на головній сторінці порталу.", unknown_action: "Учителька ще не оновила скрипт таблиці — гра запрацює після оновлення.", "сервер зайнятий": "Сервер зайнятий, пробую ще раз…" };
 const nick = () => { try { return (KV.profile().name || KV.session.name || "").slice(0, 24); } catch (e) { return ""; } };
@@ -147,16 +194,20 @@ function apply(r) {
 function order() { return room.order || room.players.map(p => p.login); }
 function nameOf(login) { const p = room.players.find(x => x.login === login); return p ? p.nick : login + " (вийшов)"; }
 // стан гри після всіх завершених раундів (рахуємо заново — так усі комп'ютери бачать одне й те саме)
+// програми всіх гравців у раунді: людські — з кімнати, роботів-комп'ютерів — рахуємо (однаково на всіх комп'ютерах)
+function roundProgs(g, r) {
+  const rr = room.rounds[r] || {};
+  return order().map((id, i) => isBot(id) ? botProg(g, i, r, room.seed) : (rr[id] || {}).prog || []);
+}
 function replay(upto) {
   const ids = order(), g = newGame(room.seed, ids.length), log = [];
-  for (let r = 0; r < upto; r++) { const rr = room.rounds[r] || {}; log.push(playRound(g, ids.map(id => (rr[id] || {}).prog || []), r)); }
+  for (let r = 0; r < upto; r++) log.push(playRound(g, roundProgs(g, r), r));
   return { g, log };
 }
 function finished() { return room.status === "done" ? room.rounds.length : room.round; }
 
 function render() {
   const box = $("#rb");
-  if (!KV.session) { box.innerHTML = `<div class="card"><p>Щоб грати, спершу <a href="../">увійди на головній сторінці порталу</a>, а потім повернися сюди.</p></div>`; return; }
   if (!room) return lobbyStart();
   if (room.status === "lobby") return lobbyRoom();
   if (animating) return;   // анімація сама перемалює, коли закінчить
@@ -175,18 +226,38 @@ function render() {
 
 function lobbyStart() {
   drawn = "";
-  $("#rb").innerHTML = `<div class="card rb-lobby">
+  const solo = `<div class="card rb-lobby">
+    <h2>Гра проти комп'ютера</h2>
+    <p>Твої суперники — роботи-комп'ютери. Вони грають сильно: перебирають усі програми зі своїх карт і обирають найкращу.</p>
+    <div class="arow rb-nb"><span>Скільки роботів:</span>${[1, 2, 3].map(n => `<button class="btn ghost${n === 1 ? " on" : ""}" data-nb="${n}">${n}</button>`).join("")}</div>
+    <div class="arow"><button class="btn" id="solo">▶ Грати</button></div>
+  </div>`;
+  if (!KV.session) {
+    $("#rb").innerHTML = solo + `<div class="card"><p>Щоб грати з однокласниками по мережі, <a href="../">увійди на головній сторінці порталу</a>, а потім повернися сюди.</p></div>`;
+  } else $("#rb").innerHTML = `<div class="card rb-lobby">
     <h2>Нова гра</h2>
-    <p>Один гравець створює кімнату й каже іншим її код. Грають від 2 до 4 гравців — кожен зі свого комп'ютера.</p>
+    <p>Один гравець створює кімнату й каже іншим її код. Грають від 2 до 4 гравців — кожен зі свого комп'ютера. У кімнату можна додати й роботів-комп'ютерів.</p>
     <div class="arow"><button class="btn" id="mk">Створити кімнату</button></div>
     <h2>Або приєднайся</h2>
     <div class="arow"><input class="answer-input rb-code" id="code" maxlength="4" placeholder="КОД" autocomplete="off" spellcheck="false"><button class="btn" id="jn">Приєднатися</button></div>
-  </div>`;
+  </div>` + solo;
+  let nb = 1;
+  document.querySelectorAll("[data-nb]").forEach(b => b.onclick = () => { nb = +b.dataset.nb; document.querySelectorAll("[data-nb]").forEach(x => x.classList.toggle("on", x === b)); });
+  $("#solo").onclick = () => startSolo(nb);
+  if (!KV.session) return;
   $("#mk").onclick = async () => { $("#mk").disabled = true; const r = await api("room_create"); if (!r.ok) { msg(API_ERR[r.error] || r.error, true); $("#mk").disabled = false; return; } apply(r); schedule(2000); };
   const join = async () => { const code = $("#code").value.trim().toUpperCase(); if (code.length !== 4) return msg("Код кімнати — 4 символи.", true); const r = await api("room_join", { code }); if (!r.ok) return msg(API_ERR[r.error] || r.error, true); apply(r); schedule(2000); };
   $("#jn").onclick = join; $("#code").onkeydown = e => { if (e.key === "Enter") join(); };
   let saved = null; try { saved = localStorage.getItem("kv-robo-room"); } catch (e) {}
   if (saved) $("#code").value = saved;
+}
+function startSolo(nb) {
+  me = "~me"; clearTimeout(pollT);
+  const players = [{ login: me, nick: nick() || "Ти" }];
+  for (let n = 1; n <= nb; n++) players.push({ login: "~bot" + n, nick: "Робот-" + n + " 🤖", bot: true });
+  room = { local: true, code: "", host: me, status: "play", players, order: players.map(p => p.login), seed: Math.floor(Math.random() * 2e9), round: 0, rounds: [{}], deadline: 0, v: 0 };
+  game = null; shown = 0; prog = []; sent = -1; msg("");
+  render();
 }
 function lobbyRoom() {
   drawn = "";
@@ -194,13 +265,17 @@ function lobbyRoom() {
   $("#rb").innerHTML = `<div class="card rb-lobby">
     <p class="muted">Код кімнати — скажи його іншим:</p><div class="rb-bigcode">${esc(room.code)}</div>
     <h2>Гравці (${room.players.length}/4)</h2>
-    <ul class="rb-players">${room.players.map((p, i) => `<li><i style="background:${COLORS[i]}"></i>${esc(p.nick)} <span class="muted">${esc(p.cls || "")}</span>${p.login === room.host ? " 👑" : ""}${p.login === me ? " — це ти" : ""}</li>`).join("")}</ul>
+    <ul class="rb-players">${room.players.map((p, i) => `<li><i style="background:${COLORS[i]}"></i>${esc(p.nick)} <span class="muted">${esc(p.cls || "")}</span>${p.login === room.host ? " 👑" : ""}${p.login === me ? " — це ти" : ""}${host && p.bot ? ` <button class="rb-x" data-bot="${esc(p.login)}" title="Прибрати робота">✕</button>` : ""}</li>`).join("")}</ul>
+    ${host && room.players.length < 4 ? `<div class="arow"><button class="btn ghost" id="addbot">+ Додати робота-комп'ютера 🤖</button></div>` : ""}
     <div class="arow">${host ? `<button class="btn" id="go" ${room.players.length < 2 ? "disabled" : ""}>Почати гру</button>` : `<span class="muted">Чекаємо, поки 👑 почне гру…</span>`}<button class="btn ghost" id="lv">Вийти з кімнати</button></div>
   </div>`;
   if (host) $("#go").onclick = async () => { const r = await api("room_start", { code: room.code }); if (!r.ok) return msg(API_ERR[r.error] || r.error, true); apply(r); };
+  const botAct = async (action, extra) => { const r = await api(action, Object.assign({ code: room.code }, extra)); if (!r.ok) return msg(API_ERR[r.error] || r.error, true); apply(r); };
+  if ($("#addbot")) $("#addbot").onclick = () => { $("#addbot").disabled = true; botAct("room_addbot"); };
+  document.querySelectorAll("[data-bot]").forEach(b => b.onclick = () => { b.disabled = true; botAct("room_delbot", { bot: b.dataset.bot }); });
   $("#lv").onclick = leave;
 }
-async function leave() { if (room) await api("room_leave", { code: room.code }); room = null; game = null; shown = 0; prog = []; sent = -1; try { localStorage.removeItem("kv-robo-room"); } catch (e) {} clearTimeout(pollT); render(); }
+async function leave() { if (room && !room.local) await api("room_leave", { code: room.code }); room = null; game = null; shown = 0; prog = []; sent = -1; try { localStorage.removeItem("kv-robo-room"); } catch (e) {} clearTimeout(pollT); render(); }
 
 function boardSVG(g, hi) {
   const C = 40, ids = order();
@@ -217,7 +292,7 @@ function boardSVG(g, hi) {
 }
 function scores(g, extra) {
   const ids = order(), cur = room.rounds[room.round] || {};
-  return `<ul class="rb-score">${ids.map((id, i) => `<li${id === me ? ' class="me"' : ""}><i style="background:${COLORS[i]}"></i><span>${esc(nameOf(id))}${id === me ? " (ти)" : ""}</span><b>${g.bots[i].score}</b>${extra && room.status === "play" ? (cur[id] ? `<em title="Програму здано">✓</em>` : `<em class="wait" title="Ще складає програму">…</em>`) : ""}</li>`).join("")}</ul>`;
+  return `<ul class="rb-score">${ids.map((id, i) => `<li${id === me ? ' class="me"' : ""}><i style="background:${COLORS[i]}"></i><span>${esc(nameOf(id))}${id === me ? " (ти)" : ""}</span><b>${g.bots[i].score}</b>${extra && room.status === "play" ? (cur[id] || isBot(id) ? `<em title="Програму здано">✓</em>` : `<em class="wait" title="Ще складає програму">…</em>`) : ""}</li>`).join("")}</ul>`;
 }
 
 function drawGame() {
@@ -227,9 +302,9 @@ function drawGame() {
   const left = Math.max(0, Math.round((room.deadline - (Date.now() + clockSkew)) / 1000));
   const used = new Set(prog.map(p => p.h));
   const lines = pyLines(prog.map(p => p.c));
-  $("#rb").innerHTML = `<div class="rb-top"><b>Раунд ${r + 1} з ${ROUNDS}</b><span class="rb-clock" id="clock">⏱ ${left} с</span><span class="muted">Ти — ${CNAMES[idx] || "глядач"} робот</span></div>
+  $("#rb").innerHTML = `<div class="rb-top"><b>Раунд ${r + 1} з ${ROUNDS}</b>${room.local ? "" : `<span class="rb-clock" id="clock">⏱ ${left} с</span>`}<span class="muted">Ти — ${CNAMES[idx] || "глядач"} робот</span></div>
   <div class="rb-main"><div class="rb-left">${boardSVG(game)}${scores(game, true)}</div>
-  <div class="rb-right">${spectator ? `<p>Ти дивишся гру.</p>` : sent === r ? `<div class="card rb-wait"><h3>Програму здано ✓</h3><pre class="code">${esc(pyLines(((room.rounds[r] || {})[me] || {}).prog || prog.map(p => p.c)).map(l => (l.ind ? "    " : "") + l.text).join("\n"))}</pre><p class="muted">Чекаємо інших гравців. Коли всі здадуть — роботи поїдуть.</p></div>` : `
+  <div class="rb-right">${spectator ? `<p>Ти дивишся гру.</p>` : sent === r ? `<div class="card rb-wait"><h3>Програму здано ✓</h3><pre class="code">${esc(pyLines(((room.rounds[r] || {})[me] || {}).prog || prog.map(p => p.c)).map(l => (l.ind ? "    " : "") + l.text).join("\n"))}</pre><p class="muted">${room.local ? "Роботи-комп'ютери думають…" : "Чекаємо інших гравців. Коли всі здадуть — роботи поїдуть."}</p></div>` : `
     <h3>Твої карти</h3>
     <div class="rb-hand">${myHand.map((c, h) => `<button class="rb-card${CARDS[c].act ? "" : " ctl"}" data-h="${h}" ${used.has(h) || prog.length >= SLOTS ? "disabled" : ""} title="${esc(CARDS[c].tip)}"><code>${esc(CARDS[c].py)}</code></button>`).join("")}</div>
     <h3>Програма <span class="muted">(до ${SLOTS} рядків, клацни рядок — щоб забрати)</span></h3>
@@ -246,6 +321,11 @@ function drawGame() {
     $("#send").onclick = async () => {
       // одразу показуємо «здано», не чекаючи відповіді таблиці
       const mine = prog.slice();
+      if (room.local) {
+        room.rounds[r][me] = { prog: mine.map(p => p.c) }; sent = r; drawGame(); prog = [];
+        if (r + 1 >= ROUNDS) room.status = "done"; else { room.round++; room.rounds.push({}); }
+        setTimeout(render, 250); return;
+      }
       sent = r; drawGame();
       const res = await api("room_move", { code: room.code, round: r, prog: mine.map(p => p.c) });
       if (!res.ok) { sent = -1; prog = mine; msg(API_ERR[res.error] || res.error, true); drawGame(); return; }
@@ -257,7 +337,7 @@ function drawGame() {
 let clockT = null;
 function tickClock() {
   clearTimeout(clockT);
-  const el = $("#clock"); if (!el || !room || room.status !== "play") return;
+  const el = $("#clock"); if (!el || !room || room.local || room.status !== "play") return;
   const left = Math.max(0, Math.round((room.deadline - (Date.now() + clockSkew)) / 1000));
   el.textContent = `⏱ ${left} с`; el.classList.toggle("low", left <= 15);
   clockT = setTimeout(tickClock, 1000);
@@ -269,7 +349,7 @@ async function animateRounds(from, to) {
   const ids = order();
   for (let r = from; r < to; r++) {
     const rr = room.rounds[r] || {};
-    const progs = ids.map(id => (rr[id] || {}).prog || []);
+    const progs = roundProgs(game, r);
     const before = JSON.parse(JSON.stringify({ bots: game.bots }));
     const g2 = { walls: game.walls, coins: new Map(game.coins), bots: before.bots.map(b => Object.assign({}, b)) };
     const ev = playRound(g2, progs, r);
@@ -296,8 +376,9 @@ function drawEnd() {
   $("#rb").innerHTML = `<div class="rb-main"><div class="rb-left">${boardSVG(game)}</div><div class="rb-right card">
     <h2>${rank.filter(x => x.s === best).map(x => x.id).includes(me) ? "🏆 Перемога!" : "Гру завершено"}</h2>
     <ol class="rb-rank">${rank.map(x => `<li><i style="background:${COLORS[x.i]}"></i>${esc(nameOf(x.id))} — <b>${x.s}</b>${x.s === best ? " 🏆" : ""}</li>`).join("")}</ol>
-    <div class="arow"><button class="btn" id="again">Нова гра</button></div></div></div>`;
+    <div class="arow">${room.local ? `<button class="btn" id="more">Ще раз</button>` : ""}<button class="btn${room.local ? " ghost" : ""}" id="again">Нова гра</button></div></div></div>`;
   $("#again").onclick = leave;
+  if ($("#more")) $("#more").onclick = () => startSolo(room.players.length - 1);
   clearTimeout(pollT);
 }
 
@@ -309,7 +390,7 @@ async function resume() {
   const r = await api("room_state", { code });
   if (r.ok && r.room && r.room.players.some(p => p.login === r.me)) { apply(r); schedule(2000); }
 }
-document.addEventListener("visibilitychange", () => { if (!document.hidden && room) schedule(200); });
-window.ROBO = { CARDS, hand, makeBoard, newGame, playRound, validate, interp, pyLines };
+document.addEventListener("visibilitychange", () => { if (!document.hidden && room && !room.local) schedule(200); });
+window.ROBO = { CARDS, hand, makeBoard, newGame, playRound, validate, interp, pyLines, botProg, allProgs };
 if (!window.ROBO_TEST) resume();
 })();

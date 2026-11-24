@@ -7,7 +7,7 @@
  * Старий аркуш «Прогрес» сам перейменовується на «Прогрес: Списки».
  * Аркуш «Галерея»: ігри з пісочниці, які учні опублікували для інших. Зняти галочку «Показувати» — гру сховано.
  */
-const VERSION = "2026.11.24-15";
+const VERSION = "2026.11.24-16";
 const SPYSKY_SHEET = "Прогрес: Списки";
 const DATA_HEADER = "Дані гри (не змінювати)";
 
@@ -388,12 +388,13 @@ function roomExpire(room) {
   if (room.status !== "play") return false;
   const r = room.rounds[room.round];
   if (Date.now() < room.deadline) return false;
-  room.players.forEach(p => { if (!r[p.login]) r[p.login] = { prog: [], late: true }; });
+  room.players.forEach(p => { if (!p.bot && !r[p.login]) r[p.login] = { prog: [], late: true }; });
   return true;
 }
 function roomAdvance(room) {
   const r = room.rounds[room.round];
-  if (room.players.every(p => r[p.login])) {
+  // роботи-комп'ютери програм не здають: їхні ходи кожен комп'ютер рахує сам
+  if (room.players.every(p => p.bot || r[p.login])) {
     if (room.round + 1 >= ROUNDS) { room.status = "done"; return; }
     room.round++; room.rounds.push({}); room.deadline = Date.now() + ROUND_SEC * 1000;
   }
@@ -436,11 +437,23 @@ function roomAction(req) {
     if (!inRoom) return { ok: false, error: "not_in_room" };
     if (a === "room_leave") {
       room.players = room.players.filter(p => p.login !== st.login);
-      if (room.host === st.login && room.players.length) room.host = room.players[0].login;
-      if (room.status === "play" && room.players.length < 2) room.status = "done";
+      const people = room.players.filter(p => !p.bot);
+      if (!people.length) room.players = [];   // лишилися самі роботи — кімната порожня
+      if (room.host === st.login && people.length) room.host = people[0].login;
+      if (room.status === "play" && (room.players.length < 2 || !people.length)) room.status = "done";
       else if (room.status === "play") roomAdvance(room);
       roomPut(room);
       return { ok: true };
+    }
+    if (a === "room_addbot" || a === "room_delbot") {
+      if (room.host !== st.login) return { ok: false, error: "not_host" };
+      if (room.status !== "lobby") return roomView(room, st);
+      if (a === "room_addbot") {
+        if (room.players.length >= ROOM_MAX) return { ok: false, error: "full" };
+        let n = 1; while (room.players.some(p => p.login === "~bot" + n)) n++;
+        room.players.push({ login: "~bot" + n, nick: "Робот-" + n + " 🤖", cls: "", bot: true });
+      } else room.players = room.players.filter(p => !(p.bot && p.login === req.bot));
+      return roomView(roomPut(room), st);
     }
     if (a === "room_start") {
       if (room.host !== st.login) return { ok: false, error: "not_host" };
