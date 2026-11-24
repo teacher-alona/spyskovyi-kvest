@@ -29,3 +29,34 @@
 .fchip.on { border-color: var(--ink, #2b6cd4); background: var(--ink-soft, #e6efff); }
 .fchip .chipsvg { display: block; }
 .flowbox > .flow { background: #fff; border-radius: 12px; }
+
+/* ---------- Пісочниця блок-схем ---------- */
+.fsb-sheet { max-width: 1180px; }
+.fsb-bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 14px 0 10px; }
+.fsb-title { flex: 1 1 220px; min-width: 0; margin: 0; font: 700 1rem var(--f-body, sans-serif); padding: 9px 12px; border: 2px solid var(--line, #d8dce3); border-radius: 10px; background: var(--card, #fff); color: inherit; }
+.fsb-title:focus, .fsb-txt:focus { outline: none; border-color: var(--ink, #2b6cd4); }
+.fsb-ex select { font: inherit; padding: 6px 8px; border-radius: 10px; border: 2px solid var(--line, #d8dce3); background: var(--card, #fff); color: inherit; }
+.fsb-work { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 16px; align-items: start; }
+.fsb-canvas { background: #fff; border: 2px solid var(--line, #d8dce3); border-radius: 14px; overflow: auto; min-height: 420px; max-height: 78vh; padding: 10px; }
+.fsb-canvas .flow { margin: 0 auto; }
+.fsb-panel { position: sticky; top: 12px; background: var(--card, #fff); border: 2px solid var(--line, #d8dce3); border-radius: 14px; padding: 14px; display: grid; gap: 8px; }
+.fsb-empty p { margin: 6px 0 0; }
+.fsb-kind { display: flex; align-items: center; gap: 8px; }
+.fsb-kind .chipsvg { width: 52px; height: auto; }
+.fsb-lab { font-weight: 800; font-size: .9rem; }
+.fsb-txt { width: 100%; box-sizing: border-box; resize: vertical; margin: 0; font: 700 1rem var(--f-body, sans-serif); padding: 8px 10px; border: 2px solid var(--line, #d8dce3); border-radius: 10px; }
+.fsb-small { font-size: .8rem; margin: -4px 0 0; }
+.fsb-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.fsb-row .btn { padding: 6px 12px; min-height: 0; }
+.fsb-tg.on { background: var(--ink, #2b6cd4); color: #fff; }
+.fsb-del { color: #c62828; }
+.fsb-h { margin: 8px 0 0; font-size: 1rem; }
+.fsb-pal { display: grid; grid-template-columns: repeat(auto-fill, minmax(86px, 1fr)); gap: 6px; }
+.fsb-pal .fchip .chipsvg { width: 64px; height: auto; }
+.sbsave { margin-top: 14px; flex-wrap: wrap; align-items: center; }
+.sbsave #st { display: block; flex: 1 1 100%; margin-top: 6px; }
+@media (max-width: 860px) {
+  .fsb-work { grid-template-columns: minmax(0, 1fr); }
+  .fsb-panel { position: static; }
+  .fsb-canvas { min-height: 260px; max-height: 60vh; }
+}
