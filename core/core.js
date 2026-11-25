@@ -2,7 +2,7 @@
    змійка з гардеробом, заслона при виході з гри. Кожна гра підключає цей файл і додає свої рівні. */
 (function () {
 "use strict";
-const VERSION = "2026.11.25-85";
+const VERSION = "2026.11.25-86";
 const API = "https://script.google.com/macros/s/AKfycbzPtRGlYI4osS-xL-J_pAZ2A2HxTWUeuecjy9-13MgAdFIzkDnYuCr1qmLHqZvqWkQMWQ/exec";
 
 // Усі ігри порталу. sheet — назва аркуша з прогресом у таблиці вчительки.
@@ -439,6 +439,11 @@ const SKINS = [
   { id: "glitch", name: "Глітч", ach: "fail", col: () => "#1a1a1a", idx: "#39ff14", jitter: true,
     seg: () => "", head: "#1a1a1a",
     headDeco: (hx, hy) => `<text x="${hx + 3}" y="${hy + 12}" font-family="monospace" font-size="6" fill="#39ff14">ERR</text>` },
+  // папір і олівець: пом'ятий аркуш, контур ніби обведений олівцем двічі
+  { id: "paper", name: "Олівець на папері", price: 35, col: () => "#f7f2e4", idx: "#555", head: "#f7f2e4",
+    seg: (x, y, i) => `<path d="M${x + [3, 6, 2, 8, 4, 5][i % 6]} ${y - 11} L${x + 11} ${y - 1} L${x + [19, 16, 21, 14, 18, 20][i % 6]} ${y + 11} M${x} ${y + [2, -4, 5, -2, 3, -5][i % 6]} L${x + 9} ${y + 1} L${x + 22} ${y - [3, 6, 1, 4, 7, 2][i % 6]}" stroke="#d9d0bc" stroke-width=".9" fill="none"/><path d="M${x + 2} ${y + 9} l5 -5 M${x + 2} ${y + 6} l5 -5 M${x + 4} ${y + 10} l5 -5" stroke="#9a9a9a" stroke-width=".6"/>`,
+    segOver: (x, y, i, shape) => shapeEl(shape, x + .9, y - 11.6, 7, `fill="none" stroke="#4d4d4d" stroke-width=".9" opacity=".75"`) + shapeEl(shape, x - .7, y - 10.3, 7, `fill="none" stroke="#5c5c5c" stroke-width=".7" opacity=".55"`),
+    headDeco: (hx, hy) => `<rect x="${hx + 1.2}" y="${hy - 14.8}" width="33" height="28.6" rx="11" fill="none" stroke="#4d4d4d" stroke-width=".8" opacity=".6"/><path d="M${hx + 4} ${hy - 9} L${hx + 14} ${hy - 2} L${hx + 9} ${hy + 12} M${hx + 22} ${hy - 14} L${hx + 25} ${hy - 5}" stroke="#d9d0bc" stroke-width=".9" fill="none"/>` },
   // ---------- новорічна колекція (ny: true — показуємо окремим розділом гардероба) ----------
   { id: "nysweater", name: "Новорічний светр", ny: true, need: 0, col: () => "#c62828", idx: "#fff", head: "#c62828",
     seg: (x, y) => `<path d="M${x} ${y - 6} l2.75 -3 2.75 3 2.75 -3 2.75 3 2.75 -3 2.75 3 2.75 -3 2.75 3" stroke="#fff" stroke-width="1.5" fill="none"/>${[3, 8.3, 13.7, 19].map(d => `<circle cx="${x + d}" cy="${y + 8}" r="1.2" fill="#fff"/>`).join("")}<path d="M${x} ${y + 5} h22" stroke="#1f7a43" stroke-width="1.3"/>` },
@@ -462,6 +467,19 @@ const SKINS = [
     seg: (x, y, i) => `<path d="M${x} ${y - 4} q5.5 -5 11 0 t11 0" stroke="rgba(255,255,255,.55)" stroke-width="1.6" fill="none"/><path d="M${x} ${y + 4} q5.5 -5 11 0 t11 0" stroke="rgba(255,255,255,.3)" stroke-width="1.3" fill="none"/>`,
     headDeco: (hx, hy) => `<circle cx="${hx + 6}" cy="${hy - 8}" r="1" fill="#fff"/><circle cx="${hx + 30}" cy="${hy + 9}" r="1.2" fill="#b9fff0"/><circle cx="${hx + 8}" cy="${hy + 9}" r=".9" fill="#fff"/>` },
 ];
+// фон «Затишний вечір»: камін з вогнем ліворуч, ялинка праворуч, гірлянда згори, тепле світло
+function cozyBg(W) {
+  const flames = `<g class="cz-fire"><path d="M9 60 Q5 51 10 46 Q11 51 14 49 Q13 42 19 38 Q18 46 23 47 Q27 44 26 40 Q32 47 29 60 Z" fill="#ff8a1c"/><path d="M13 60 Q11 54 15 51 Q16 54 18 53 Q19 48 22 47 Q22 52 25 54 Q27 57 25 60 Z" fill="#ffd43b"/></g>`;
+  const fire = `<rect x="0" y="22" width="40" height="44" fill="#a4503a"/>${[28, 36, 44, 52, 60].map((y, r) => Array.from({ length: 4 }, (_, k) => `<rect x="${(r % 2 ? -6 : 0) + k * 12 + .5}" y="${y - 6}" width="11" height="7" fill="none" stroke="#7c3a2a" stroke-width="1"/>`).join("")).join("")}`
+    + `<path d="M5 66 V40 Q19 30 34 40 V66 Z" fill="#2b1a14"/>${flames}<rect x="6" y="60" width="28" height="3" rx="1.5" fill="#6d4c2f"/>`;
+  const mantel = `<rect x="-2" y="18" width="44" height="6" rx="2" fill="#6d4c2f"/><path d="M9 24 v7 q0 4 4 4 h3 v-4 h-2 v-7 Z" fill="#e53935"/><rect x="8" y="23" width="6.5" height="3" fill="#fff"/><path d="M27 24 v7 q0 4 4 4 h3 v-4 h-2 v-7 Z" fill="#43a047"/><rect x="26" y="23" width="6.5" height="3" fill="#fff"/>`;
+  const tx = W - 13, tree = `<rect x="${tx - 2.5}" y="56" width="5" height="8" fill="#7a4a24"/><polygon points="${tx},10 ${tx - 9},26 ${tx + 9},26" fill="#1f8f4e"/><polygon points="${tx},18 ${tx - 11},38 ${tx + 11},38" fill="#1b7d44"/><polygon points="${tx},30 ${tx - 13},57 ${tx + 13},57" fill="#176b3a"/>`
+    + `<polygon points="${starPts(tx, 10, 5, 4.6, 2)}" fill="#ffd43b"/>${[[-4, 23], [5, 33], [-6, 41], [6, 49], [-1, 52], [1, 29]].map(([dx, y], k) => `<circle class="tw" style="animation-delay:-${(k * .5).toFixed(1)}s" cx="${tx + dx}" cy="${y}" r="1.9" fill="${NY_LIGHTS[k % 4]}"/>`).join("")}`;
+  const lights = `<path d="M44 3 ${Array.from({ length: 6 }, (_, k) => { const a = 44 + k * (W - 74) / 6, b = a + (W - 74) / 6; return `Q${(a + b) / 2} 11 ${b} 3`; }).join(" ")}" stroke="#4a5a4a" stroke-width="1" fill="none"/>`
+    + Array.from({ length: 6 }, (_, k) => `<circle class="tw" style="animation-delay:-${(k * .4).toFixed(1)}s" cx="${44 + (k + .5) * (W - 74) / 6}" cy="8.5" r="1.8" fill="${NY_LIGHTS[k % 4]}"/>`).join("");
+  const id = "cz" + Math.random().toString(36).slice(2, 8);
+  return `<g class="sbg bg-cozy"><clipPath id="${id}"><rect x="0" y="0" width="${W}" height="66" rx="10"/></clipPath><clipPath id="${id}f"><rect x="0" y="22" width="40" height="44"/></clipPath><g clip-path="url(#${id})"><rect x="0" y="0" width="${W}" height="66" fill="#fff1dc" opacity=".55"/><ellipse cx="20" cy="58" rx="40" ry="14" fill="#ffb74d" opacity=".25"/>${lights}<g clip-path="url(#${id}f)">${fire}</g>${mantel}${tree}</g></g>`;
+}
 // для новорічних скінів: смужки під 45° у прямокутнику і обрізання по формі з заокругленням
 const NY_LIGHTS = ["#ff5252", "#ffd43b", "#40c4ff", "#69f0ae"];
 function nyStripes(x0, y0, w, h, step, col, sw) {
@@ -518,12 +536,13 @@ const ACCS = [
   { id: "snowflake", name: "Сніжинка", ny: true, price: 10 },
   { id: "bauble", name: "Ялинкова кулька", ny: true, price: 15 },
   { id: "nyscarf", name: "Смугастий шарф", ny: true, price: 15 },
+  { id: "beard", name: "Борода Санти", ny: true, price: 20 },
 ];
 // місце аксесуара: з одного місця можна вдягти лише одну річ, з різних — скільки завгодно
 const SLOT = { cap: "hat", cowboy: "hat", propeller: "hat", crown: "hat", horn: "hat", halo: "hat", pot: "hat", loafhat: "hat", devil: "hat", wizard: "hat", duck: "hat", catears: "hat", bearhood: "hat", sunhood: "hat", hat67: "hat", glasses67: "eyes",
   glasses: "eyes", pirate: "eyes", moustache: "face", gasmask: "face", scarf: "neck", devilwings: "back", cattail: "tail", teleport: "portal", polo: "neck", badgeaplus: "decor", iron: "tool", phones: "ears", bow: "decor", flower: "decor", wings: "back", starry: "sky",
-  nyhat: "hat", antlers: "antlers", rednose: "nose", earmuffs: "ears", garland: "garland", snowflake: "decor", bauble: "tail", nyscarf: "neck" };
-const SLOT_NAME = { hat: "на голову", eyes: "на очі", face: "на обличчя", neck: "на шию", ears: "навушники", decor: "прикраса", tool: "паяє хвіст", tail: "хвостик", portal: "ефект", back: "на спину", sky: "зорі", antlers: "роги", nose: "на ніс", garland: "на тіло" };
+  nyhat: "hat", antlers: "antlers", rednose: "nose", earmuffs: "ears", garland: "garland", snowflake: "decor", bauble: "tail", nyscarf: "neck", beard: "beard" };
+const SLOT_NAME = { hat: "на голову", eyes: "на очі", face: "на обличчя", neck: "на шию", ears: "навушники", decor: "прикраса", tool: "паяє хвіст", tail: "хвостик", portal: "ефект", back: "на спину", sky: "зорі", antlers: "роги", nose: "на ніс", garland: "на тіло", beard: "борода" };
 const accList = () => String(store.profile.acc || "").split(",").map(x => x.trim()).filter(x => x && x !== "none");
 const hasAcc = id => accList().includes(id);
 const ACH = { fail: "Лишитися без хвоста", perfect: "Пройти рівень без жодної помилки", peek: "Підглянути розв'язок задачі", lastdeath: "", loafhat: "", angel: "", dune: "", starfall: "", god: "", winter: "" };
@@ -600,6 +619,7 @@ const BGS = [
   { id: "notes", name: "Ноти", price: 20 },
   { id: "snowfall", name: "Снігопад", ny: true, price: 20 },
   { id: "fireworks", name: "Феєрверк", ny: true, price: 25 },
+  { id: "cozy", name: "Затишний вечір", ny: true, price: 30 },
 ];
 // зірка з n променями: r1 — до кінчика, r2 — до западини
 const starPts = (cx, cy, n, r1, r2) => Array.from({ length: n * 2 }, (_, k) => { const r = k % 2 ? r2 : r1, a = -Math.PI / 2 + k * Math.PI / n; return `${(cx + r * Math.cos(a)).toFixed(1)},${(cy + r * Math.sin(a)).toFixed(1)}`; }).join(" ");
@@ -607,6 +627,7 @@ const starPts = (cx, cy, n, r1, r2) => Array.from({ length: n * 2 }, (_, k) => {
 const BG_SPOTS = (() => { let q = 7; const r = () => (q = (q * 1103515245 + 12345) % 2147483648) / 2147483648;
   return Array.from({ length: 44 }, (_, k) => ({ x: 4 + (k % 11) * 20.5 + r() * 14, y: 4 + Math.floor(k / 11) * 15 + r() * 10, s: 0.65 + r() * 0.55, d: r() * 2.4 })); })();
 function bgEl(id, W) {
+  if (id === "cozy") return cozyBg(W);
   const sc = W / 230;
   const item = (sp, k) => { const x = sp.x * sc, y = sp.y, r = sp.s;
     if (id === "stars") return k % 3 ? `<circle cx="${x}" cy="${y}" r="${1.1 * r}" fill="#ffe27a"/>` : `<polygon points="${starPts(x, y, 5, 4 * r, 1.8 * r)}" fill="#ffd43b"/>`;
@@ -698,7 +719,7 @@ function snakeSVG(o) {
     const jx = sk.jitter ? [2, -3, 1, -2, 3][i] : 0, jy = sk.jitter ? [-2, 3, -3, 1, 2][i] : 0;
     const rect = (fill, dx, op) => shapeEl(shape, x + jx + dx, y + jy - 11, sk.rx ?? 7, `fill="${fill}"${op ? ` opacity="${op}"` : ` stroke="rgba(0,0,0,.22)" stroke-width="1.5"`}`);
     const body = (sk.jitter ? rect("#00e5ff", -2.5, .8) + rect("#ff2bd6", 2.5, .8) : "") + rect(sk.col(i), 0)
-      + (sk.seg ? (shape !== "square" ? `<clipPath id="${uid}c${i}">${shapeEl(shape, x + jx, y + jy - 11, 7, "")}</clipPath>` : "") + `<g transform="translate(${jx} ${jy})"${shape !== "square" ? ` clip-path="url(#${uid}c${i})"` : ""}>${sk.seg(x, y, i)}</g>` : "") + (sk.segOver ? `<g transform="translate(${jx} ${jy})">${sk.segOver(x, y, i)}</g>` : "")
+      + (sk.seg ? (shape !== "square" ? `<clipPath id="${uid}c${i}">${shapeEl(shape, x + jx, y + jy - 11, 7, "")}</clipPath>` : "") + `<g transform="translate(${jx} ${jy})"${shape !== "square" ? ` clip-path="url(#${uid}c${i})"` : ""}>${sk.seg(x, y, i)}</g>` : "") + (sk.segOver ? `<g transform="translate(${jx} ${jy})">${sk.segOver(x + jx, y + jy, i, shape)}</g>` : "")
       + `<text x="${x + jx + 11}" y="${y + jy + 3.5}" class="segidx"${sk.idx ? ` style="fill:${sk.idx}"` : ""}>${i}</text>`;
     const wing = (dx, fill) => `<path d="M${x + 12 + dx} ${y - 8} C${x + 7 + dx} ${y - 26} ${x - 5 + dx} ${y - 32} ${x - 16 + dx} ${y - 30} Q${x - 12 + dx} ${y - 26} ${x - 13 + dx} ${y - 22} Q${x - 7 + dx} ${y - 21} ${x - 8 + dx} ${y - 17} Q${x - 2 + dx} ${y - 16} ${x - 2 + dx} ${y - 12} Q${x + 4 + dx} ${y - 12} ${x + 5 + dx} ${y - 8} Z" fill="${fill}"/><path d="M${x + 9 + dx} ${y - 12} Q${x + dx} ${y - 22} ${x - 11 + dx} ${y - 27}" fill="none" stroke-width=".9"/>`;
     const wings = has("wings") && i === 2 ? `<g class="wings" stroke="#8fa3c4" stroke-width="1.2" stroke-linejoin="round">${wing(8, "#e6edfa")}${wing(0, "#fff")}</g>` : "";
@@ -774,6 +795,7 @@ function snakeSVG(o) {
   if (has("hat67")) head += `<path d="M${hx + 3} ${hy - 12} Q${hx + 17} ${hy - 36} ${hx + 31} ${hy - 12} Z" fill="#e8483f" stroke="#a8261f" stroke-width="1.2"/><rect x="${hx + 1}" y="${hy - 15}" width="32" height="6" rx="3" fill="#b8302a"/><circle cx="${hx + 17}" cy="${hy - 31}" r="3.6" fill="#fff" stroke="#ddd"/><text x="${hx + 17}" y="${hy - 17.5}" text-anchor="middle" font-family="Arial Black, Arial, sans-serif" font-weight="900" font-size="8" fill="#fff">67</text>`;
   if (has("glasses67")) head += `<g font-family="Arial Black, Arial, sans-serif" font-weight="900" font-size="7.5" text-anchor="middle"><circle cx="${hx + 14.5}" cy="${hy - 4}" r="5" fill="#fff" stroke="#1b1b1b" stroke-width="1.5"/><circle cx="${hx + 25.5}" cy="${hy - 4}" r="5" fill="#fff" stroke="#1b1b1b" stroke-width="1.5"/><path d="M${hx + 19.5} ${hy - 4} h1" stroke="#1b1b1b" stroke-width="1.5"/><text x="${hx + 14.5}" y="${hy - 1.2}" fill="#1b1b1b">6</text><text x="${hx + 25.5}" y="${hy - 1.2}" fill="#1b1b1b">7</text></g>`;
   if (has("nyscarf")) head = `<rect x="${hx - 7}" y="${hy + 1}" width="13" height="10" rx="3" fill="#2e7d32"/><path d="M${hx - 4} ${hy + 1} v10 M${hx + 1} ${hy + 1} v10" stroke="#fff" stroke-width="2"/><rect x="${hx - 4}" y="${hy + 8}" width="6" height="14" rx="2" fill="#2e7d32" transform="rotate(14 ${hx - 1} ${hy + 8})"/><path d="M${hx - 4} ${hy + 14} h6 M${hx - 4} ${hy + 18} h6" stroke="#e53935" stroke-width="2" transform="rotate(14 ${hx - 1} ${hy + 8})"/>` + head;
+  if (has("beard")) head += `<g fill="#fff" stroke="#d5dae1" stroke-width="1">${[[9, 7, 4.5], [14, 12, 5.5], [21, 15, 6], [28, 13, 5.5], [33, 8, 4.5], [18, 20, 4.8], [25, 20, 4.5]].map(([dx, dy, r]) => `<circle cx="${hx + dx}" cy="${hy + dy}" r="${r}"/>`).join("")}</g><g fill="#fff"><circle cx="${hx + 14}" cy="${hy + 12}" r="4.2"/><circle cx="${hx + 21}" cy="${hy + 15}" r="4.8"/><circle cx="${hx + 28}" cy="${hy + 13}" r="4.2"/><circle cx="${hx + 21}" cy="${hy + 19}" r="3.6"/></g><path d="M${hx + 21} ${hy + 5} q-5 -3 -9 1 q4 3 9 -1 q5 -3 9 1 q-4 3 -9 -1 Z" fill="#fff" stroke="#d5dae1" stroke-width="1"/>`;
   if (has("rednose")) head += `<circle cx="${hx + 34}" cy="${hy + 1}" r="4.6" fill="#ff2d2d" stroke="#b71c1c" stroke-width="1"/><circle cx="${hx + 32.6}" cy="${hy - .6}" r="1.3" fill="#fff" opacity=".85"/>`;
   if (has("earmuffs")) head += `<path d="M${hx + 4} ${hy - 4} Q${hx + 10} ${hy - 27} ${hx + 30} ${hy - 13}" stroke="#d81b60" stroke-width="2.6" fill="none"/>${[[0, 0], [3.2, -3], [-3, -2.6], [3, 3], [-3, 3]].map(([dx, dy]) => `<circle cx="${hx + 4 + dx}" cy="${hy - 1 + dy}" r="4.2" fill="#fff" stroke="#f3b6cc" stroke-width=".8"/>`).join("")}<circle cx="${hx + 4}" cy="${hy - 1}" r="3.4" fill="#fff"/>`;
   if (has("antlers")) head += `<g stroke="#8d5a2b" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M${hx + 9} ${hy - 12} L${hx + 6} ${hy - 24} L${hx + 1} ${hy - 31} M${hx + 6} ${hy - 24} L${hx + 12} ${hy - 30} M${hx + 7.4} ${hy - 19} L${hx + 1} ${hy - 21}"/><path d="M${hx + 25} ${hy - 12} L${hx + 28} ${hy - 24} L${hx + 33} ${hy - 31} M${hx + 28} ${hy - 24} L${hx + 22} ${hy - 30} M${hx + 26.6} ${hy - 19} L${hx + 33} ${hy - 21}"/></g>`;
@@ -810,13 +832,13 @@ function renderWardrobe(back, backLabel) {
     const curAnim = p.anim && p.anim !== "none" ? p.anim : "none", curShape = p.shape || "square";
     const open = isOpen(x), sel = open && (kind === "set" ? false : kind === "bg" ? (p.bg || "none") === x.id : kind === "anim" ? curAnim === x.id : kind === "shape" ? curShape === x.id : kind === "headtype" ? (p.head || "snake") === x.id : kind === "skin" ? curSkin === x.id : x.id === "none" ? !accList().length : hasAcc(x.id));
     const prev = kind === "set" ? snakeSVG({ len: maxHearts(), skin: x.items[0], acc: x.items.filter(id => ACCS.some(a => a.id === id)).join(","), anim: x.items.find(id => ANIMS.some(a => a.id === id)), bg: x.items.find(id => BGS.some(a => a.id === id)) })
-      : kind === "anim" ? snakeSVG({ len: maxHearts(), anim: x.id, acc: "none" })
+      : kind === "anim" ? snakeSVG({ len: maxHearts(), anim: x.id, acc: "none", bg: "none" })
       : kind === "bg" ? snakeSVG({ len: maxHearts(), bg: x.id, acc: "none" })
-      : kind === "shape" ? snakeSVG({ len: maxHearts(), shape: x.id, acc: "none" })
-      : kind === "headtype" ? snakeSVG({ len: maxHearts(), headType: x.id, acc: "none" })
-      : snakeSVG(kind === "skin" ? { len: maxHearts(), skin: x.id, acc: "none" } : { len: maxHearts(), acc: x.id });
+      : kind === "shape" ? snakeSVG({ len: maxHearts(), shape: x.id, acc: "none", bg: "none" })
+      : kind === "headtype" ? snakeSVG({ len: maxHearts(), headType: x.id, acc: "none", bg: "none" })
+      : snakeSVG(kind === "skin" ? { len: maxHearts(), skin: x.id, acc: "none", bg: "none" } : { len: maxHearts(), acc: x.id, bg: "none" });
     if (kind === "extra") return `<button class="wtile shop extra ${open ? "sel" : ""} ${pendingBuy === x.id ? "confirm" : ""}" data-kind="extra" data-id="${x.id}" ${open || left >= x.price ? "" : "disabled"}>
-      ${snakeSVG({ len: N + 1, max: N + 1, acc: "none" })}<span class="wname">${esc(x.name)} ❤</span>
+      ${snakeSVG({ len: N + 1, max: N + 1, acc: "none", bg: "none" })}<span class="wname">${esc(x.name)} ❤</span>
       <span class="wlock">${open ? "Куплено · на рівнях 6 життів" : pendingBuy === x.id ? `Натисни ще раз, щоб купити за ${x.price}` : left >= x.price ? `Купити за ${x.price} ${bytesWord(x.price)}` : `Коштує ${x.price} ${bytesWord(x.price)}`}</span></button>`;
     const cost = kind === "set" ? setCost(x) : x.price;
     const shop = x.price && !open, can = shop && left >= cost;

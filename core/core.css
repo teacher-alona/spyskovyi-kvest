@@ -422,3 +422,8 @@ body.ny-off #nysnow, body.ny-off #nygarland { display: none; }
 @keyframes ny-bgfall { 0% { transform: translateY(-6px); opacity: 0; } 20%, 80% { opacity: 1; } 100% { transform: translateY(8px); opacity: 0; } }
 .snake .bg-fireworks .bgi { animation: ny-burst 2.4s ease-out infinite; transform-box: fill-box; transform-origin: center; }
 @keyframes ny-burst { 0% { transform: scale(.3); opacity: 0; } 30% { opacity: 1; } 100% { transform: scale(1.15); opacity: 0; } }
+.snake .bg-cozy .cz-fire { animation: cz-fire .9s ease-in-out infinite alternate; transform-box: fill-box; transform-origin: 50% 100%; }
+@keyframes cz-fire { from { transform: scale(1, .92); } to { transform: scale(.96, 1.06); } }
+/* гардероб: мініатюри без анімацій — так він не гальмує */
+.wtile .snake, .wtile .snake * { animation: none !important; }
+.wtile { content-visibility: auto; contain-intrinsic-size: auto 130px; }
