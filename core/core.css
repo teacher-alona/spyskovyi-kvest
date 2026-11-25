@@ -398,3 +398,26 @@ textarea { resize: vertical; line-height: 1.6; }
 .maplink { display: flex; flex-direction: column; gap: 2px; margin: 14px 0 0; padding: 14px 16px; border: 2px dashed var(--ink, #2b6cd4); border-radius: 14px; text-decoration: none; color: var(--fg, #222); background: var(--card, #fff); }
 .maplink b { font-size: 1.05rem; color: var(--ink, #2b6cd4); } .maplink span { color: var(--muted, #6a7180); font-size: .9rem; }
 .maplink:hover { border-style: solid; }
+
+/* ---------- новорічне ---------- */
+.nysec { background: linear-gradient(180deg, rgba(229, 57, 53, .07), rgba(67, 160, 71, .07)); border: 2px dashed rgba(229, 57, 53, .35); border-radius: 16px; padding: 4px 14px 14px; margin: 18px 0 6px; }
+.nysw { font: 700 16px/1 var(--f-body, sans-serif); border: 2px solid var(--line, #d8dce3); background: var(--card, #fff); color: #3d8bfd; border-radius: 999px; width: 32px; height: 32px; cursor: pointer; padding: 0; position: relative; }
+.nysw.off { color: var(--muted, #8a93a3); opacity: .7; }
+.nysw.off::after { content: ""; position: absolute; left: 6px; right: 6px; top: 50%; border-top: 2px solid currentColor; transform: rotate(-40deg); }
+#nygarland { position: absolute; top: 0; left: 0; right: 0; height: 30px; pointer-events: none; z-index: 30; overflow: hidden; }
+#nygarland svg { width: 100%; height: 30px; display: block; }
+#nygarland .nyb { animation: ny-blink 2.2s ease-in-out infinite; }
+@keyframes ny-blink { 0%, 100% { opacity: 1; } 50% { opacity: .45; } }
+#nysnow { position: fixed; inset: 0; pointer-events: none; z-index: 30; overflow: hidden; transition: opacity .6s; }
+#nysnow i { position: absolute; top: -10px; border-radius: 50%; background: #fff; box-shadow: 0 0 2px rgba(90, 140, 200, .9); opacity: .8; animation: ny-fall linear infinite; }
+@keyframes ny-fall { from { transform: translate(0, -10px); } to { transform: translate(var(--dx, 0), 105vh); } }
+body.ny-busy #nysnow { opacity: 0; }
+body.ny-off #nysnow, body.ny-off #nygarland { display: none; }
+@media (prefers-reduced-motion: reduce) { #nysnow { display: none; } #nygarland .nyb { animation: none; } }
+@media print { #nysnow, #nygarland { display: none; } }
+.snake.anim-shiver .seg, .snake.anim-shiver .head { animation: ny-shiver .18s linear infinite; animation-delay: calc(var(--i, -1) * .03s); }
+@keyframes ny-shiver { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-1px); } 75% { transform: translateX(1px); } }
+.snake .bg-snowfall .bgi { animation: ny-bgfall 3.2s linear infinite; }
+@keyframes ny-bgfall { 0% { transform: translateY(-6px); opacity: 0; } 20%, 80% { opacity: 1; } 100% { transform: translateY(8px); opacity: 0; } }
+.snake .bg-fireworks .bgi { animation: ny-burst 2.4s ease-out infinite; transform-box: fill-box; transform-origin: center; }
+@keyframes ny-burst { 0% { transform: scale(.3); opacity: 0; } 30% { opacity: 1; } 100% { transform: scale(1.15); opacity: 0; } }

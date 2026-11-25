@@ -2,7 +2,7 @@
    змійка з гардеробом, заслона при виході з гри. Кожна гра підключає цей файл і додає свої рівні. */
 (function () {
 "use strict";
-const VERSION = "2026.11.25-81";
+const VERSION = "2026.11.25-82";
 const API = "https://script.google.com/macros/s/AKfycbzPtRGlYI4osS-xL-J_pAZ2A2HxTWUeuecjy9-13MgAdFIzkDnYuCr1qmLHqZvqWkQMWQ/exec";
 
 // Усі ігри порталу. sheet — назва аркуша з прогресом у таблиці вчительки.
@@ -97,8 +97,9 @@ function toggleTheme() {
   const b = document.getElementById("themesw"); if (b) b.outerHTML = themeSwitch(); bindTheme();
 }
 const themeSwitch = () => { const dark = store.profile.theme === "dark";
-  return `<button class="lightsw ${dark ? "off" : "on"}" id="themesw" type="button" aria-pressed="${dark}" title="${dark ? "Увімкнути світло (світла тема)" : "Вимкнути світло (темна тема)"}" aria-label="${dark ? "Увімкнути світлу тему" : "Увімкнути темну тему"}"><span class="plate"><span class="rocker"></span></span></button>`; };
-function bindTheme() { const b = document.getElementById("themesw"); if (b) b.onclick = toggleTheme; }
+  return `<button class="lightsw ${dark ? "off" : "on"}" id="themesw" type="button" aria-pressed="${dark}" title="${dark ? "Увімкнути світло (світла тема)" : "Вимкнути світло (темна тема)"}" aria-label="${dark ? "Увімкнути світлу тему" : "Увімкнути темну тему"}"><span class="plate"><span class="rocker"></span></span></button>` + (isNySeason() ? `<button class="nysw ${store.profile.nyOff ? "off" : ""}" id="nysw" type="button" title="${store.profile.nyOff ? "Увімкнути сніг і гірлянду" : "Вимкнути сніг і гірлянду"}" aria-label="Сніг і гірлянда">❄</button>` : ""); };
+function bindTheme() { const b = document.getElementById("themesw"); if (b) b.onclick = toggleTheme;
+  const n = document.getElementById("nysw"); if (n) n.onclick = () => { nyToggle(); }; }
 const gameData = id => { const g = store.games[id] = store.games[id] || {}; g.stars = g.stars || {}; return g; };
 const profile = () => store.profile;
 let currentGame = null; // id гри на цій сторінці (null — портал)
@@ -436,7 +437,40 @@ const SKINS = [
   { id: "glitch", name: "Глітч", ach: "fail", col: () => "#1a1a1a", idx: "#39ff14", jitter: true,
     seg: () => "", head: "#1a1a1a",
     headDeco: (hx, hy) => `<text x="${hx + 3}" y="${hy + 12}" font-family="monospace" font-size="6" fill="#39ff14">ERR</text>` },
+  // ---------- новорічна колекція (ny: true — показуємо окремим розділом гардероба) ----------
+  { id: "nysweater", name: "Новорічний светр", ny: true, need: 0, col: () => "#c62828", idx: "#fff", head: "#c62828",
+    seg: (x, y) => `<path d="M${x} ${y - 6} l2.75 -3 2.75 3 2.75 -3 2.75 3 2.75 -3 2.75 3 2.75 -3 2.75 3" stroke="#fff" stroke-width="1.5" fill="none"/>${[3, 8.3, 13.7, 19].map(d => `<circle cx="${x + d}" cy="${y + 8}" r="1.2" fill="#fff"/>`).join("")}<path d="M${x} ${y + 5} h22" stroke="#1f7a43" stroke-width="1.3"/>` },
+  { id: "candy", name: "Льодяник", ny: true, price: 25, col: () => "#fbfbfb", idx: "#b71c1c", head: "#fbfbfb", headStroke: "#e53935",
+    seg: (x, y) => nyClip(x, y - 11, 22, 22, 7, nyStripes(x, y - 11, 22, 22, 11, "#e53935", 4.2)),
+    headDeco: (hx, hy) => nyClip(hx, hy - 14, 34, 28, 11, nyStripes(hx, hy - 14, 34, 28, 13, "#e53935", 4)) },
+  { id: "snowman", name: "Сніговик", ny: true, price: 30, col: () => "#ffffff", idx: "#5b6b80", head: "#ffffff", rx: 11,
+    seg: (x, y, i) => i % 2 ? `<circle cx="${x + 11}" cy="${y - 6}" r="1.8" fill="#2b2f36"/>` : `<circle cx="${x + 11}" cy="${y + 8}" r="1.8" fill="#2b2f36"/>`,
+    headDeco: (hx, hy) => `<path d="M${hx + 31} ${hy - 1} L${hx + 46} ${hy + 1.5} L${hx + 31} ${hy + 4} Z" fill="#ff8a1c" stroke="#d96a00" stroke-width="1" stroke-linejoin="round"/>` },
+  { id: "gingerbread", name: "Пряник", ny: true, price: 25, col: () => "#b8692a", idx: "#fff3e0", head: "#a85d22", rx: 9,
+    seg: (x, y, i) => `<path d="M${x + 2} ${y - 7} l3 -2.6 3 2.6 3 -2.6 3 2.6 3 -2.6 3 2.6 M${x + 2} ${y + 7} l3 2.6 3 -2.6 3 2.6 3 -2.6 3 2.6 3 -2.6" stroke="#fffaf0" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/><circle cx="${x + 18}" cy="${y}" r="1.7" fill="${["#e53935", "#43a047", "#1e88e5"][i % 3]}"/>`,
+    headDeco: (hx, hy) => `<path d="M${hx + 5} ${hy - 9} l3.2 -2.6 3.2 2.6 3.2 -2.6 3.2 2.6 3.2 -2.6 3.2 2.6 3.2 -2.6 3.2 2.6" stroke="#fffaf0" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/>` },
+  { id: "nytree", name: "Ялинка", ny: true, price: 30, col: () => "#1f8f4e", idx: "#e8fff0", head: "#1b7d44",
+    seg: (x, y, i) => `<path d="M${x - 2} ${y - 3} q6.5 7 13 0 q6.5 7 13 0" stroke="#ffd43b" stroke-width="1.2" fill="none"/>${[[4.5, 1.6], [17.5, 1.6]].map(([dx, dy], k) => `<circle class="tw" style="animation-delay:-${((i * 2 + k) * .37).toFixed(2)}s" cx="${x + dx}" cy="${y + dy}" r="2.1" fill="${NY_LIGHTS[(i * 2 + k) % 4]}"/>`).join("")}<path d="M${x + 3} ${y - 8} l2 2 2 -2 M${x + 14} ${y + 9} l2 -2 2 2" stroke="#46b874" stroke-width="1.2" fill="none"/>`,
+    headDeco: (hx, hy, acc) => String(acc).split(",").some(a => SLOT[a] === "hat") ? "" : `<polygon class="tw big" points="${starPts(hx + 17, hy - 21, 5, 8, 3.6)}" fill="#ffd43b" stroke="#c79a12" stroke-width="1" stroke-linejoin="round"/>` },
+  { id: "nygift", name: "Подарунок", ny: true, price: 35, rx: 3, col: i => ["#e53935", "#1e88e5", "#43a047", "#8e44ad", "#f39c12"][i % 5], idx: "#fff", head: "#e53935", headRx: 6,
+    seg: (x, y) => `<rect x="${x + 14}" y="${y - 11}" width="4" height="22" fill="#ffd43b"/><rect x="${x}" y="${y - 8}" width="22" height="4" fill="#ffd43b"/>`,
+    headDeco: (hx, hy, acc) => `<rect x="${hx + 4}" y="${hy - 14}" width="4" height="28" fill="#ffd43b"/>` + (String(acc).split(",").some(a => SLOT[a] === "hat") ? "" : `<path d="M${hx + 17} ${hy - 14} q-11 -10 -12 -2 q1 5 12 2 Z M${hx + 17} ${hy - 14} q11 -10 12 -2 q-1 5 -12 2 Z" fill="#ffd43b" stroke="#c79a12" stroke-width="1"/><circle cx="${hx + 17}" cy="${hy - 14}" r="2.4" fill="#f2b705"/>`) },
+  // секрет: пройти рівень без помилок на зимових канікулах
+  { id: "aurora", name: "Північне сяйво", ny: true, ach: "winter", secret: true, col: i => mix("#1de9b6", "#7c4dff", i / N), idx: "#fff", head: "#14204a", headStroke: "#1de9b6",
+    seg: (x, y, i) => `<path d="M${x} ${y - 4} q5.5 -5 11 0 t11 0" stroke="rgba(255,255,255,.55)" stroke-width="1.6" fill="none"/><path d="M${x} ${y + 4} q5.5 -5 11 0 t11 0" stroke="rgba(255,255,255,.3)" stroke-width="1.3" fill="none"/>`,
+    headDeco: (hx, hy) => `<circle cx="${hx + 6}" cy="${hy - 8}" r="1" fill="#fff"/><circle cx="${hx + 30}" cy="${hy + 9}" r="1.2" fill="#b9fff0"/><circle cx="${hx + 8}" cy="${hy + 9}" r=".9" fill="#fff"/>` },
 ];
+// для новорічних скінів: смужки під 45° у прямокутнику і обрізання по формі з заокругленням
+const NY_LIGHTS = ["#ff5252", "#ffd43b", "#40c4ff", "#69f0ae"];
+function nyStripes(x0, y0, w, h, step, col, sw) {
+  let d = "";
+  for (let c = step / 2; c < w + h; c += step) d += `M${(x0 + Math.max(0, c - h)).toFixed(1)} ${(y0 + Math.min(c, h)).toFixed(1)} L${(x0 + Math.min(c, w)).toFixed(1)} ${(y0 + Math.max(0, c - w)).toFixed(1)} `;
+  return `<path d="${d}" stroke="${col}" stroke-width="${sw}"/>`;
+}
+function nyClip(x, y, w, h, rx, inner) {
+  const id = "nyc" + Math.random().toString(36).slice(2, 8);
+  return `<clipPath id="${id}"><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${rx}"/></clipPath><g clip-path="url(#${id})">${inner}</g>`;
+}
 const ACCS = [
   { id: "none", name: "Без нічого", need: 0 },
   { id: "moustache", name: "Вуса", need: 1 },
@@ -473,14 +507,28 @@ const ACCS = [
   { id: "loafhat", name: "Батон на голові", ach: "loafhat", secret: true },
   // відкривається, коли куплено обидві речі
   { id: "starry", name: "Зоряний шлях", combo: ["galaxy", "star"] },
+  // новорічна колекція
+  { id: "nyhat", name: "Новорічна шапка", ny: true, need: 0 },
+  { id: "antlers", name: "Оленячі роги", ny: true, price: 25 },
+  { id: "rednose", name: "Червоний носик", ny: true, price: 10 },
+  { id: "earmuffs", name: "Хутряні навушники", ny: true, price: 20 },
+  { id: "garland", name: "Гірлянда", ny: true, price: 30 },
+  { id: "snowflake", name: "Сніжинка", ny: true, price: 10 },
+  { id: "bauble", name: "Ялинкова кулька", ny: true, price: 15 },
+  { id: "nyscarf", name: "Смугастий шарф", ny: true, price: 15 },
 ];
 // місце аксесуара: з одного місця можна вдягти лише одну річ, з різних — скільки завгодно
 const SLOT = { cap: "hat", cowboy: "hat", propeller: "hat", crown: "hat", horn: "hat", halo: "hat", pot: "hat", loafhat: "hat", devil: "hat", wizard: "hat", duck: "hat", catears: "hat", bearhood: "hat", sunhood: "hat", hat67: "hat", glasses67: "eyes",
-  glasses: "eyes", pirate: "eyes", moustache: "face", gasmask: "face", scarf: "neck", devilwings: "back", cattail: "tail", teleport: "portal", polo: "neck", badgeaplus: "decor", iron: "tool", phones: "ears", bow: "decor", flower: "decor", wings: "back", starry: "sky" };
-const SLOT_NAME = { hat: "на голову", eyes: "на очі", face: "на обличчя", neck: "на шию", ears: "навушники", decor: "прикраса", tool: "паяє хвіст", tail: "хвостик", portal: "ефект", back: "на спину", sky: "зорі" };
+  glasses: "eyes", pirate: "eyes", moustache: "face", gasmask: "face", scarf: "neck", devilwings: "back", cattail: "tail", teleport: "portal", polo: "neck", badgeaplus: "decor", iron: "tool", phones: "ears", bow: "decor", flower: "decor", wings: "back", starry: "sky",
+  nyhat: "hat", antlers: "antlers", rednose: "nose", earmuffs: "ears", garland: "garland", snowflake: "decor", bauble: "tail", nyscarf: "neck" };
+const SLOT_NAME = { hat: "на голову", eyes: "на очі", face: "на обличчя", neck: "на шию", ears: "навушники", decor: "прикраса", tool: "паяє хвіст", tail: "хвостик", portal: "ефект", back: "на спину", sky: "зорі", antlers: "роги", nose: "на ніс", garland: "на тіло" };
 const accList = () => String(store.profile.acc || "").split(",").map(x => x.trim()).filter(x => x && x !== "none");
 const hasAcc = id => accList().includes(id);
-const ACH = { fail: "Лишитися без хвоста", perfect: "Пройти рівень без жодної помилки", peek: "Підглянути розв'язок задачі", lastdeath: "", loafhat: "", angel: "", dune: "", starfall: "", god: "" };
+const ACH = { fail: "Лишитися без хвоста", perfect: "Пройти рівень без жодної помилки", peek: "Підглянути розв'язок задачі", lastdeath: "", loafhat: "", angel: "", dune: "", starfall: "", god: "", winter: "" };
+// зимові канікули: 24 грудня — 11 січня (для секрету «Північне сяйво»)
+const isWinterBreak = (d = new Date()) => (d.getMonth() === 11 && d.getDate() >= 24) || (d.getMonth() === 0 && d.getDate() <= 11);
+// новорічний сезон на порталі: сніг і гірлянда з 25 листопада до 15 січня
+const isNySeason = (d = new Date()) => (d.getMonth() === 10 && d.getDate() >= 25) || d.getMonth() === 11 || (d.getMonth() === 0 && d.getDate() <= 15);
 // ---------- байти ----------
 const BYTES_PERFECT = 5;
 const bytesEarned = () => Object.values(store.games).reduce((s, g) => s + ((g && g.bytes) || 0), 0) + (store.profile.bonus || 0);
@@ -537,6 +585,7 @@ const ANIMS = [
   { id: "jump", name: "Підстрибує", price: 15 },
   { id: "crawl", name: "Повзе", price: 20 },
   { id: "six7", name: "Танець 67", price: 30 },
+  { id: "shiver", name: "Змерзла", ny: true, price: 15 },
 ];
 // фон за змійкою: візерунок на прозорому тлі
 const BGS = [
@@ -547,6 +596,8 @@ const BGS = [
   { id: "bubbles", name: "Бульбашки", price: 15 },
   { id: "code", name: "Нулі й одиниці", price: 25 },
   { id: "notes", name: "Ноти", price: 20 },
+  { id: "snowfall", name: "Снігопад", ny: true, price: 20 },
+  { id: "fireworks", name: "Феєрверк", ny: true, price: 25 },
 ];
 // зірка з n променями: r1 — до кінчика, r2 — до западини
 const starPts = (cx, cy, n, r1, r2) => Array.from({ length: n * 2 }, (_, k) => { const r = k % 2 ? r2 : r1, a = -Math.PI / 2 + k * Math.PI / n; return `${(cx + r * Math.cos(a)).toFixed(1)},${(cy + r * Math.sin(a)).toFixed(1)}`; }).join(" ");
@@ -561,12 +612,16 @@ function bgEl(id, W) {
     if (id === "hearts") return `<path d="M${x} ${y + 3.5 * r} C${x - 5 * r} ${y} ${x - 3.5 * r} ${y - 4.5 * r} ${x} ${y - 1.6 * r} C${x + 3.5 * r} ${y - 4.5 * r} ${x + 5 * r} ${y} ${x} ${y + 3.5 * r} Z" fill="#ff7aa8" opacity=".8"/>`;
     if (id === "bubbles") return `<circle cx="${x}" cy="${y}" r="${3.4 * r}" fill="rgba(120,200,255,.18)" stroke="#6cc0f5" stroke-width=".9"/><circle cx="${x - 1.1 * r}" cy="${y - 1.2 * r}" r="${0.8 * r}" fill="#fff" opacity=".8"/>`;
     if (id === "code") return `<text x="${x}" y="${y + 3}" font-family="monospace" font-size="${7 * r}" font-weight="700" fill="#2fbf5b" opacity=".75" text-anchor="middle">${k % 2 ? 1 : 0}</text>`;
+    if (id === "snowfall") return `<circle cx="${x}" cy="${y}" r="${1.6 * r}" fill="#9fd0ff" stroke="#5aa7e8" stroke-width=".5"/>`;
+    if (id === "fireworks") { if (k % 4) return `<circle cx="${x}" cy="${y}" r="${0.9 * r}" fill="${NY_LIGHTS[k % 4]}"/>`;
+      const c = NY_LIGHTS[(k >> 2) % 4]; return `<g stroke="${c}" stroke-width="${1.1 * r}" stroke-linecap="round">${Array.from({ length: 8 }, (_, j) => { const a = j * Math.PI / 4; return `<path d="M${(x + 2 * r * Math.cos(a)).toFixed(1)} ${(y + 2 * r * Math.sin(a)).toFixed(1)} L${(x + 6 * r * Math.cos(a)).toFixed(1)} ${(y + 6 * r * Math.sin(a)).toFixed(1)}"/>`; }).join("")}</g>`; }
     if (id === "notes") return `<text x="${x}" y="${y + 4}" font-size="${9 * r}" fill="#9b6dff" opacity=".8" text-anchor="middle">${k % 2 ? "♪" : "♫"}</text>`;
     return ""; };
   return `<g class="sbg bg-${id}">${BG_SPOTS.map((sp, k) => `<g class="bgi" style="animation-delay:-${sp.d.toFixed(2)}s">${item(sp, k)}</g>`).join("")}</g>`;
 }
 // комплекти: усе разом дешевше
-const SETS = [{ id: "set67", name: "Комплект 67", price: 67, items: ["tiger67", "glasses67", "hat67", "six7"] }];
+const SETS = [{ id: "set67", name: "Комплект 67", price: 67, items: ["tiger67", "glasses67", "hat67", "six7"] },
+  { id: "setny", name: "Новорічний комплект", ny: true, price: 75, items: ["nytree", "antlers", "garland", "snowfall"] }];
 const ALLITEMS = () => [...SKINS, ...ACCS, ...ANIMS, ...SHAPES, ...HEADS, ...BGS, ...SETS];
 const setCost = st => Math.max(0, st.price - st.items.reduce((s, id) => { const x = ALLITEMS().find(y => y.id === id); return s + (x && isOpen(x) ? x.price : 0); }, 0));
 // витрачене: тепер ведемо рахунок (spent); для старих покупок рахуємо за списком
@@ -648,7 +703,11 @@ function snakeSVG(o) {
     const ctail = has("cattail") && i === len - 1 ? `<path d="M${x + 3} ${y + 5} C${x - 9} ${y + 8} ${x - 15} ${y - 2} ${x - 11} ${y - 13} C${x - 9} ${y - 19} ${x - 3} ${y - 21} ${x - 3} ${y - 15}" fill="none" stroke="rgba(0,0,0,.28)" stroke-width="6.5" stroke-linecap="round"/><path d="M${x + 3} ${y + 5} C${x - 9} ${y + 8} ${x - 15} ${y - 2} ${x - 11} ${y - 13} C${x - 9} ${y - 19} ${x - 3} ${y - 21} ${x - 3} ${y - 15}" fill="none" stroke="${sk.col(i)}" stroke-width="4" stroke-linecap="round"/>` : "";
     // «Зоряний шлях»: над кожним блоком хвоста — п'ятикутна зірочка
     const sstar = has("starry") ? `<polygon class="tw" style="animation-delay:-${(i * 0.45).toFixed(2)}s" points="${starPts(x + 11, y - 18 - (i % 2) * 4, 5, 4.6, 2)}" fill="#ffd43b" stroke="#c79a12" stroke-width=".8" stroke-linejoin="round"/>` : "";
-    if (i < len) parts[i] = `<g class="seg ${i % 2 ? "o" : "e"}" style="--i:${i}">${wings}${dwings}${ctail}${body}${sstar}</g>`;
+    // гірлянда: провід через усі блоки й лампочки, що мерехтять
+    const garl = has("garland") ? `<path d="M${x - 2} ${y - 9} q6.5 7 13 0 q6.5 7 13 0" stroke="#2e3a2e" stroke-width="1.1" fill="none"/>${[4.5, 17.5].map((dx, k) => `<ellipse class="tw" style="animation-delay:-${((i * 2 + k) * .41).toFixed(2)}s" cx="${x + dx}" cy="${y - 4.6}" rx="2" ry="2.7" fill="${NY_LIGHTS[(i * 2 + k) % 4]}" stroke="rgba(0,0,0,.25)" stroke-width=".6"/>`).join("")}` : "";
+    // ялинкова кулька висить на кінчику хвоста
+    const baub = has("bauble") && i === len - 1 ? `<path d="M${x + 2} ${y + 2} Q${x - 4} ${y + 4} ${x - 8} ${y + 9}" stroke="#c79a12" stroke-width="1.1" fill="none"/><rect x="${x - 10.5}" y="${y + 8}" width="5" height="3" rx="1" fill="#c9ced6"/><circle cx="${x - 8}" cy="${y + 15.5}" r="5.6" fill="#e53935" stroke="#a31515" stroke-width="1"/><path d="M${x - 12.5} ${y + 14} q4.5 3 9 0" stroke="#ffd43b" stroke-width="1.2" fill="none"/><circle cx="${x - 10}" cy="${y + 13.5}" r="1.3" fill="#fff" opacity=".8"/>` : "";
+    if (i < len) parts[i] = `<g class="seg ${i % 2 ? "o" : "e"}" style="--i:${i}">${wings}${dwings}${ctail}${baub}${body}${garl}${sstar}</g>`;
     else if (i < len + falling) parts[i] = ghost + `<g class="fall">${body}</g>`;
     else parts[i] = ghost;
   }
@@ -708,6 +767,12 @@ function snakeSVG(o) {
   if (has("badgeaplus")) head += `<circle cx="${hx + 6}" cy="${hy - 13}" r="6.2" fill="#5c1229" stroke="#f4a7b9" stroke-width="1"/><text x="${hx + 5.3}" y="${hy - 9.5}" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="9" fill="#f4a7b9">A<tspan font-size="6" dy="-3.5">+</tspan></text>`;
   if (has("hat67")) head += `<path d="M${hx + 3} ${hy - 12} Q${hx + 17} ${hy - 36} ${hx + 31} ${hy - 12} Z" fill="#e8483f" stroke="#a8261f" stroke-width="1.2"/><rect x="${hx + 1}" y="${hy - 15}" width="32" height="6" rx="3" fill="#b8302a"/><circle cx="${hx + 17}" cy="${hy - 31}" r="3.6" fill="#fff" stroke="#ddd"/><text x="${hx + 17}" y="${hy - 17.5}" text-anchor="middle" font-family="Arial Black, Arial, sans-serif" font-weight="900" font-size="8" fill="#fff">67</text>`;
   if (has("glasses67")) head += `<g font-family="Arial Black, Arial, sans-serif" font-weight="900" font-size="7.5" text-anchor="middle"><circle cx="${hx + 14.5}" cy="${hy - 4}" r="5" fill="#fff" stroke="#1b1b1b" stroke-width="1.5"/><circle cx="${hx + 25.5}" cy="${hy - 4}" r="5" fill="#fff" stroke="#1b1b1b" stroke-width="1.5"/><path d="M${hx + 19.5} ${hy - 4} h1" stroke="#1b1b1b" stroke-width="1.5"/><text x="${hx + 14.5}" y="${hy - 1.2}" fill="#1b1b1b">6</text><text x="${hx + 25.5}" y="${hy - 1.2}" fill="#1b1b1b">7</text></g>`;
+  if (has("nyscarf")) head = `<rect x="${hx - 7}" y="${hy + 1}" width="13" height="10" rx="3" fill="#2e7d32"/><path d="M${hx - 4} ${hy + 1} v10 M${hx + 1} ${hy + 1} v10" stroke="#fff" stroke-width="2"/><rect x="${hx - 4}" y="${hy + 8}" width="6" height="14" rx="2" fill="#2e7d32" transform="rotate(14 ${hx - 1} ${hy + 8})"/><path d="M${hx - 4} ${hy + 14} h6 M${hx - 4} ${hy + 18} h6" stroke="#e53935" stroke-width="2" transform="rotate(14 ${hx - 1} ${hy + 8})"/>` + head;
+  if (has("rednose")) head += `<circle cx="${hx + 34}" cy="${hy + 1}" r="4.6" fill="#ff2d2d" stroke="#b71c1c" stroke-width="1"/><circle cx="${hx + 32.6}" cy="${hy - .6}" r="1.3" fill="#fff" opacity=".85"/>`;
+  if (has("earmuffs")) head += `<path d="M${hx + 4} ${hy - 4} Q${hx + 10} ${hy - 27} ${hx + 30} ${hy - 13}" stroke="#d81b60" stroke-width="2.6" fill="none"/>${[[0, 0], [3.2, -3], [-3, -2.6], [3, 3], [-3, 3]].map(([dx, dy]) => `<circle cx="${hx + 4 + dx}" cy="${hy - 1 + dy}" r="4.2" fill="#fff" stroke="#f3b6cc" stroke-width=".8"/>`).join("")}<circle cx="${hx + 4}" cy="${hy - 1}" r="3.4" fill="#fff"/>`;
+  if (has("antlers")) head += `<g stroke="#8d5a2b" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M${hx + 9} ${hy - 12} L${hx + 6} ${hy - 24} L${hx + 1} ${hy - 31} M${hx + 6} ${hy - 24} L${hx + 12} ${hy - 30} M${hx + 7.4} ${hy - 19} L${hx + 1} ${hy - 21}"/><path d="M${hx + 25} ${hy - 12} L${hx + 28} ${hy - 24} L${hx + 33} ${hy - 31} M${hx + 28} ${hy - 24} L${hx + 22} ${hy - 30} M${hx + 26.6} ${hy - 19} L${hx + 33} ${hy - 21}"/></g>`;
+  if (has("nyhat")) head += `<path d="M${hx + 4} ${hy - 14} Q${hx + 10} ${hy - 34} ${hx + 24} ${hy - 31} Q${hx + 33} ${hy - 29} ${hx + 38} ${hy - 22} L${hx + 31} ${hy - 14} Z" fill="#e53935" stroke="#a31515" stroke-width="1.2" stroke-linejoin="round"/><rect x="${hx + 1}" y="${hy - 17}" width="33" height="6.5" rx="3.2" fill="#fff" stroke="#dfe3e8" stroke-width="1"/><circle cx="${hx + 38}" cy="${hy - 22}" r="4.3" fill="#fff" stroke="#dfe3e8" stroke-width="1"/>`;
+  if (has("snowflake")) head += `<g stroke="#5aa7e8" stroke-width="1.6" stroke-linecap="round">${[0, 60, 120].map(a => { const r = a * Math.PI / 180, cx = hx + 28, cy = hy - 15, dx = 6 * Math.cos(r), dy = 6 * Math.sin(r); return `<path d="M${(cx - dx).toFixed(1)} ${(cy - dy).toFixed(1)} L${(cx + dx).toFixed(1)} ${(cy + dy).toFixed(1)}"/>`; }).join("")}</g><circle cx="${hx + 28}" cy="${hy - 15}" r="1.6" fill="#fff" stroke="#5aa7e8"/>`;
   if (has("crown")) head += `<path d="M${hx + 8} ${hy - 13} L${hx + 7} ${hy - 25} L${hx + 12.5} ${hy - 19} L${hx + 17} ${hy - 28} L${hx + 21.5} ${hy - 19} L${hx + 27} ${hy - 25} L${hx + 26} ${hy - 13} Z" fill="#f2c230" stroke="#b8860b" stroke-width="1.2"/><circle cx="${hx + 17}" cy="${hy - 17}" r="1.8" fill="#e8483f"/>`;
   head += bigStar;
   const pop = falling ? `<text class="poptxt" x="${segX(len + falling - 1) - 2}" y="12">${esc(popName())}.pop()</text>` : "";
@@ -738,7 +803,7 @@ function renderWardrobe(back, backLabel) {
     const curSkin = paintTarget === "all" ? (Object.keys(p.mix || {}).length ? null : p.skin) : ((p.mix || {})[paintTarget] || p.skin);
     const curAnim = p.anim && p.anim !== "none" ? p.anim : "none", curShape = p.shape || "square";
     const open = isOpen(x), sel = open && (kind === "set" ? false : kind === "bg" ? (p.bg || "none") === x.id : kind === "anim" ? curAnim === x.id : kind === "shape" ? curShape === x.id : kind === "headtype" ? (p.head || "snake") === x.id : kind === "skin" ? curSkin === x.id : x.id === "none" ? !accList().length : hasAcc(x.id));
-    const prev = kind === "set" ? snakeSVG({ len: N, skin: x.items[0], acc: x.items.slice(1, 3).join(","), anim: x.items[3] })
+    const prev = kind === "set" ? snakeSVG({ len: N, skin: x.items[0], acc: x.items.filter(id => ACCS.some(a => a.id === id)).join(","), anim: x.items.find(id => ANIMS.some(a => a.id === id)), bg: x.items.find(id => BGS.some(a => a.id === id)) })
       : kind === "anim" ? snakeSVG({ len: N, anim: x.id, acc: "none" })
       : kind === "bg" ? snakeSVG({ len: N, bg: x.id, acc: "none" })
       : kind === "shape" ? snakeSVG({ len: N, shape: x.id, acc: "none" })
@@ -765,25 +830,28 @@ function renderWardrobe(back, backLabel) {
       <div class="status">У тебе ★ ${total} з ${maxAll} в усіх іграх. Більше зірок — більше скінів.</div>
       <div class="status">${streakBadge()} Найдовша серія: ${(p.streak || {}).best || 0} ${daysWord((p.streak || {}).best || 0)}.</div>
       <div class="status bytes">Байтів: <b>${left}</b>. Їх дають за правильні відповіді з першої спроби на рівнях, які ти проходиш уперше, і ще ${BYTES_PERFECT} за рівень без помилок.</div></div></div>
+    <div class="nysec"><h3>🎄 Новорічна колекція</h3>
+    <p class="status">Светр і шапку дарують усім, решту можна купити за байти. А ще тут сховано один секрет.</p>
+    <div class="wgrid">${[...SETS.filter(x => x.ny).map(x => tile(x, "set")), ...SKINS.filter(x => x.ny).map(x => tile(x, "skin")), ...ACCS.filter(x => x.ny).map(x => tile(x, "acc")), ...BGS.filter(x => x.ny).map(x => tile(x, "bg")), ...ANIMS.filter(x => x.ny).map(x => tile(x, "anim"))].join("")}</div></div>
     <h3>Забарвлення</h3>
     <p class="status">Змійку можна зібрати з різних блоків. Обери, що фарбуєш, а потім забарвлення.</p>
     <div class="paint">${[["all", "Усю змійку"], ["h", "Голову"], ...Array.from({ length: N }, (_, i) => [String(i), "Блок " + i])].map(([k, t]) => `<button class="pchip ${String(paintTarget) === k ? "on" : ""}" data-t="${k}">${t}</button>`).join("")}</div>
-    <div class="wgrid">${SKINS.filter(x => !x.price).map(x => tile(x, "skin")).join("")}</div>
+    <div class="wgrid">${SKINS.filter(x => !x.price && !x.ny).map(x => tile(x, "skin")).join("")}</div>
     <h3>Аксесуари</h3>
     <p class="status">Можна вдягти кілька речей одразу, але по одній на кожне місце: одну шапку, одні окуляри і так далі. Клік по вдягнутій речі знімає її.</p>
-    <div class="wgrid">${ACCS.filter(x => !x.price).map(x => tile(x, "acc")).join("")}</div>
+    <div class="wgrid">${ACCS.filter(x => !x.price && !x.ny).map(x => tile(x, "acc")).join("")}</div>
     <h3>Голова</h3>
     <div class="wgrid">${HEADS.map(x => tile(x, "headtype")).join("")}</div>
     <h3>Форма блоків</h3>
     <div class="wgrid">${SHAPES.map(x => tile(x, "shape")).join("")}</div>
     <h3>Фон</h3>
     <p class="status">Візерунок за змійкою на прозорому тлі.</p>
-    <div class="wgrid">${BGS.map(x => tile(x, "bg")).join("")}</div>
+    <div class="wgrid">${BGS.filter(x => !x.ny).map(x => tile(x, "bg")).join("")}</div>
     <h3>Анімації</h3>
     <p class="status">Анімацію видно на великій змійці: на головній сторінці й тут, у гардеробі.</p>
-    <div class="wgrid">${ANIMS.map(x => tile(x, "anim")).join("")}</div>
+    <div class="wgrid">${ANIMS.filter(x => !x.ny).map(x => tile(x, "anim")).join("")}</div>
     <h3>Крамниця</h3>
-    <div class="wgrid">${SETS.map(x => tile(x, "set")).join("")}${SKINS.filter(x => x.price).map(x => tile(x, "skin")).join("")}${ACCS.filter(x => x.price).map(x => tile(x, "acc")).join("")}</div>
+    <div class="wgrid">${SETS.filter(x => !x.ny).map(x => tile(x, "set")).join("")}${SKINS.filter(x => x.price && !x.ny).map(x => tile(x, "skin")).join("")}${ACCS.filter(x => x.price && !x.ny).map(x => tile(x, "acc")).join("")}</div>
   </div>`;
   $("#back").onclick = back;
   $("#petname").addEventListener("change", e => { p.name = e.target.value.trim().slice(0, 16) || "Пітоша"; p.nameAt = Date.now(); save("profile"); renderWardrobe(back, backLabel); });
@@ -799,7 +867,7 @@ function renderWardrobe(back, backLabel) {
     pendingBuy = null;
     const id = b.dataset.id;
     if (kind === "set") {   // одразу вдягаємо весь комплект
-      x.items.forEach(it => { if (SKINS.some(y => y.id === it)) { p.skin = it; p.mix = {}; } else if (ANIMS.some(y => y.id === it)) p.anim = it;
+      x.items.forEach(it => { if (SKINS.some(y => y.id === it)) { p.skin = it; p.mix = {}; } else if (ANIMS.some(y => y.id === it)) p.anim = it; else if (BGS.some(y => y.id === it)) p.bg = it;
         else { const l = accList().filter(a => !SLOT[it] || SLOT[a] !== SLOT[it]); l.push(it); p.acc = l.join(","); } });
     } else if (kind === "anim") p.anim = id;
     else if (kind === "bg") p.bg = id;
@@ -892,7 +960,31 @@ window.KV = {
   N, SKINS, ACCS, isOpen, godTouch, godGift, GOD_EVERY, GOD_CAP, openIds, achieve, snakeSVG, renderWardrobe, hasAcc, leaders, bytesLeft, bytesWord, BYTES_PERFECT, streakTouch, streakNow, streakBadge, daysWord, STREAK_EVERY,
   leave: { configure: cfg => { leaveCfg = Object.assign({ isActive: () => false, onPenalty: () => {}, onPeek: null, onMouseOut: null }, cfg); }, GRACE, AWAY_STEP },
   get guardOpen() { return guardOpen; }, showGuard, hideGuard, goFullscreen, leaveFullscreen, toast,
+  isWinterBreak, isNySeason, nyDecor,
 };
+
+// ---------- новорічні прикраси порталу: гірлянда згори й легкий сніг ----------
+// Сніг ховається, поки йде рівень, щоб не заважав. Вимикач ❄ — біля перемикача теми.
+function nyDecor() {
+  if (!isNySeason() || !document.body) return;
+  let g = document.getElementById("nygarland");
+  if (!g) {
+    g = document.createElement("div"); g.id = "nygarland"; g.setAttribute("aria-hidden", "true");
+    const bulbs = Array.from({ length: 24 }, (_, k) => `<g class="nyb" style="animation-delay:-${(k * .37 % 2.2).toFixed(2)}s"><rect x="${k * 50 + 22}" y="${k % 2 ? 12 : 9}" width="6" height="4" rx="1" fill="#6b7280"/><ellipse cx="${k * 50 + 25}" cy="${k % 2 ? 21 : 18}" rx="5" ry="7" fill="${NY_LIGHTS[k % 4]}"/></g>`).join("");
+    g.innerHTML = `<svg viewBox="0 0 1200 30" preserveAspectRatio="xMidYMin slice"><path d="M0 6 ${Array.from({ length: 24 }, (_, k) => `Q${k * 50 + 25} ${k % 2 ? 18 : 14} ${k * 50 + 50} 6`).join(" ")}" stroke="#3b4a3b" stroke-width="2" fill="none"/>${bulbs}</svg>`;
+    document.body.appendChild(g);
+    const sn = document.createElement("div"); sn.id = "nysnow"; sn.setAttribute("aria-hidden", "true");
+    sn.innerHTML = Array.from({ length: 28 }, (_, k) => { const q = (k * 37) % 100, d = 7 + (k * 13) % 9, sz = 3 + (k * 7) % 5;
+      return `<i style="left:${q}%;width:${sz}px;height:${sz}px;animation-duration:${d}s;animation-delay:-${((k * 1.9) % d).toFixed(1)}s;--dx:${(k % 2 ? 1 : -1) * (10 + k % 20)}px"></i>`; }).join("");
+    document.body.appendChild(sn);
+    setInterval(() => document.body.classList.toggle("ny-busy", !!(leaveCfg.isActive() || guardOpen)), 1000);
+  }
+  document.body.classList.toggle("ny-off", !!store.profile.nyOff);
+  const b = document.getElementById("nysw");
+  if (b) { b.classList.toggle("off", !!store.profile.nyOff); b.title = store.profile.nyOff ? "Увімкнути сніг і гірлянду" : "Вимкнути сніг і гірлянду"; }
+}
+function nyToggle() { store.profile.nyOff = !store.profile.nyOff; save("profile"); nyDecor(); }
+if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", nyDecor); else nyDecor();
 })();
 
 // ---------- нагадування про чесність: унизу кожної сторінки ----------
