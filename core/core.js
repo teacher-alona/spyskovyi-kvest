@@ -2,7 +2,7 @@
    змійка з гардеробом, заслона при виході з гри. Кожна гра підключає цей файл і додає свої рівні. */
 (function () {
 "use strict";
-const VERSION = "2026.11.25-82";
+const VERSION = "2026.11.25-83";
 const API = "https://script.google.com/macros/s/AKfycbzPtRGlYI4osS-xL-J_pAZ2A2HxTWUeuecjy9-13MgAdFIzkDnYuCr1qmLHqZvqWkQMWQ/exec";
 
 // Усі ігри порталу. sheet — назва аркуша з прогресом у таблиці вчительки.
@@ -94,10 +94,12 @@ applyTheme();
 function toggleTheme() {
   store.profile.theme = store.profile.theme === "dark" ? "light" : "dark";
   applyTheme(); save("profile");
-  const b = document.getElementById("themesw"); if (b) b.outerHTML = themeSwitch(); bindTheme();
+  const b = document.getElementById("themesw"); if (b) b.outerHTML = themeBtn(); bindTheme();
 }
-const themeSwitch = () => { const dark = store.profile.theme === "dark";
-  return `<button class="lightsw ${dark ? "off" : "on"}" id="themesw" type="button" aria-pressed="${dark}" title="${dark ? "Увімкнути світло (світла тема)" : "Вимкнути світло (темна тема)"}" aria-label="${dark ? "Увімкнути світлу тему" : "Увімкнути темну тему"}"><span class="plate"><span class="rocker"></span></span></button>` + (isNySeason() ? `<button class="nysw ${store.profile.nyOff ? "off" : ""}" id="nysw" type="button" title="${store.profile.nyOff ? "Увімкнути сніг і гірлянду" : "Вимкнути сніг і гірлянду"}" aria-label="Сніг і гірлянда">❄</button>` : ""); };
+const themeSwitch = () => themeBtn() + (isNySeason() ? nyBtn() : "");
+const nyBtn = () => `<button class="nysw ${store.profile.nyOff ? "off" : ""}" id="nysw" type="button" title="${store.profile.nyOff ? "Увімкнути сніг і гірлянду" : "Вимкнути сніг і гірлянду"}" aria-label="Сніг і гірлянда">❄</button>`;
+const themeBtn = () => { const dark = store.profile.theme === "dark";
+  return `<button class="lightsw ${dark ? "off" : "on"}" id="themesw" type="button" aria-pressed="${dark}" title="${dark ? "Увімкнути світло (світла тема)" : "Вимкнути світло (темна тема)"}" aria-label="${dark ? "Увімкнути світлу тему" : "Увімкнути темну тему"}"><span class="plate"><span class="rocker"></span></span></button>`; };
 function bindTheme() { const b = document.getElementById("themesw"); if (b) b.onclick = toggleTheme;
   const n = document.getElementById("nysw"); if (n) n.onclick = () => { nyToggle(); }; }
 const gameData = id => { const g = store.games[id] = store.games[id] || {}; g.stars = g.stars || {}; return g; };
@@ -970,8 +972,10 @@ function nyDecor() {
   let g = document.getElementById("nygarland");
   if (!g) {
     g = document.createElement("div"); g.id = "nygarland"; g.setAttribute("aria-hidden", "true");
-    const bulbs = Array.from({ length: 24 }, (_, k) => `<g class="nyb" style="animation-delay:-${(k * .37 % 2.2).toFixed(2)}s"><rect x="${k * 50 + 22}" y="${k % 2 ? 12 : 9}" width="6" height="4" rx="1" fill="#6b7280"/><ellipse cx="${k * 50 + 25}" cy="${k % 2 ? 21 : 18}" rx="5" ry="7" fill="${NY_LIGHTS[k % 4]}"/></g>`).join("");
-    g.innerHTML = `<svg viewBox="0 0 1200 30" preserveAspectRatio="xMidYMin slice"><path d="M0 6 ${Array.from({ length: 24 }, (_, k) => `Q${k * 50 + 25} ${k % 2 ? 18 : 14} ${k * 50 + 50} 6`).join(" ")}" stroke="#3b4a3b" stroke-width="2" fill="none"/>${bulbs}</svg>`;
+    // візерунок шириною 200 px повторюється вздовж екрана, тож на широких екранах гірлянда не розтягується й не обрізається
+    const tile = (ks, wire) => { const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="200" height="34" viewBox="0 0 200 34">${wire ? `<path d="M0 6 Q25 16 50 6 Q75 20 100 6 Q125 16 150 6 Q175 20 200 6" stroke="#4a5a4a" stroke-width="2" fill="none"/>` : ""}${ks.map(k => `<rect x="${k * 50 + 22}" y="${k % 2 ? 12 : 9}" width="6" height="4" rx="1" fill="#6b7280"/><ellipse cx="${k * 50 + 25}" cy="${k % 2 ? 21 : 18}" rx="5" ry="7" fill="${NY_LIGHTS[k]}"/>`).join("")}</svg>`;
+      return `url('data:image/svg+xml,${encodeURIComponent(svg).replace(/'/g, "%27")}')`; };
+    g.innerHTML = `<div style="background-image:${tile([], true)}"></div><div class="nyb" style="background-image:${tile([0, 2])}"></div><div class="nyb b" style="background-image:${tile([1, 3])}"></div>`;
     document.body.appendChild(g);
     const sn = document.createElement("div"); sn.id = "nysnow"; sn.setAttribute("aria-hidden", "true");
     sn.innerHTML = Array.from({ length: 28 }, (_, k) => { const q = (k * 37) % 100, d = 7 + (k * 13) % 9, sz = 3 + (k * 7) % 5;
