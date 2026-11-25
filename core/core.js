@@ -2,7 +2,7 @@
    змійка з гардеробом, заслона при виході з гри. Кожна гра підключає цей файл і додає свої рівні. */
 (function () {
 "use strict";
-const VERSION = "2026.11.25-87";
+const VERSION = "2026.11.25-88";
 const API = "https://script.google.com/macros/s/AKfycbzPtRGlYI4osS-xL-J_pAZ2A2HxTWUeuecjy9-13MgAdFIzkDnYuCr1qmLHqZvqWkQMWQ/exec";
 
 // Усі ігри порталу. sheet — назва аркуша з прогресом у таблиці вчительки.
@@ -447,7 +447,7 @@ const SKINS = [
   // ---------- новорічна колекція (ny: true — показуємо окремим розділом гардероба) ----------
   { id: "nysweater", name: "Новорічний светр", ny: true, need: 0, col: () => "#c62828", idx: "#fff", head: "#c62828",
     seg: (x, y) => `<path d="M${x} ${y - 6} l2.75 -3 2.75 3 2.75 -3 2.75 3 2.75 -3 2.75 3 2.75 -3 2.75 3" stroke="#fff" stroke-width="1.5" fill="none"/>${[3, 8.3, 13.7, 19].map(d => `<circle cx="${x + d}" cy="${y + 8}" r="1.2" fill="#fff"/>`).join("")}<path d="M${x} ${y + 5} h22" stroke="#1f7a43" stroke-width="1.3"/>` },
-  { id: "candy", name: "Льодяник", ny: true, price: 25, gift: "candyrain2", col: () => "#fbfbfb", idx: "#b71c1c", head: "#fbfbfb", headStroke: "#e53935",
+  { id: "candy", name: "Льодяник", ny: true, price: 25, col: () => "#fbfbfb", idx: "#b71c1c", head: "#fbfbfb", headStroke: "#e53935",
     seg: (x, y) => nyClip(x, y - 11, 22, 22, 7, nyStripes(x, y - 11, 22, 22, 11, "#e53935", 4.2)),
     headDeco: (hx, hy) => nyClip(hx, hy - 14, 34, 28, 11, nyStripes(hx, hy - 14, 34, 28, 13, "#e53935", 4)) },
   { id: "snowman", name: "Сніговик", ny: true, price: 30, col: () => "#ffffff", idx: "#5b6b80", head: "#ffffff", rx: 11,
@@ -462,6 +462,10 @@ const SKINS = [
   { id: "nygift", name: "Подарунок", ny: true, price: 35, rx: 3, col: i => ["#e53935", "#1e88e5", "#43a047", "#8e44ad", "#f39c12"][i % 5], idx: "#fff", head: "#e53935", headRx: 6,
     seg: (x, y) => `<rect x="${x + 14}" y="${y - 11}" width="4" height="22" fill="#ffd43b"/><rect x="${x}" y="${y - 8}" width="22" height="4" fill="#ffd43b"/>`,
     headDeco: (hx, hy, acc) => `<rect x="${hx + 4}" y="${hy - 14}" width="4" height="28" fill="#ffd43b"/>` + (String(acc).split(",").some(a => SLOT[a] === "hat") ? "" : `<path d="M${hx + 17} ${hy - 14} q-11 -10 -12 -2 q1 5 12 2 Z M${hx + 17} ${hy - 14} q11 -10 12 -2 q-1 5 -12 2 Z" fill="#ffd43b" stroke="#c79a12" stroke-width="1"/><circle cx="${hx + 17}" cy="${hy - 14}" r="2.4" fill="#f2b705"/>`) },
+  // лише з льодяникового дощу: друга правильна відповідь під дощем
+  { id: "swirl", name: "Карамельний вихор", ny: true, ach: "candyrain2", rx: 11, col: i => ["#ff6fae", "#7ad3ff", "#ffd43b", "#69f0ae", "#b388ff"][i % 5], idx: "#fff", head: "#ff6fae",
+    seg: (x, y) => `<path d="M${x + 5} ${y} a6 6 0 1 1 12 0 a4.5 4.5 0 1 1 -9 0 a3 3 0 1 1 6 0" stroke="#fff" stroke-width="1.7" fill="none" opacity=".9"/>`,
+    headDeco: (hx, hy) => `<path d="M${hx + 3} ${hy + 6} a4 4 0 1 1 8 0 a3 3 0 1 1 -6 0 a1.8 1.8 0 1 1 3.6 0" stroke="#fff" stroke-width="1.5" fill="none" opacity=".9"/>` },
   // секрет: пройти рівень без помилок на зимових канікулах
   { id: "aurora", name: "Північне сяйво", ny: true, ach: "winter", secret: true, col: i => mix("#1de9b6", "#7c4dff", i / N), idx: "#fff", head: "#14204a", headStroke: "#1de9b6",
     seg: (x, y, i) => `<path d="M${x} ${y - 4} q5.5 -5 11 0 t11 0" stroke="rgba(255,255,255,.55)" stroke-width="1.6" fill="none"/><path d="M${x} ${y + 4} q5.5 -5 11 0 t11 0" stroke="rgba(255,255,255,.3)" stroke-width="1.3" fill="none"/>`,
@@ -545,7 +549,7 @@ const SLOT = { cap: "hat", cowboy: "hat", propeller: "hat", crown: "hat", horn: 
 const SLOT_NAME = { hat: "на голову", eyes: "на очі", face: "на обличчя", neck: "на шию", ears: "навушники", decor: "прикраса", tool: "паяє хвіст", tail: "хвостик", portal: "ефект", back: "на спину", sky: "зорі", antlers: "роги", nose: "на ніс", garland: "на тіло", beard: "борода" };
 const accList = () => String(store.profile.acc || "").split(",").map(x => x.trim()).filter(x => x && x !== "none");
 const hasAcc = id => accList().includes(id);
-const ACH = { fail: "Лишитися без хвоста", perfect: "Пройти рівень без жодної помилки", peek: "Підглянути розв'язок задачі", lastdeath: "", loafhat: "", angel: "", dune: "", starfall: "", god: "", winter: "", candyrain: "Правильно відповісти під льодяниковим дощем", candyrain2: "" };
+const ACH = { fail: "Лишитися без хвоста", perfect: "Пройти рівень без жодної помилки", peek: "Підглянути розв'язок задачі", lastdeath: "", loafhat: "", angel: "", dune: "", starfall: "", god: "", winter: "", candyrain: "Правильно відповісти під льодяниковим дощем", candyrain2: "Двічі правильно відповісти під льодяниковим дощем" };
 // зимові канікули: 24 грудня — 11 січня (для секрету «Північне сяйво»)
 const isWinterBreak = (d = new Date()) => (d.getMonth() === 11 && d.getDate() >= 24) || (d.getMonth() === 0 && d.getDate() <= 11);
 // новорічний сезон на порталі: сніг і гірлянда з 25 листопада до 15 січня

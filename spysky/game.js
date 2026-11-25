@@ -333,11 +333,11 @@ const leaveFullscreen = () => KV.leaveFullscreen();
 
 // льодяниковий дощ: на його питанні помилка забирає ще одне життя (але помилкою для зірок рахується одна)
 function lose(n) { const extra = run.ev === "candyrain" && run.idx === run.evIdx ? 1 : 0; run.shown = run.hearts; run.hearts = Math.max(0, run.hearts - (n || 1) - extra); run.mistakes += (n || 1); }
-// подарунок за льодяниковий дощ: спершу фон «Льодяники», потім скін «Льодяник», а далі — 15 байтів
+// подарунок за льодяниковий дощ: спершу фон «Льодяники», потім скін «Карамельний вихор» (їх не купиш), а далі — 15 байтів
 function candyGift() {
-  const ach = KV.profile().ach || {}, sk = KV.SKINS.find(x => x.id === "candy");
+  const ach = KV.profile().ach || {};
   if (!ach.candyrain) { achieve("candyrain"); return "🍭 Подарунок: фон «Льодяники»! Вдягни його в гардеробі."; }
-  if (!ach.candyrain2 && !KV.isOpen(sk)) { achieve("candyrain2"); return "🍭 Подарунок: скін «Льодяник»! Вдягни його в гардеробі."; }
+  if (!ach.candyrain2) { achieve("candyrain2"); return "🍭 Подарунок: скін «Карамельний вихор»! Вдягни його в гардеробі."; }
   if (run.replay) return "🍭 Льодяники вже всі твої! За пройдений рівень байтів не дають, але відповідь чудова.";
   run.evBytes = 15; return "🍭 Подарунок: +15 байтів за цей рівень!";
 }
