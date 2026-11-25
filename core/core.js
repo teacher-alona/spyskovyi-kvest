@@ -2,7 +2,7 @@
    змійка з гардеробом, заслона при виході з гри. Кожна гра підключає цей файл і додає свої рівні. */
 (function () {
 "use strict";
-const VERSION = "2026.11.25-91";
+const VERSION = "2026.11.26-92";
 const API = "https://script.google.com/macros/s/AKfycbzPtRGlYI4osS-xL-J_pAZ2A2HxTWUeuecjy9-13MgAdFIzkDnYuCr1qmLHqZvqWkQMWQ/exec";
 
 // Усі ігри порталу. sheet — назва аркуша з прогресом у таблиці вчительки.
@@ -260,32 +260,20 @@ function applyServer(r) {
   persist();
   // зберігаємо лише якщо щось справді змінилось (або новий скрипт ще не має профілю), щоб не затерти ручні зміни вчительки
   if (changed || (r.v >= 2 && !r.profile)) { dirty = true; scheduleSync(true); }
-  return dailyCheck() || changed;
+  return changed;
 }
-// ---------- байти за вогник: щодня при першому вході ----------
-// серія 1 день — 1 байт, 2 дні — 2 байти … від 5 днів — 5 байтів щодня
+// ---------- байти за вогник: коли серію продовжено (перший пройдений рівень за день) ----------
+// серія 1 день — 1 байт, 2 дні — 2 байти … від 5 днів — 5 байтів щодня. p.daily — день, за який байти вже дали.
 const DAILY_MAX = 5;
-function dailyCheck() {
-  const p = store.profile, today = dayStr();
-  if (p.daily === today) return false;
-  p.daily = today;
-  const n = streakNow(), add = Math.min(n, DAILY_MAX);
-  if (add) p.bonus = (p.bonus || 0) + add;
-  save("profile"); dirty = true; scheduleSync(true);
-  if (add) setTimeout(() => dailyPopup(n, add), 500);
-  return !!add;
-}
 function dailyPopup(n, add) {
-  if (leaveCfg.isActive() || guardOpen) return;
   let g = document.getElementById("daily");
   if (!g) { g = document.createElement("div"); g.id = "daily"; g.setAttribute("role", "dialog"); g.setAttribute("aria-modal", "true"); document.body.appendChild(g); }
-  const done = streakDoneToday();
   g.innerHTML = `<div class="dailycard">
     <div class="dflame">🔥</div>
-    <h2>${n} ${daysWord(n)} поспіль!</h2>
+    <h2>Вогник горить: ${n} ${daysWord(n)} поспіль!</h2>
     <p class="dplus">+${add} ${bytesWord(add)}</p>
-    <p>Це байти за вогник: твоя серія триває вже ${n} ${daysWord(n)}. Щодня при першому вході ти отримуєш стільки байтів, скільки днів у серії${n >= DAILY_MAX ? ` — але не більше ${DAILY_MAX}. У тебе вже максимум!` : `, але не більше ${DAILY_MAX}. Не загуби серію — і завтра буде +${Math.min(n + 1, DAILY_MAX)}.`}</p>
-    <p class="status">${done ? "Серію сьогодні вже продовжено." : "Пройди сьогодні хоча б один рівень, щоб вогник не згас."}</p>
+    <p>Це байти за вогник: серію продовжено, і вона триває вже ${n} ${daysWord(n)}. За кожен день серії дають стільки байтів, скільки в ній днів${n >= DAILY_MAX ? ` — але не більше ${DAILY_MAX}. У тебе вже максимум!` : `, але не більше ${DAILY_MAX}.`}</p>
+    <p class="status">${n >= DAILY_MAX ? "Пройди рівень і завтра — знову отримаєш +" + DAILY_MAX + "." : "Пройди рівень і завтра — отримаєш +" + Math.min(n + 1, DAILY_MAX) + "."}</p>
     <button class="btn" id="daily-ok">Дякую!</button>
   </div>`;
   const close = () => { g.remove(); document.removeEventListener("keydown", esc1); };
@@ -607,8 +595,11 @@ function streakTouch() {   // викликається, коли рівень п
   const bonus = n % STREAK_EVERY === 0 ? STREAK_BONUS : 0;
   p.streak = { last: today, n, best: Math.max(st.best || 0, n) };
   if (bonus) p.bonus = (p.bonus || 0) + bonus;
+  // байти за вогник — раз на день, коли серія продовжується
+  let daily = 0;
+  if (p.daily !== today) { daily = Math.min(n, DAILY_MAX); p.daily = today; p.bonus = (p.bonus || 0) + daily; setTimeout(() => dailyPopup(n, daily), 1200); }
   save("profile");
-  return { n, grew: true, bonus };
+  return { n, grew: true, bonus, daily };
 }
 const daysWord = n => { n = Math.abs(n) % 100; const d = n % 10; return n > 10 && n < 20 ? "днів" : d === 1 ? "день" : d >= 2 && d <= 4 ? "дні" : "днів"; };
 const streakBadge = (stacked) => { const n = streakNow(), today = streakDoneToday();
