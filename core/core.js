@@ -2,7 +2,7 @@
    змійка з гардеробом, заслона при виході з гри. Кожна гра підключає цей файл і додає свої рівні. */
 (function () {
 "use strict";
-const VERSION = "2026.11.25-89";
+const VERSION = "2026.11.25-90";
 const API = "https://script.google.com/macros/s/AKfycbzPtRGlYI4osS-xL-J_pAZ2A2HxTWUeuecjy9-13MgAdFIzkDnYuCr1qmLHqZvqWkQMWQ/exec";
 
 // Усі ігри порталу. sheet — назва аркуша з прогресом у таблиці вчительки.
@@ -36,6 +36,7 @@ GAMES.push({ id: "rastr", title: "Растрова графіка", sub: "Циф
   levelIds: ["intro", "pixels", "code", "res", "formats", "photopea", "boss"] });
 GAMES.push({ id: "vektor", title: "Векторна графіка", sub: "Цифрове мистецтво · 6 клас", path: "vektorna-hrafika/", sheet: "Прогрес: Векторна графіка", max: 21,
   levelIds: ["vs", "tools", "fill", "order", "nodes", "bool", "boss"] });
+GAMES.push({ id: "pix", title: "Піксельна малювалка", sub: "Цифрове мистецтво · вільна творчість", path: "pikselna-malyuvalka/", sheet: "Прогрес: Піксельна малювалка", max: 0, levelIds: [], tool: "малюй свій піксель-арт" });
 GAMES.push({ id: "roboty", title: "Python-роботи", sub: "Python · настільна гра", path: "python-roboty/", sheet: "Прогрес: Python-роботи", max: 0, levelIds: [], board: "з однокласниками або проти комп'ютера" });
 // розділи порталу: на головній — плитки розділів, у розділі — його ігри
 const CATS = [
@@ -44,7 +45,7 @@ const CATS = [
   { id: "prog", title: "Основи програмування", icon: "🧩", games: ["flow"] },
   { id: "gamedev", title: "Розробка ігор", icon: "🎮", games: ["gamedev"] },
   { id: "digital", title: "Цифрова грамотність", icon: "💻", games: ["fajly", "klavishi", "trenazhery"] },
-  { id: "art", title: "Цифрове мистецтво", icon: "🎨", games: ["rastr", "vektor"] },
+  { id: "art", title: "Цифрове мистецтво", icon: "🎨", games: ["rastr", "vektor", "pix"] },
   { id: "robo", title: "Робототехніка", icon: "🤖", games: ["robo"] },
 ];
 GAMES.forEach(g => { const c = CATS.find(c => c.games.includes(g.id)); g.cat = c ? c.id : "other"; });
@@ -223,7 +224,7 @@ function mergeProfile(local, remote) {
   // ім'я змійки — те, яке змінили пізніше (учень у гардеробі або вчителька в таблиці)
   // збережені ігри з пісочниці: кожну беремо за її власним часом збереження
   const sa = remote.sandbox || {}, sb = local.sandbox || {}, sm = {};
-  ["adv", "run", "swift", "flow"].forEach(k => { const x = sa[k], y = sb[k]; const v = !x ? y : !y ? x : (x.at || 0) >= (y.at || 0) ? x : y; if (v) sm[k] = v; });
+  ["adv", "run", "swift", "flow", "pix"].forEach(k => { const x = sa[k], y = sb[k]; const v = !x ? y : !y ? x : (x.at || 0) >= (y.at || 0) ? x : y; if (v) sm[k] = v; });
   if (Object.keys(sm).length) m.sandbox = sm;
   if ((remote.nameAt || 0) || (local.nameAt || 0)) { const src = (remote.nameAt || 0) >= (local.nameAt || 0) ? remote : local; m.name = src.name; m.nameAt = src.nameAt; }
   return m;

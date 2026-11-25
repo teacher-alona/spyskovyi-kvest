@@ -49,6 +49,7 @@ function renderHome() {
   <div class="games"${cat || !cats.length ? "" : " hidden"}>
     ${(cat ? cat.list : games).length ? (cat ? cat.list : games).map(g => {
       // настільна гра — без зірок і рівнів
+      if (g.tool) return `<a class="game" href="${g.path}"><span class="gsub">${esc(g.sub)}</span><h3>${esc(g.title)}</h3><span class="gstat">🖌 ${esc(g.tool)}</span></a>`;
       if (g.board) return `<a class="game" href="${g.path}"><span class="gsub">${esc(g.sub)}</span><h3>${esc(g.title)}</h3><span class="gstat">🎲 ${esc(g.board)}</span></a>`;
       const d = KV.gameData(g.id), s = sum(d.stars), att = sum(d.attempts);
       return `<a class="game" href="${g.path}">
