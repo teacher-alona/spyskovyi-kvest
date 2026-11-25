@@ -46,11 +46,11 @@ function fit() {
   $("#custom").hidden = $("#size").value !== "custom";
 }
 function draw(preview) {
-  // шахова дошка під прозорими пікселями
+  // шахівка під прозорими пікселями: кожен порожній піксель — одна світла або сіра клітинка
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
     const c = (preview && preview.has(y * W + x)) ? preview.get(y * W + x) : px[y * W + x];
     if (c) { g.fillStyle = c; g.fillRect(x * cell, y * cell, cell, cell); }
-    else { const h = cell / 2; g.fillStyle = "#fff"; g.fillRect(x * cell, y * cell, cell, cell); g.fillStyle = "#e3e6ea"; g.fillRect(x * cell, y * cell, h, h); g.fillRect(x * cell + h, y * cell + h, cell - h, cell - h); }
+    else { g.fillStyle = (x + y) % 2 ? "#eceff3" : "#ffffff"; g.fillRect(x * cell, y * cell, cell, cell); }   // порожній піксель — одна клітинка шахівки
   }
   if ($("#grid").checked && cell >= 6) {
     g.strokeStyle = "rgba(0,0,0,.14)"; g.lineWidth = 1; g.beginPath();
