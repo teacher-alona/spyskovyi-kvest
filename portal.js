@@ -25,7 +25,7 @@ function renderHome() {
       <p>${first ? `Привіт, ${esc(first)}! ` : ""}Вибери розділ, а в ньому — гру. Зірки з усіх ігор рахуються разом і відкривають нові скіни для змійки.</p>
     </div>
     <section class="pcard" aria-label="Твоя змійка">
-      ${KV.snakeSVG({ len: KV.N, cls: "big" })}
+      ${KV.snakeSVG({ len: KV.maxHearts(), cls: "big" })}
       <div class="petname">${esc(p.name)}</div>
       <div class="pstats">
         <div class="pstat"><b class="gold">★ ${total}</b><span>з ${maxAll} зірок</span></div>

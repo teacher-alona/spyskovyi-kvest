@@ -6,12 +6,12 @@ const GI = Object.assign({ id: "spysky", title: "Списковий квест",
 const GAME = GI.id;
 // кнопка «назад» веде в розділ порталу, де лежить ця гра
 const backCat = (() => { const g = KV.GAMES.find(x => x.id === GAME); return g && KV.CATS ? KV.CATS.find(c => c.id === g.cat) : null; })();
-const MAX_HEARTS = KV.N;
+let MAX_HEARTS = KV.maxHearts();   // 5, або 6 із «Шостим сегментом»
 const KIND = Object.assign({ practice: "закріплення", learn: "нова тема", boss: "фінал" }, GI.kinds || {});
 const TYPE = Object.assign({ quiz: "Питання", output: "Що виведе?", bug: "Знайди помилку", order: "Збери код", fill: "Встав пропущене", code: "Напиши код", lesson: "Нове" }, window.GAME_TYPE_LABELS || {}, GI.types || {});
 const PLAIN = !!GI.plain; // гра без Python: звичайні підписи, відповіді без урахування великих літер
 const { esc, md, shuffle, fmtTime, starStr, snakeSVG, achieve, isOpen, openIds, SKINS, ACCS } = KV;
-const N = KV.N;
+let N = KV.maxHearts();
 const app = KV.app();
 const gd = () => KV.gameData(GAME);          // прогрес цієї гри
 const pf = () => KV.profile();               // змійка: ім'я, скін, аксесуар (спільна для всіх ігор)
@@ -273,7 +273,7 @@ async function startLevel(li) {
   goFullscreen();
   hideGuard();
   run = null;
-  app.innerHTML = `<div class="center"><div class="eyebrow">${PLAIN ? `Рівень ${li + 1}` : `levels[${li}]`}</div><h2>${esc(lv.title)}</h2>${snakeSVG({ len: N, cls: "big" })}<p class="status">Готую завдання…</p></div>`;
+  app.innerHTML = `<div class="center"><div class="eyebrow">${PLAIN ? `Рівень ${li + 1}` : `levels[${li}]`}</div><h2>${esc(lv.title)}</h2>${snakeSVG({ len: KV.maxHearts(), cls: "big" })}<p class="status">Готую завдання…</p></div>`;
   const items = resolveItems(lv);
   try {
     if (!PLAIN) await loadPy(); // ігри без Python не тягнуть Skulpt
@@ -285,6 +285,7 @@ async function startLevel(li) {
     $("#map").onclick = renderMap;
     return;
   }
+  MAX_HEARTS = N = KV.maxHearts();
   run = { li, idx: 0, hearts: MAX_HEARTS, shown: MAX_HEARTS, mistakes: 0, leaves: 0, awayMs: 0, items, st: {}, ev: rollEvent() };
   if (run.ev) { const q = items.map((it, i) => it.t !== "lesson" ? i : -1).filter(i => i >= 0); run.evIdx = q.length ? q[Math.floor(Math.random() * q.length)] : -1; if (run.evIdx < 0) run.ev = ""; }
   run.replay = !!gd().stars[lv.id];
@@ -351,7 +352,7 @@ function renderMap() {
       <p>${esc(GI.intro)}</p>
     </div>
     <section class="pcard" aria-label="Твоя змійка">
-      ${snakeSVG({ len: N, cls: "big" })}
+      ${snakeSVG({ len: KV.maxHearts(), cls: "big" })}
       <div class="petname">${esc(pf().name)}</div>
       <div class="pstats">
         <div class="pstat"><b class="gold">★ ${total}</b><span>з ${n * 3} у цій грі</span></div>
@@ -378,7 +379,7 @@ function renderMap() {
   <div class="listclose">${PLAIN ? "" : "]"}</div>
   ${(GI.links || []).map(l => `<a class="maplink" href="${esc(l.href)}"><b>${esc(l.label)}</b><span>${esc(l.about)}</span></a>`).join("")}
   <div class="version">версія ${KV.VERSION}</div>
-  <div class="legend"><span>★★★ — не більше однієї помилки на рівні</span><span>У змійки ${N} сегментів. Кожна помилка — ${PLAIN ? "мінус сегмент з хвоста" : "<code>pop()</code> з хвоста"}</span>${PLAIN ? "" : "<span>Задачі з кодом сегментів не забирають</span>"}<span>Зірки відкривають нові скіни</span><span>Байти дають за правильні відповіді з першої спроби (тільки поки рівень ще не пройдено). За них купують речі в гардеробі</span><span>Вийшов(-ла) з гри на іншу вкладку чи в інший застосунок — мінус сегмент</span></div>
+  <div class="legend"><span>★★★ — не більше однієї помилки на рівні</span><span>У змійки ${KV.maxHearts()} сегментів. Кожна помилка — ${PLAIN ? "мінус сегмент з хвоста" : "<code>pop()</code> з хвоста"}</span>${PLAIN ? "" : "<span>Задачі з кодом сегментів не забирають</span>"}<span>Зірки відкривають нові скіни</span><span>Байти дають за правильні відповіді з першої спроби (тільки поки рівень ще не пройдено). За них купують речі в гардеробі</span><span>Вийшов(-ла) з гри на іншу вкладку чи в інший застосунок — мінус сегмент</span></div>
   `;
   app.querySelectorAll(".cell").forEach(b => b.onclick = () => renderIntro(+b.dataset.li));
   app.querySelector("#wardrobe").onclick = renderWardrobe;

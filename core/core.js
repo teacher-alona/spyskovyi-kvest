@@ -2,7 +2,7 @@
    змійка з гардеробом, заслона при виході з гри. Кожна гра підключає цей файл і додає свої рівні. */
 (function () {
 "use strict";
-const VERSION = "2026.11.25-84";
+const VERSION = "2026.11.25-85";
 const API = "https://script.google.com/macros/s/AKfycbzPtRGlYI4osS-xL-J_pAZ2A2HxTWUeuecjy9-13MgAdFIzkDnYuCr1qmLHqZvqWkQMWQ/exec";
 
 // Усі ігри порталу. sheet — назва аркуша з прогресом у таблиці вчительки.
@@ -624,10 +624,14 @@ function bgEl(id, W) {
 // комплекти: усе разом дешевше
 const SETS = [{ id: "set67", name: "Комплект 67", price: 67, items: ["tiger67", "glasses67", "hat67", "six7"] },
   { id: "setny", name: "Новорічний комплект", ny: true, price: 75, items: ["nytree", "antlers", "garland", "snowfall"] }];
-const ALLITEMS = () => [...SKINS, ...ACCS, ...ANIMS, ...SHAPES, ...HEADS, ...BGS, ...SETS];
+// шостий сегмент — одне додаткове життя на кожному рівні; купується один раз
+const EXTRA = { id: "seg6", name: "Шостий сегмент", price: 1000 };
+const hasExtra = () => (store.profile.bought || []).includes(EXTRA.id);
+const maxHearts = () => N + (hasExtra() ? 1 : 0);
+const ALLITEMS = () => [...SKINS, ...ACCS, ...ANIMS, ...SHAPES, ...HEADS, ...BGS, ...SETS, EXTRA];
 const setCost = st => Math.max(0, st.price - st.items.reduce((s, id) => { const x = ALLITEMS().find(y => y.id === id); return s + (x && isOpen(x) ? x.price : 0); }, 0));
 // витрачене: тепер ведемо рахунок (spent); для старих покупок рахуємо за списком
-const bytesSpent = () => Math.max(store.profile.spent || 0, (store.profile.bought || []).reduce((s, id) => { const x = [...SKINS, ...ACCS].find(y => y.id === id); return s + (x && x.price || 0); }, 0));
+const bytesSpent = () => Math.max(store.profile.spent || 0, (store.profile.bought || []).reduce((s, id) => { const x = [...SKINS, ...ACCS, EXTRA].find(y => y.id === id); return s + (x && x.price || 0); }, 0));
 const bytesLeft = () => Math.max(0, bytesEarned() - bytesSpent());
 const bytesWord = n => { n = Math.abs(n) % 100; const d = n % 10; return n > 10 && n < 20 ? "байтів" : d === 1 ? "байт" : d >= 2 && d <= 4 ? "байти" : "байтів"; };
 const isOpen = x => x.combo ? x.combo.every(id => { const y = ALLITEMS().find(z => z.id === id); return y && isOpen(y); }) : x.price ? ((store.profile.bought || []).includes(x.id) || SETS.some(st => st.items.includes(x.id) && (store.profile.bought || []).includes(st.id))) : x.ach ? !!(store.profile.ach && store.profile.ach[x.ach]) : x.need <= totalStars();
@@ -666,7 +670,7 @@ const unicornHead = (hx, hy) => {
     + `<circle cx="${hx + 40}" cy="${hy + 3}" r="1.4" fill="#e58bb3"/>`;
 };
 function snakeSVG(o) {
-  const p = store.profile;
+  const p = store.profile, N = o.max || maxHearts();   // скільки місць для сегментів (5 або 6)
   // аксесуари: o.acc — для попереднього перегляду, інакше вдягнуте (лише відкрите)
   const A = new Set(o.acc ? String(o.acc).split(",").filter(x => x !== "none") : accList().filter(id => { const it = ACCS.find(a => a.id === id); return it && isOpen(it); }));
   const has = id => A.has(id), acc = A.size ? [...A].join(",") : "none";
@@ -805,12 +809,15 @@ function renderWardrobe(back, backLabel) {
     const curSkin = paintTarget === "all" ? (Object.keys(p.mix || {}).length ? null : p.skin) : ((p.mix || {})[paintTarget] || p.skin);
     const curAnim = p.anim && p.anim !== "none" ? p.anim : "none", curShape = p.shape || "square";
     const open = isOpen(x), sel = open && (kind === "set" ? false : kind === "bg" ? (p.bg || "none") === x.id : kind === "anim" ? curAnim === x.id : kind === "shape" ? curShape === x.id : kind === "headtype" ? (p.head || "snake") === x.id : kind === "skin" ? curSkin === x.id : x.id === "none" ? !accList().length : hasAcc(x.id));
-    const prev = kind === "set" ? snakeSVG({ len: N, skin: x.items[0], acc: x.items.filter(id => ACCS.some(a => a.id === id)).join(","), anim: x.items.find(id => ANIMS.some(a => a.id === id)), bg: x.items.find(id => BGS.some(a => a.id === id)) })
-      : kind === "anim" ? snakeSVG({ len: N, anim: x.id, acc: "none" })
-      : kind === "bg" ? snakeSVG({ len: N, bg: x.id, acc: "none" })
-      : kind === "shape" ? snakeSVG({ len: N, shape: x.id, acc: "none" })
-      : kind === "headtype" ? snakeSVG({ len: N, headType: x.id, acc: "none" })
-      : snakeSVG(kind === "skin" ? { len: N, skin: x.id, acc: "none" } : { len: N, acc: x.id });
+    const prev = kind === "set" ? snakeSVG({ len: maxHearts(), skin: x.items[0], acc: x.items.filter(id => ACCS.some(a => a.id === id)).join(","), anim: x.items.find(id => ANIMS.some(a => a.id === id)), bg: x.items.find(id => BGS.some(a => a.id === id)) })
+      : kind === "anim" ? snakeSVG({ len: maxHearts(), anim: x.id, acc: "none" })
+      : kind === "bg" ? snakeSVG({ len: maxHearts(), bg: x.id, acc: "none" })
+      : kind === "shape" ? snakeSVG({ len: maxHearts(), shape: x.id, acc: "none" })
+      : kind === "headtype" ? snakeSVG({ len: maxHearts(), headType: x.id, acc: "none" })
+      : snakeSVG(kind === "skin" ? { len: maxHearts(), skin: x.id, acc: "none" } : { len: maxHearts(), acc: x.id });
+    if (kind === "extra") return `<button class="wtile shop extra ${open ? "sel" : ""} ${pendingBuy === x.id ? "confirm" : ""}" data-kind="extra" data-id="${x.id}" ${open || left >= x.price ? "" : "disabled"}>
+      ${snakeSVG({ len: N + 1, max: N + 1, acc: "none" })}<span class="wname">${esc(x.name)} ❤</span>
+      <span class="wlock">${open ? "Куплено · на рівнях 6 життів" : pendingBuy === x.id ? `Натисни ще раз, щоб купити за ${x.price}` : left >= x.price ? `Купити за ${x.price} ${bytesWord(x.price)}` : `Коштує ${x.price} ${bytesWord(x.price)}`}</span></button>`;
     const cost = kind === "set" ? setCost(x) : x.price;
     const shop = x.price && !open, can = shop && left >= cost;
     if (kind === "set" && open) return `<div class="wtile set" data-id="${x.id}">${prev}<span class="wname">${esc(x.name)}</span><span class="wlock">Куплено</span></div>`;
@@ -826,7 +833,7 @@ function renderWardrobe(back, backLabel) {
   app().innerHTML = `<div class="center wardrobe">
     <button class="link" id="back">← ${esc(backLabel || "Назад")}</button>
     <h2>Гардероб</h2>
-    <div class="pet">${snakeSVG({ len: N, cls: "big" })}
+    <div class="pet">${snakeSVG({ len: maxHearts(), cls: "big" })}
       <div class="petinfo"><label class="answer-label" for="petname">Ім'я змійки</label>
       <input type="text" id="petname" maxlength="16" value="${esc(p.name)}" autocomplete="off">
       <div class="status">У тебе ★ ${total} з ${maxAll} в усіх іграх. Більше зірок — більше скінів.</div>
@@ -837,7 +844,7 @@ function renderWardrobe(back, backLabel) {
     <div class="wgrid">${[...SETS.filter(x => x.ny).map(x => tile(x, "set")), ...SKINS.filter(x => x.ny).map(x => tile(x, "skin")), ...ACCS.filter(x => x.ny).map(x => tile(x, "acc")), ...BGS.filter(x => x.ny).map(x => tile(x, "bg")), ...ANIMS.filter(x => x.ny).map(x => tile(x, "anim"))].join("")}</div></div>
     <h3>Забарвлення</h3>
     <p class="status">Змійку можна зібрати з різних блоків. Обери, що фарбуєш, а потім забарвлення.</p>
-    <div class="paint">${[["all", "Усю змійку"], ["h", "Голову"], ...Array.from({ length: N }, (_, i) => [String(i), "Блок " + i])].map(([k, t]) => `<button class="pchip ${String(paintTarget) === k ? "on" : ""}" data-t="${k}">${t}</button>`).join("")}</div>
+    <div class="paint">${[["all", "Усю змійку"], ["h", "Голову"], ...Array.from({ length: maxHearts() }, (_, i) => [String(i), "Блок " + i])].map(([k, t]) => `<button class="pchip ${String(paintTarget) === k ? "on" : ""}" data-t="${k}">${t}</button>`).join("")}</div>
     <div class="wgrid">${SKINS.filter(x => !x.price && !x.ny).map(x => tile(x, "skin")).join("")}</div>
     <h3>Аксесуари</h3>
     <p class="status">Можна вдягти кілька речей одразу, але по одній на кожне місце: одну шапку, одні окуляри і так далі. Клік по вдягнутій речі знімає її.</p>
@@ -853,7 +860,8 @@ function renderWardrobe(back, backLabel) {
     <p class="status">Анімацію видно на великій змійці: на головній сторінці й тут, у гардеробі.</p>
     <div class="wgrid">${ANIMS.filter(x => !x.ny).map(x => tile(x, "anim")).join("")}</div>
     <h3>Крамниця</h3>
-    <div class="wgrid">${SETS.filter(x => !x.ny).map(x => tile(x, "set")).join("")}${SKINS.filter(x => x.price && !x.ny).map(x => tile(x, "skin")).join("")}${ACCS.filter(x => x.price && !x.ny).map(x => tile(x, "acc")).join("")}</div>
+    <p class="status">«Шостий сегмент» — це одне додаткове життя на кожному рівні. Купити його можна лише один раз.</p>
+    <div class="wgrid">${tile(EXTRA, "extra")}${SETS.filter(x => !x.ny).map(x => tile(x, "set")).join("")}${SKINS.filter(x => x.price && !x.ny).map(x => tile(x, "skin")).join("")}${ACCS.filter(x => x.price && !x.ny).map(x => tile(x, "acc")).join("")}</div>
   </div>`;
   $("#back").onclick = back;
   $("#petname").addEventListener("change", e => { p.name = e.target.value.trim().slice(0, 16) || "Пітоша"; p.nameAt = Date.now(); save("profile"); renderWardrobe(back, backLabel); });
@@ -865,7 +873,9 @@ function renderWardrobe(back, backLabel) {
       if (bytesLeft() < cost) return;
       p.spent = bytesSpent() + cost;
       p.bought = [...(p.bought || []), x.id]; toast(`Куплено: ${x.name}!`);
+      if (kind === "extra") { pendingBuy = null; save("profile"); scheduleSync(true); renderWardrobe(back, backLabel); return; }
     }
+    if (kind === "extra") return;
     pendingBuy = null;
     const id = b.dataset.id;
     if (kind === "set") {   // одразу вдягаємо весь комплект
@@ -959,7 +969,7 @@ window.KV = {
   get session() { return session; }, get offline() { return offline; }, get access() { return access; },
   profile, gameData, totalStars, save, scheduleSync, pull, call, syncLabel, boot, logout, whoami, bindWhoami,
   useGame: (id, summaryFn, levelIds) => { currentGame = id; gameSummary = summaryFn; const G = GAMES.find(g => g.id === id); if (G) G.levelIds = levelIds; },
-  N, SKINS, ACCS, isOpen, godTouch, godGift, GOD_EVERY, GOD_CAP, openIds, achieve, snakeSVG, renderWardrobe, hasAcc, leaders, bytesLeft, bytesWord, BYTES_PERFECT, streakTouch, streakNow, streakBadge, daysWord, STREAK_EVERY,
+  N, maxHearts, hasExtra, SKINS, ACCS, isOpen, godTouch, godGift, GOD_EVERY, GOD_CAP, openIds, achieve, snakeSVG, renderWardrobe, hasAcc, leaders, bytesLeft, bytesWord, BYTES_PERFECT, streakTouch, streakNow, streakBadge, daysWord, STREAK_EVERY,
   leave: { configure: cfg => { leaveCfg = Object.assign({ isActive: () => false, onPenalty: () => {}, onPeek: null, onMouseOut: null }, cfg); }, GRACE, AWAY_STEP },
   get guardOpen() { return guardOpen; }, showGuard, hideGuard, goFullscreen, leaveFullscreen, toast,
   isWinterBreak, isNySeason, nyDecor,
