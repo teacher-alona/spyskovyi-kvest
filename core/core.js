@@ -2,7 +2,7 @@
    змійка з гардеробом, заслона при виході з гри. Кожна гра підключає цей файл і додає свої рівні. */
 (function () {
 "use strict";
-const VERSION = "2026.11.25-88";
+const VERSION = "2026.11.25-89";
 const API = "https://script.google.com/macros/s/AKfycbzPtRGlYI4osS-xL-J_pAZ2A2HxTWUeuecjy9-13MgAdFIzkDnYuCr1qmLHqZvqWkQMWQ/exec";
 
 // Усі ігри порталу. sheet — назва аркуша з прогресом у таблиці вчительки.
@@ -218,6 +218,7 @@ function mergeProfile(local, remote) {
   m.streak = (a.last || "") > (b.last || "") ? a : (b.last || "") > (a.last || "") ? b : ((a.n || 0) >= (b.n || 0) ? a : b);
   m.streak = Object.assign({}, m.streak, { best: Math.max(a.best || 0, b.best || 0, m.streak.n || 0) });
   m.bonus = Math.max(remote.bonus || 0, local.bonus || 0);
+  m.daily = (remote.daily || "") > (local.daily || "") ? remote.daily : local.daily;   // день, за який уже дали байти за вогник
   m.spent = Math.max(remote.spent || 0, local.spent || 0);
   // ім'я змійки — те, яке змінили пізніше (учень у гардеробі або вчителька в таблиці)
   // збережені ігри з пісочниці: кожну беремо за її власним часом збереження
@@ -258,7 +259,42 @@ function applyServer(r) {
   persist();
   // зберігаємо лише якщо щось справді змінилось (або новий скрипт ще не має профілю), щоб не затерти ручні зміни вчительки
   if (changed || (r.v >= 2 && !r.profile)) { dirty = true; scheduleSync(true); }
-  return changed;
+  return dailyCheck() || changed;
+}
+// ---------- байти за вогник: щодня при першому вході ----------
+// серія 1 день — 1 байт, 2 дні — 2 байти … від 5 днів — 5 байтів щодня
+const DAILY_MAX = 5;
+function dailyCheck() {
+  const p = store.profile, today = dayStr();
+  if (p.daily === today) return false;
+  p.daily = today;
+  const n = streakNow(), add = Math.min(n, DAILY_MAX);
+  if (add) p.bonus = (p.bonus || 0) + add;
+  save("profile"); dirty = true; scheduleSync(true);
+  if (add) setTimeout(() => dailyPopup(n, add), 500);
+  return !!add;
+}
+function dailyPopup(n, add) {
+  if (leaveCfg.isActive() || guardOpen) return;
+  let g = document.getElementById("daily");
+  if (!g) { g = document.createElement("div"); g.id = "daily"; g.setAttribute("role", "dialog"); g.setAttribute("aria-modal", "true"); document.body.appendChild(g); }
+  const done = streakDoneToday();
+  g.innerHTML = `<div class="dailycard">
+    <div class="dflame">🔥</div>
+    <h2>${n} ${daysWord(n)} поспіль!</h2>
+    <p class="dplus">+${add} ${bytesWord(add)}</p>
+    <p>Це байти за вогник: твоя серія триває вже ${n} ${daysWord(n)}. Щодня при першому вході ти отримуєш стільки байтів, скільки днів у серії${n >= DAILY_MAX ? ` — але не більше ${DAILY_MAX}. У тебе вже максимум!` : `, але не більше ${DAILY_MAX}. Не загуби серію — і завтра буде +${Math.min(n + 1, DAILY_MAX)}.`}</p>
+    <p class="status">${done ? "Серію сьогодні вже продовжено." : "Пройди сьогодні хоча б один рівень, щоб вогник не згас."}</p>
+    <button class="btn" id="daily-ok">Дякую!</button>
+  </div>`;
+  const close = () => { g.remove(); document.removeEventListener("keydown", esc1); };
+  const esc1 = e => { if (e.key === "Escape" || e.key === "Enter") close(); };
+  document.addEventListener("keydown", esc1);
+  g.onclick = e => { if (e.target === g) close(); };
+  document.getElementById("daily-ok").onclick = close;
+  document.getElementById("daily-ok").focus();
+  // байти на сторінці (якщо показані) оновлюються при наступному перемальовуванні; тут — одразу
+  document.querySelectorAll("[data-bytes]").forEach(el => el.textContent = bytesLeft());
 }
 const loginBody = (login, pin) => ({ action: "login", login, pin, v: 2, games: GAMES.map(g => ({ id: g.id, sheet: g.sheet, title: g.title })) });
 let access = lsGet("kv-access");
