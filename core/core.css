@@ -400,7 +400,7 @@ textarea { resize: vertical; line-height: 1.6; }
 .maplink:hover { border-style: solid; }
 
 /* ---------- новорічне ---------- */
-.nysec { background: linear-gradient(180deg, rgba(229, 57, 53, .07), rgba(67, 160, 71, .07)); border: 2px dashed rgba(229, 57, 53, .35); border-radius: 16px; padding: 4px 14px 14px; margin: 18px 0 6px; }
+.nysec { justify-self: stretch; width: 100%; box-sizing: border-box; background: linear-gradient(180deg, rgba(229, 57, 53, .07), rgba(67, 160, 71, .07)); border: 2px dashed rgba(229, 57, 53, .35); border-radius: 16px; padding: 4px 14px 14px; margin: 18px 0 6px; }
 .nysw { font: 700 16px/1 var(--f-body, sans-serif); border: 2px solid var(--line, #d8dce3); background: var(--card, #fff); color: #3d8bfd; border-radius: 999px; width: 32px; height: 32px; cursor: pointer; padding: 0; position: relative; }
 .nysw.off { color: var(--muted, #8a93a3); opacity: .7; }
 .nysw.off::after { content: ""; position: absolute; left: 6px; right: 6px; top: 50%; border-top: 2px solid currentColor; transform: rotate(-40deg); }
