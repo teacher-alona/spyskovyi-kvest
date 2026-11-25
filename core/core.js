@@ -2,7 +2,7 @@
    змійка з гардеробом, заслона при виході з гри. Кожна гра підключає цей файл і додає свої рівні. */
 (function () {
 "use strict";
-const VERSION = "2026.11.25-86";
+const VERSION = "2026.11.25-87";
 const API = "https://script.google.com/macros/s/AKfycbzPtRGlYI4osS-xL-J_pAZ2A2HxTWUeuecjy9-13MgAdFIzkDnYuCr1qmLHqZvqWkQMWQ/exec";
 
 // Усі ігри порталу. sheet — назва аркуша з прогресом у таблиці вчительки.
@@ -447,7 +447,7 @@ const SKINS = [
   // ---------- новорічна колекція (ny: true — показуємо окремим розділом гардероба) ----------
   { id: "nysweater", name: "Новорічний светр", ny: true, need: 0, col: () => "#c62828", idx: "#fff", head: "#c62828",
     seg: (x, y) => `<path d="M${x} ${y - 6} l2.75 -3 2.75 3 2.75 -3 2.75 3 2.75 -3 2.75 3 2.75 -3 2.75 3" stroke="#fff" stroke-width="1.5" fill="none"/>${[3, 8.3, 13.7, 19].map(d => `<circle cx="${x + d}" cy="${y + 8}" r="1.2" fill="#fff"/>`).join("")}<path d="M${x} ${y + 5} h22" stroke="#1f7a43" stroke-width="1.3"/>` },
-  { id: "candy", name: "Льодяник", ny: true, price: 25, col: () => "#fbfbfb", idx: "#b71c1c", head: "#fbfbfb", headStroke: "#e53935",
+  { id: "candy", name: "Льодяник", ny: true, price: 25, gift: "candyrain2", col: () => "#fbfbfb", idx: "#b71c1c", head: "#fbfbfb", headStroke: "#e53935",
     seg: (x, y) => nyClip(x, y - 11, 22, 22, 7, nyStripes(x, y - 11, 22, 22, 11, "#e53935", 4.2)),
     headDeco: (hx, hy) => nyClip(hx, hy - 14, 34, 28, 11, nyStripes(hx, hy - 14, 34, 28, 13, "#e53935", 4)) },
   { id: "snowman", name: "Сніговик", ny: true, price: 30, col: () => "#ffffff", idx: "#5b6b80", head: "#ffffff", rx: 11,
@@ -545,7 +545,7 @@ const SLOT = { cap: "hat", cowboy: "hat", propeller: "hat", crown: "hat", horn: 
 const SLOT_NAME = { hat: "на голову", eyes: "на очі", face: "на обличчя", neck: "на шию", ears: "навушники", decor: "прикраса", tool: "паяє хвіст", tail: "хвостик", portal: "ефект", back: "на спину", sky: "зорі", antlers: "роги", nose: "на ніс", garland: "на тіло", beard: "борода" };
 const accList = () => String(store.profile.acc || "").split(",").map(x => x.trim()).filter(x => x && x !== "none");
 const hasAcc = id => accList().includes(id);
-const ACH = { fail: "Лишитися без хвоста", perfect: "Пройти рівень без жодної помилки", peek: "Підглянути розв'язок задачі", lastdeath: "", loafhat: "", angel: "", dune: "", starfall: "", god: "", winter: "" };
+const ACH = { fail: "Лишитися без хвоста", perfect: "Пройти рівень без жодної помилки", peek: "Підглянути розв'язок задачі", lastdeath: "", loafhat: "", angel: "", dune: "", starfall: "", god: "", winter: "", candyrain: "Правильно відповісти під льодяниковим дощем", candyrain2: "" };
 // зимові канікули: 24 грудня — 11 січня (для секрету «Північне сяйво»)
 const isWinterBreak = (d = new Date()) => (d.getMonth() === 11 && d.getDate() >= 24) || (d.getMonth() === 0 && d.getDate() <= 11);
 // новорічний сезон на порталі: сніг і гірлянда з 25 листопада до 15 січня
@@ -620,6 +620,7 @@ const BGS = [
   { id: "snowfall", name: "Снігопад", ny: true, price: 20 },
   { id: "fireworks", name: "Феєрверк", ny: true, price: 25 },
   { id: "cozy", name: "Затишний вечір", ny: true, price: 30 },
+  { id: "candies", name: "Льодяники", ny: true, ach: "candyrain" },
 ];
 // зірка з n променями: r1 — до кінчика, r2 — до западини
 const starPts = (cx, cy, n, r1, r2) => Array.from({ length: n * 2 }, (_, k) => { const r = k % 2 ? r2 : r1, a = -Math.PI / 2 + k * Math.PI / n; return `${(cx + r * Math.cos(a)).toFixed(1)},${(cy + r * Math.sin(a)).toFixed(1)}`; }).join(" ");
@@ -638,6 +639,8 @@ function bgEl(id, W) {
     if (id === "snowfall") return `<circle cx="${x}" cy="${y}" r="${1.6 * r}" fill="#9fd0ff" stroke="#5aa7e8" stroke-width=".5"/>`;
     if (id === "fireworks") { if (k % 4) return `<circle cx="${x}" cy="${y}" r="${0.9 * r}" fill="${NY_LIGHTS[k % 4]}"/>`;
       const c = NY_LIGHTS[(k >> 2) % 4]; return `<g stroke="${c}" stroke-width="${1.1 * r}" stroke-linecap="round">${Array.from({ length: 8 }, (_, j) => { const a = j * Math.PI / 4; return `<path d="M${(x + 2 * r * Math.cos(a)).toFixed(1)} ${(y + 2 * r * Math.sin(a)).toFixed(1)} L${(x + 6 * r * Math.cos(a)).toFixed(1)} ${(y + 6 * r * Math.sin(a)).toFixed(1)}"/>`; }).join("")}</g>`; }
+    if (id === "candies") return k % 2 ? `<g stroke-linecap="round" fill="none"><path d="M${x} ${y + 5 * r} V${y - 1 * r} a${2.2 * r} ${2.2 * r} 0 0 1 ${4.4 * r} 0" stroke="#e53935" stroke-width="${1.8 * r}"/><path d="M${x} ${y + 5 * r} V${y - 1 * r} a${2.2 * r} ${2.2 * r} 0 0 1 ${4.4 * r} 0" stroke="#fff" stroke-width="${1.8 * r}" stroke-dasharray="${1.2 * r} ${1.4 * r}"/></g>`
+      : `<line x1="${x}" y1="${y}" x2="${x}" y2="${y + 6 * r}" stroke="#c9a77a" stroke-width="${0.9 * r}"/><circle cx="${x}" cy="${y}" r="${3 * r}" fill="${["#ff6fae", "#7ad3ff", "#ffd43b"][k % 3]}"/><path d="M${x} ${y} m-${1.6 * r} 0 a${1.6 * r} ${1.6 * r} 0 1 1 ${3.2 * r} 0" stroke="#fff" stroke-width="${0.8 * r}" fill="none"/>`;
     if (id === "notes") return `<text x="${x}" y="${y + 4}" font-size="${9 * r}" fill="#9b6dff" opacity=".8" text-anchor="middle">${k % 2 ? "♪" : "♫"}</text>`;
     return ""; };
   return `<g class="sbg bg-${id}">${BG_SPOTS.map((sp, k) => `<g class="bgi" style="animation-delay:-${sp.d.toFixed(2)}s">${item(sp, k)}</g>`).join("")}</g>`;
@@ -655,7 +658,7 @@ const setCost = st => Math.max(0, st.price - st.items.reduce((s, id) => { const 
 const bytesSpent = () => Math.max(store.profile.spent || 0, (store.profile.bought || []).reduce((s, id) => { const x = [...SKINS, ...ACCS, EXTRA].find(y => y.id === id); return s + (x && x.price || 0); }, 0));
 const bytesLeft = () => Math.max(0, bytesEarned() - bytesSpent());
 const bytesWord = n => { n = Math.abs(n) % 100; const d = n % 10; return n > 10 && n < 20 ? "байтів" : d === 1 ? "байт" : d >= 2 && d <= 4 ? "байти" : "байтів"; };
-const isOpen = x => x.combo ? x.combo.every(id => { const y = ALLITEMS().find(z => z.id === id); return y && isOpen(y); }) : x.price ? ((store.profile.bought || []).includes(x.id) || SETS.some(st => st.items.includes(x.id) && (store.profile.bought || []).includes(st.id))) : x.ach ? !!(store.profile.ach && store.profile.ach[x.ach]) : x.need <= totalStars();
+const isOpen = x => x.combo ? x.combo.every(id => { const y = ALLITEMS().find(z => z.id === id); return y && isOpen(y); }) : x.price ? ((x.gift && store.profile.ach && store.profile.ach[x.gift]) || (store.profile.bought || []).includes(x.id) || SETS.some(st => st.items.includes(x.id) && (store.profile.bought || []).includes(st.id))) : x.ach ? !!(store.profile.ach && store.profile.ach[x.ach]) : x.need <= totalStars();
 const openIds = () => [...SKINS, ...ACCS].filter(isOpen).map(x => x.id);
 // бог-змійка: з'являється після трьох рівнів поспіль на три зірки (з будь-яких ігор); рівень на 1–2 зірки або програш скидає лічильник
 const GOD_EVERY = 3, GOD_CAP = 100;
@@ -716,7 +719,7 @@ function snakeSVG(o) {
   for (let i = N - 1; i >= 0; i--) {
     const x = segX(i), y = segY(i), sk = skinAt(i);
     const ghost = shapeEl(shape, x, y - 11, 7, `class="ghost"`);
-    const jx = sk.jitter ? [2, -3, 1, -2, 3][i] : 0, jy = sk.jitter ? [-2, 3, -3, 1, 2][i] : 0;
+    const jx = sk.jitter ? [2, -3, 1, -2, 3][i % 5] : 0, jy = sk.jitter ? [-2, 3, -3, 1, 2][i % 5] : 0;
     const rect = (fill, dx, op) => shapeEl(shape, x + jx + dx, y + jy - 11, sk.rx ?? 7, `fill="${fill}"${op ? ` opacity="${op}"` : ` stroke="rgba(0,0,0,.22)" stroke-width="1.5"`}`);
     const body = (sk.jitter ? rect("#00e5ff", -2.5, .8) + rect("#ff2bd6", 2.5, .8) : "") + rect(sk.col(i), 0)
       + (sk.seg ? (shape !== "square" ? `<clipPath id="${uid}c${i}">${shapeEl(shape, x + jx, y + jy - 11, 7, "")}</clipPath>` : "") + `<g transform="translate(${jx} ${jy})"${shape !== "square" ? ` clip-path="url(#${uid}c${i})"` : ""}>${sk.seg(x, y, i)}</g>` : "") + (sk.segOver ? `<g transform="translate(${jx} ${jy})">${sk.segOver(x + jx, y + jy, i, shape)}</g>` : "")

@@ -244,13 +244,15 @@ const EVENTS = {
   storm: { name: "Піщана буря", icon: "🌪️", mult: 5, text: `Правильна відповідь з першої спроби на це питання дасть ${EV_BASE * 5} байтів!` },
   acid: { name: "Кислотний дощ", icon: "☣️", penalty: 5, text: "Помилка на цьому питанні забере 5 байтів. Обережно!" },
   starfall: { name: "Зорепад", icon: "🌠", half: true, text: "Байти за цей рівень поділяться на 2, зате після рівня відкриється секретний скін!" },
+  candyrain: { name: "Льодяниковий дощ", icon: "🍭", text: "Правильна відповідь з першої спроби — і отримаєш льодяниковий подарунок! Але помилка забере 2 життя." },
   snow: { name: "Снігопад", icon: "❄️", mult: 1.5, text: `Правильна відповідь з першої спроби на це питання дасть ${EV_BASE * 1.5} байтів!` },
 };
 function rollEvent() {   // 1% — буря, 3% — зорепад, 5% — кислотний дощ, 10% — снігопад
   // для автоматичних перевірок подію можна задати лише на локальному тестовому сервері
   if (window.__forceEv !== undefined && /^(localhost|127\.0\.0\.1)$/.test(location.hostname)) { const f = window.__forceEv; delete window.__forceEv; return f; }
   const r = Math.random();
-  return r < 0.01 ? "storm" : r < 0.04 ? "starfall" : r < 0.09 ? "acid" : r < 0.19 ? "snow" : "";
+  // з 25 листопада до 15 січня ще 6% — льодяниковий дощ
+  return r < 0.01 ? "storm" : r < 0.04 ? "starfall" : r < 0.09 ? "acid" : r < 0.19 ? "snow" : r < 0.25 && KV.isNySeason() ? "candyrain" : "";
 }
 // кислотний дощ: якщо на «дощовому» питанні була хоч одна помилка — мінус байти (рахуємо, коли питання позаду)
 function checkAcid() {
@@ -259,7 +261,7 @@ function checkAcid() {
   if (run.evBad || run.mistakes > run.evM0) run.evPenalty = EVENTS.acid.penalty;
 }
 function showEvent(ev, replay) {
-  document.body.classList.remove("ev-storm", "ev-acid", "ev-snow", "ev-starfall");
+  document.body.classList.remove("ev-storm", "ev-acid", "ev-snow", "ev-starfall", "ev-candyrain");
   let fx = document.getElementById("evfx"); if (fx) fx.remove();
   if (!ev) return;
   const e = EVENTS[ev];
@@ -329,7 +331,16 @@ const hideGuard = () => KV.hideGuard();
 const goFullscreen = () => KV.goFullscreen();
 const leaveFullscreen = () => KV.leaveFullscreen();
 
-function lose(n) { run.shown = run.hearts; run.hearts = Math.max(0, run.hearts - (n || 1)); run.mistakes += (n || 1); }
+// льодяниковий дощ: на його питанні помилка забирає ще одне життя (але помилкою для зірок рахується одна)
+function lose(n) { const extra = run.ev === "candyrain" && run.idx === run.evIdx ? 1 : 0; run.shown = run.hearts; run.hearts = Math.max(0, run.hearts - (n || 1) - extra); run.mistakes += (n || 1); }
+// подарунок за льодяниковий дощ: спершу фон «Льодяники», потім скін «Льодяник», а далі — 15 байтів
+function candyGift() {
+  const ach = KV.profile().ach || {}, sk = KV.SKINS.find(x => x.id === "candy");
+  if (!ach.candyrain) { achieve("candyrain"); return "🍭 Подарунок: фон «Льодяники»! Вдягни його в гардеробі."; }
+  if (!ach.candyrain2 && !KV.isOpen(sk)) { achieve("candyrain2"); return "🍭 Подарунок: скін «Льодяник»! Вдягни його в гардеробі."; }
+  if (run.replay) return "🍭 Льодяники вже всі твої! За пройдений рівень байтів не дають, але відповідь чудова.";
+  run.evBytes = 15; return "🍭 Подарунок: +15 байтів за цей рівень!";
+}
 function next() {
   if (run.hearts <= 0) return renderFail();
   run.idx++; run.st = {};
@@ -445,6 +456,7 @@ function feedback(good, title, text, extra) {
     run.st.paid = true;
     const e = run.idx === run.evIdx && EVENTS[run.ev];
     if (e && e.mult) run.evBytes = Math.round(EV_BASE * e.mult); else run.clean = (run.clean || 0) + 1;
+    if (e && run.ev === "candyrain" && !run.evGift) { run.evGift = true; setTimeout(() => KV.toast(candyGift()), 600); }
   }
   if (!good && run.idx === run.evIdx) run.evBad = true;
   if (good && $("#snake")) { const tp = KV.hasAcc("teleport") && KV.isOpen(KV.ACCS.find(x => x.id === "teleport")); $("#snake").innerHTML = snakeSVG({ len: run.hearts, mood: "wow", cls: tp ? "" : "hop", tpRun: tp });
