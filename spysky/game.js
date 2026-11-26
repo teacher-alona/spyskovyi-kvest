@@ -54,6 +54,9 @@ function hl(code) {
 }
 const pre = code => `<pre class="code">${hl(code)}</pre>`;
 const normOut0 = s => String(s).replace(/\r/g, "").replace(/"/g, "'").split("\n").map(l => l.trim().replace(/\s*([,\[\]\(\)])\s*/g, "$1").replace(/\s+/g, " ")).join("\n").replace(/^\n+|\n+$/g, "");
+// латинські літери, схожі на українські: a ↔ а, y ↔ у тощо (для підказки «набрано англійською розкладкою»)
+const LAT2CYR = { a: "а", c: "с", e: "е", i: "і", o: "о", p: "р", x: "х", y: "у", k: "к", A: "А", B: "В", C: "С", E: "Е", H: "Н", I: "І", K: "К", M: "М", O: "О", P: "Р", T: "Т", X: "Х", Y: "У" };
+const foldLat = s => s.replace(/[a-zA-Z]/g, ch => LAT2CYR[ch] || ch);
 const normOut = s => PLAIN && !SWIFT ? normOut0(s).toLowerCase() : normOut0(s);
 const normFill = s => { const v = String(s).trim().replace(/"/g, "'").replace(/\s+/g, ""); return PLAIN && !SWIFT ? v.toLowerCase() : v; };
 // рівень відкривається після попереднього або після рівня з after (наприклад, фінал — одразу після тем, без тренажерів)
@@ -557,6 +560,10 @@ function rOutput(it) {
         ? "Значення правильні, але `print` виводить список разом із квадратними дужками, наприклад `[1, 2]`. Допиши дужки й перевір ще раз."
         : "Значення правильні, але Python друкує їх трохи інакше. Перевір дужки та лапки: рядки всередині списку виводяться в лапках, наприклад `['а', 'б']`.";
       feedback(false, "Майже!", why);
+    } else if (foldLat(normOut(v)) === foldLat(normOut(it.a)) && normOut(v) !== normOut(it.a)) {
+      // відповідь збігається, якщо латинські літери-двійники замінити українськими (a ↔ а, y ↔ у…) — підказуємо, без штрафу
+      const lat = [...new Set([...v].filter(ch => LAT2CYR[ch] && /[а-яіїєґ]/i.test(it.a)))].join(", ");
+      feedback(false, "Майже!", `Схоже, частину літер набрано **англійською** розкладкою${lat ? `: ${lat}` : ""}. Вони виглядають так само, як українські, але для комп'ютера це інші символи. Перемкни розкладку на українську й перевір ще раз.`);
     } else if (numNear(v, it.a)) {
       // те саме число, але інший запис: 3 замість 3.0 чи навпаки — підказуємо, без штрафу
       feedback(false, "Майже!", /\.0\b/.test(it.a)
