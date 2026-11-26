@@ -467,7 +467,9 @@ function feedback(good, title, text, extra) {
     const mv = tp && $("#snake").querySelector(".tpmove");
     if (mv) mv.addEventListener("animationend", () => { if ($("#snake") && run) $("#snake").innerHTML = snakeSVG({ len: run.hearts, mood: "wow" }); }, { once: true });
   }
-  $("#fb").innerHTML = `<div class="feedback ${good ? "good" : "bad"}"><div class="verdict">${title}</div>${extra || ""}${text ? `<p>${md(text)}</p>` : ""}</div>`;
+  // «Тепер правильно!» — відповідь правильна з другої спроби: байта не дає, але показуємо зеленим
+  const okLook = good || /^Тепер правильно/.test(title);
+  $("#fb").innerHTML = `<div class="feedback ${okLook ? "good" : "bad"}"><div class="verdict">${title}</div>${extra || ""}${text ? `<p>${md(text)}</p>` : ""}</div>`;
 }
 function setActs(html, handlers) {
   $("#acts").innerHTML = html;
